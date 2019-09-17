@@ -1,0 +1,2 @@
+docker build -t panda18 .
+docker run  -v `pwd`/transfer:/transfer panda18 

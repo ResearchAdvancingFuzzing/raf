@@ -28,6 +28,6 @@ RUN cd panda && ./panda/scripts/install_ubuntu.sh
 
 #ENV PATH="/panda/build/x86_64-softmmu/:${PATH}"
 #ENTRYPOINT panda/panda/scripts/run_debian.py 
-#CMD ["python", "panda/panda/scripts/run_debian.py
 
 
+CMD panda/panda/scripts/run_debian.py /transfer/toy /transfer/testsmall.bin && panda/build/i386-softmmu/panda-system-i386 -replay replays/toy/toy -os linux-32-debian:3.2.0-4-686-pae -pandalog /transfer/toy.plog -panda file_taint:filename=testsmall.bin -panda tainted_branch && panda/panda/scripts/plog_reader.py /transfer/toy.plog > /transfer/toy.plog.txt
