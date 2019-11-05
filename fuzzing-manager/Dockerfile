@@ -9,4 +9,3 @@ RUN python setup.py install
 COPY fm.py ./
 
 CMD python fm.py
-

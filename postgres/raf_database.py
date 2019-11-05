@@ -1,5 +1,3 @@
-
-
 import enum
 
 from sqlalchemy import Table
@@ -15,10 +13,6 @@ from sqlalchemy.types import DateTime
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.sql.expression import func
 from sqlalchemy.ext.declarative import declarative_base
-
-
-
-
 
 Base = declarative_base()
 
@@ -43,7 +37,7 @@ class fileKind(enum.Enum):
     condition = 4
     jump = 5
 
-    
+
 class Campaign(Base):
     __tablename__ = 'campaign'
 
@@ -59,17 +53,17 @@ class Coverage(Base):
 
     id = Column(Integer, primary_key=True)
     hash = Column(Text)
-    
+
 
 class Job(Base):
     __tablename__ = 'job'
-    
+
     id = Column(Integer, primary_key=True)
     campaign = Column(Integer, ForeignKey('campaign.id'))
-    job_kind = Column(Enum(JobKind))
+    job_kind = Column(enum.Enum(JobKind))
     docker_image = Column(Text)
     cmdline = Column(Text)
-    status = Column(Enum(JobStatus))
+    status = Column(enum.Enum(JobStatus))
     exit_code = Column(Integer)
     input_filename = Column(Text)
     start_time = Column(DateTime)
@@ -78,9 +72,9 @@ class Job(Base):
 
 class Input(Base):
     __tablename__ = 'input'
-    
+
     id = Column(Integer, primary_key=True)
-    
+
 
 
 class SourceLval(Base):
@@ -94,8 +88,3 @@ class SourceLval(Base):
         return 'Lval[{}](loc={}:{}, ast="{}")'.format(
             self.id, self.loc.filename, self.loc.begin.line, self.ast_name
         )
-
-
-    
-
-

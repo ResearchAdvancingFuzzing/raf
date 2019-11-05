@@ -1,162 +1,75 @@
-# What do I actually need to create in this yaml file?
-# We need a deployment specification for panda and the fuzzer 
-# We definitely need a specification for the fuzzing manager 
-# the database and its parts and the file system and its parts 
+# make sure we do a helm install stable/postgresql BEFORE any of this since
+# the setup requires that we have the postgres database already running 
 
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: pods-list
+rules: 
+- apiGroups: [""]  
+  resources: ["nodes", "pods", "services", "secrets"] # what resources this Cluster Role applies to 
+  verbs: ["list"] # what actions it can perform (right now just list things) 
 
-# NOTE: .spec.selector must match .spec.template.metadata.labels
-# NOTE: you need to create docker images and push them to a registry 
-# before referring to them in an image tag; use Docker CLI
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: pods-list
+subjects:  # who this applies to: all serviceaccounts that are default (which is basically everything)
+- kind: ServiceAccount
+  name: default
+  namespace: default
+roleRef: # what role they are getting  
+  kind: ClusterRole 
+  name: pods-list
+  apiGroup: rbac.authorization.k8s.io
 
-
-# FUZZER
-apiVersion: v1 # version of the api to use (group/version)
+---
+# What will be the Cron Job 
+apiVersion: apps/v1 # version of the api to use (group/version)
 kind: Deployment
 metadata: # data that helps uniquely identify the object
-  name: fuzzer # must be unique within the namespace
+  name: fuzzing-manager # must be unique within the namespace
   labels: # used to organize&categorize; match selectors of controllers/services
-    app: fuzzer
+    app: fuzzing-manager
 spec: # specification of the desired behavior of the Deployment
   selector: # label selector for the pods 
     matchLabels:
-      app: fuzzer 
-  replicas: 1 # number of desired pods; # of desired fuzzers we want to start?
+      app: fuzzing-manager 
+      #replicas: 1 # number of desired pods; # of desired fuzzers we want to start?
   template: # describes the pods that will be created 
     metadata:
       labels:
-        app: fuzzer
+        app: fuzzing-manager
     spec: 
       containers:
-        - name: fuzzer
-          image: dockerized_fuzzer
-          volumeMounts:
-            - name: postgres-storage
-              mountPath: ?
-      volumes: 
-        - name: postgres-storage
-          persistentVolumeClaim: 
-            claimName: postgres-claim
+        - name: fuzzing-manager
+          image: hpreslier/fuzzing-manager:v1
+          imagePullPolicy: Always # container image will be pulled every time the pod is started
+          ports: 
+                - containerPort: 80 # states the port number to expose on the pod's IP address; provides info about the network connections a container uses
+
+# THis just needs to be a plain job to setup a database with the database tables using sqlalchemy 
+# I feel like database should be in here for now
+# We also want this to happen before the fuzzing-manager  
 ---
-# PANDA
-apiVersion: v1
 kind: Deployment
+apiVersion: apps/v1
 metadata: 
-  name: panda
+  name: setup-db
   labels:
-    app: panda
+    app: setup-db
 spec:
-  selector:
-    matchLabels:
-      app: panda
-  replicas: 1 
-  template: 
+  selector: 
+    matchLabels: 
+      app: setup-db
+  template:
     metadata:
       labels:
-        app: panda
+        app: setup-db
     spec: 
       containers:
-        - name: panda
-          image: dockerized_panda
-          volumeMounts:
-            - name: postgres-storage
-              mountPath: ?
-      volumes: 
-        - name: postgres-storage
-          persistentVolumeClaim: 
-            claimName: postgres-claim
-
-
----
-# FUZZING MANAGER 
-apiVersion: batch/v1beta1 # group/version
-kind: CronJob
-metadata:
-  name: fuzzing-manager
-spec:
-  schedule: "*/1 * * * *" # Cron format string  
-  jobTemplate:
-    spec:
-      template:
-        spec:
-          containers:
-            - name: fuzzing-manager
-              image: dockerized_fuzzing_manager
-              # args: 
-              # - <any_args>
-          restartPolicy: OnFailure
-
----
-# DATABASE
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: postgres
-spec: 
-  storageClassName: database
-  capacity: 
-    storage: 10Gi
-  accessModes:
-    - ReadWriteMany
-
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata: 
-  name: postgres-claim
-spec:
-  storageClassName: database
-  accessModes:
-    - ReadWriteMany
-  resources:
-    requests:
-      storage: 1Gi
-
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: postgres
-spec:
-  ports: 
-    - port: 5432
-  selector:
-    app: postgres
-
----
-# FILESYSTEM
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: filesystem
-spec:
-  storageClassName: input
-  capacity: 
-    storage: 10Gi # Size of the volume 
-  accesModes:
-    - ReadWriteMany # type of access;  volume can be mounted read/write by many nodes
-  hostPath:
-    path: "/mnt/data" 
-
----
-apiVersion: v1
-kind: PersistenVolumeClaim
-metadata:
-  name: filesystem-claim
-spec:
-  storageClassName: input
-  accessModes:
-    - ReadWriteMany
-  resources:
-    requests:
-      storage: 1Gi
-
----
-apiVersion: v1
-kind: Service
-metadata: 
-  name: filesystem
-spec:
-  ports:
-    - port: 3306
-  selector:
-    app: filesystem
+        - name: setup-db
+          image: hpreslier/setup-db:v1
+          imagePullPolicy: Always
+ 
