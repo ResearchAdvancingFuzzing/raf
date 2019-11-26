@@ -15,10 +15,6 @@ Chris Connelly
 
 ## Introduction
 
-
-
-
-
 Spitfire is a fuzzer framework.  Its purpose is to enable repeatable experiments.  
 
 ---
@@ -43,20 +39,20 @@ Spitfire is a fuzzer framework.  Its purpose is to enable repeatable experiments
 
 <span style="font-size:60%">
 
-| I/O    | Name                | Type             | Required? | Comment    |
-|:------ |:-------------------:|:----------------:|:---------:|------------|
-| input  | `input_file`        | `File`           | Yes       |            |
-| input  | `max_fuzzed_files`  | `Integer`        | No        |            |
-| input  | `timeout`           | `Integer`        | No        | in seconds |
-| output | `fuzzed_files` 	   | `File Array`     | Yes       |            |
-| output | `why_interesting`   | `Interest Array` | Yes       | one per `fuzzed_file` |
-| output | `marginal_coverage` | `Coverage Array` | No        | one per `fuzzed_file` |
-| output | `global_coverage`   | `Coverage`       | No        |            |
+| I/O    | Name                 | Type             | Required? | Comment    |
+|:------ |:--------------------:|:----------------:|:---------:|------------|
+| input  | `input_file`         | `File`           | Yes       |            |
+| input  | `max_fuzzed_files`   | `Integer`        | No        |            |
+| input  | `timeout`            | `Integer`        | No        | in seconds |
+| output | `interesting_files`  | `File Array`     | Yes       |            |
+| output | `why_interesting`    | `Interest Array` | Yes       | one per `fuzzed_file` |
+| output | `marginal_coverage`  | `Coverage Array` | No        | one per `fuzzed_file` |
+| output | `global_coverage`    | `Coverage`       | No        |            |
 
 
 Notes:
 * `max_fuzzed_files` and `timeout` will have defaults, which is why they are not required
-* `Interest` is a set of possible detector outputs (execptions, ASAN output, assertions, etc)
+* `Interest` is a set of possible detector outputs (new coverage, exceptions, ASAN output, assertions, etc)
 * `Coverage` is a binary output format for coverage info (more later)
 * `marginal_coverage` is the coverage unique to this file
 * `global_coverage` is the union of coverage for all `fuzzed_files`
@@ -74,7 +70,7 @@ Notes:
 |:------ |:-------------------:|:----------------:|:---------:|------------|
 | input  | `max_fuzzed_files`  | `Integer`        | No        |            |
 | input  | `timeout`           | `Integer`        | No        | in seconds |
-| output | `fuzzed_files` 	   | `File Array`     | Yes       |            |
+| output | `interesting_files` | `File Array`     | Yes       |            |
 | output | `why_interesting`   | `Interest Array` | Yes       | one per `fuzzed_file` |
 | output | `marginal_coverage` | `Coverage Array` | No        | one per `fuzzed_file` |
 | output | `global_coverage`   | `Coverage`       | No        |            |
@@ -92,17 +88,17 @@ Notes:
 
 <span style="font-size:60%">
 
-| I/O    | Name                | Type                             | Required?  | Comment    |
-|:------ |:-------------------:|:--------------------------------:|:----------:|------------|
-| input  | `input_file`        | `File`                           | Yes        |            |
-| input  | `timeout`           | `Integer`                        | No         | in seconds |
-| output | `attack_points`     | `AttackPoint Array`              | Yes        |            |
-| output | `fuzzable_extents`  | `FileExtent Array`               | Yes        |            |
-| output | `taint_map`         | `AttackPoint * FileExtent Array` | Yes        |            | 
-| output | `tcns`              | `Integer Array`                  | No         |            |
+| I/O    | Name                  | Type                             | Required?  | Comment    |
+|:------ |:---------------------:|:--------------------------------:|:----------:|------------|
+| input  | `input_file`          | `File`                           | Yes        |            |
+| input  | `timeout`             | `Integer`                        | No         | in seconds |
+| output | `tainted_intructions` | `TaintedInstruction Array`              | Yes        |            |
+| output | `file_extents`        | `FileExtent Array`               | Yes        |            |
+| output | `taint_map`           | `TaintedInstruction * FileExtent Array` | Yes        |            | 
+| output | `tcns`                | `Integer Array`                  | No         |            |
 
 Notes:
-* `AttackPoint` is an instruction in the target program seen to be tainted
+* `tainted_instruction` TaintedInstruction` is an instruction in the target program seen to be tainted
 * `FileExtent` is some positional bytes in the file that are seen to taint an attack point at some instant in the trace
 * `taint_map` is sparse matrix mapping `FileExtent`s to `AttackPoints`
 * `tcns` are a companion to `taint_map` (same length) indicating computational distance of tainted instruction at attack point from inputs
