@@ -133,3 +133,19 @@ The `Coverage` type is a tuple of various kinds of coverage. Each element in the
 * `EdgeCoverage of Integer` is the set of n-edges (n is the `Integer`) covered, with counts. An `Edge` is a pair of `Integers` representing a transition observed between two basic blocks.
 
 Other kinds of coverage are possible, including state coverage.  We will tackle these later.
+
+---
+
+## Persistent `knowledge_base`
+
+Spitfire will be implemented such that most compute happens on the cloud. Each tool run (required to be finite in time) will be required to deposit its results in a persistent knowledge store. 
+* Could be database or a key-value store or whatever
+* Lincoln will implement libraries in C and Python to marshall and unmarshall the various data types (`AttackPoint`, `Coverage`, etc) to a few different knowledge bases.
+
+---
+## Persistent filesystem
+
+We also need a filesystem.  For stuff that wouldn't make sense to put in a knowledge base.  All cloud instances will mount this volume and will be able to refer to files with consistent path names.
+
+* All `Files` from fuzzing or symbolic exec / solving
+* PANDA recordings
