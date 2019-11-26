@@ -13,8 +13,11 @@ Chris Connelly
 ## Introduction
 
 
+<img src="images/spitfire.jpg" alt="drawing" width="300"/>
 
-Spitfire is a fuzzer framework.  Its purpose is to enable repeatable experiments.
+
+
+Spitfire is a fuzzer framework.  Its purpose is to enable repeatable experiments.  
 
 ---
 
