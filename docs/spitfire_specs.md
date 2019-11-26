@@ -2,6 +2,9 @@
 
 Spitfire Specs
 ---------
+
+<img src="images/spitfire.jpg" alt="drawing" width="400"/>
+
 Tim Leek
 Andy Davis
 Heather Preslier
@@ -13,7 +16,6 @@ Chris Connelly
 ## Introduction
 
 
-<img src="images/spitfire.jpg" alt="drawing" width="300"/>
 
 
 
@@ -27,6 +29,7 @@ Spitfire is a fuzzer framework.  Its purpose is to enable repeatable experiments
 
 * Tools consume inputs and generate outputs in standard formats
 * Results and fuzzing experiment information made available in a `knowledge_base`
+* Spitfire codebase will include experiments that can be checked out and run to reproduce results.
 * Tool settings as well as code versions will be documented in `knowledge_base` in order that results can be repeated.
 * Existing tools can be shimmed to conform to Spitfire's interfaces (Angr, Triton, Panda, etc)
 * Existing fuzzers can be `implemented` with Spitfire. This means creating a `fuzzing_manager` that instantiates mutational and grammar based fuzzers, employs taint and symbolic execution selectively, and generally manages the temporal fuzzing campaign 
