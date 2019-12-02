@@ -27,6 +27,9 @@ ct = yf.campagin_type
 
 progress("fuzzing manager type is [%s]" % ct)
 
+# Note: params indicate type of campaign this is
+# part of which is specifying the fuzzing manager
+
 FuzzCampaignParams = __import__("params.%sFuzzCampaignParams" % ct)
 
 #fc_params = FuzzCampaignParams(campaign_param_file)
@@ -38,7 +41,7 @@ if command is "start":
     # Register fuzzing manager for this campagin to run periodically
     register_fuzzing_manager(fc_params)
 
-else:
+if command is "stop":
     # unregister fuzzing manager
     unregister_fuzzing_manager(fc_params)
     # should we archive db tables?
