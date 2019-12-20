@@ -5,76 +5,144 @@
 
 syntax = "proto3";
 
+package spitfire;
 
 service KnowledgeBase {
 
-  // add a bunch of fuzzable byte sets to the knowledge base  
+  // Add a program to the knowledge base
+  rpc AddProgram(Program) returns (KnowledgeBaseResult) {}
+
+  // Add a new input to the knowledge base
+  rpc AddInput(Input) returns (KnowledgeBaseResult) {}
+
+  // Add a corpus to the knowledge base
+  rpc AddCorpus(Corpus) returns (KnowledgeBaseResult) {}
+
+  // Add a new experiment to knowledge base
+  // returns a UUID for this experiment 
+  // note that uuid field should be passed in as "0"
+  rpc AddExperiment(Experiment) returns (KnowledgeBaseUUID) {}
+
+
+  // coverage API fns 
+  // Andy and Heather?
+
+
+  // Add a bunch of fuzzable byte sets to the knowledge base  
+  // If any were already there, we dont add twice
+  // return value indicates success / error
   rpc AddFuzzableByteSets (stream FuzzableByteSet) returns (KnowledgeBaseResult) {}
 
-  // add a bunch of tainted instructions to the knowledge base
+  // Add a bunch of tainted instructions to the knowledge base
+  // If any were already there, we dont add twice
   rpc AddTaintedInstructions (stream TaintedInstruction) returns (KnowledgeBaseResult) {}
  
-  // add a bunch of taint mappings ...
+  // Add a bunch of taint mappings to the knowledge base.
+  // note that a TaintMapping refers to a FuzzableByteSet and a 
+  // TaintedInstruction, but by uuid only.  So you have to have called 
+  // AddFuzzableByteSet and AddTaintedInstruction on the corresponding 
+  // items beforehand.
   rpc AddTaintMapping (stream TaintMapping) returns (KnowledgeBaseResults) {}
 
-  rpc 
+  // Returns set of TaintedInstructions discovered thus far by 
+  // all taint analyses that have run.
+  rpc GetTaintedInstruction(Empty) returns (stream TaintedInstruction) {}
 
-    
-    
+  // Returns set of Inputs that have been used to perform taint analysis 
+  // thus far.
+  rpc GetTaintInputs(Empty) returns (stream Input) {}
+
+  // Returns set of Inputs that taint this instruction
+  rpc GetTaintInputsForTantedInstruction(TaintedInstruction) returns (stream Input) {}
+
+  // Returns set of FuzzableByteSets for this input
+  rpc GetFuzzableBytesSetsForTaintInput(Input) return (stream FuzzableByteSet) {}
+
+  // Returns set of instructions seen to be tainted when we analyzed this input
+  rpc GetTaintedInstructionsForTaintInput(Input) returns (stream TaintedInstruction) {}
+
+  // Returns set of TaintMappings from this Input+FuzzableByteSet to this TaintedInstruction
+  rpc GetTaintMappings(TaintMappingKey) returns (stream TaintMapping) {}    
     
 }
 
 
-/*
-  A taint analysis is with respect to a specific concrete input.
-  Here is its md5sum which uniquely identifies it.
-*/
 
-message TaintAnalysisSummary {
-  string program_hash = 1;   /* identifies the version of target program */
-  string input_hash = 2;     /* identifies the program input */
+
+
+message Program {
+  bytes uuid = 1;                   // compute this as md5sum of rest of this message
+  string name = 2;                  // program name, like "awk" or "node" or "mount"
+  string git_hash = 3;              // git hash string for version 
 }
 
 
-/*
-  A FuzzableByteSet is a set of input bytes that a taint analysis has 
-  identified as influencing some program value at some point in execution.
-  Assumes program input bytes (file, network, etc) are labeled with sequential
-  integers.
+message Input {
+  bytes uuid = 1;                   // compute this as md5sum of input (file?) contents
+  string filepath = 2;              // path to file on the spitfire shared file system 
+}
 
-  So this is just a set of uint32 values, the taint labels
-*/
 
+message Corpus {
+  bytes uuid = 1;                   // compute this as md5sum of all Input uuids
+  string name = 2;                  // name for this corpus
+  repeated Input = 3;               // Inputs in this corpus
+}
+
+
+// A fuzzing experiment 
+message Experiment {
+  bytes uuid = 1;                   // Note: knowledge base assigned
+  TimeStamp start = 2;              // start time of experiment (Note: knowledge base assigned)
+  TimeStamp end = 3;                // end time of experiment (Note: knowledge base assigned)
+  string description = 4;           // description of this experiment
+  bytes program_uuid = 5;           // uuid for the program fuzzed
+  bytes seed_corpus = 6;            // uuid for seed corpus used
+  uint64 prng_seed = 7;             // seed of all randomness in this experiment
+}
+  
+
+// A FuzzableByteSet is a set of input bytes that a taint analysis has 
+// identified as influencing some program value at some point in execution.
+// Assumes program input bytes (file, network, etc) are labeled with sequential
+// integers (positional labels).
+//
 message FuzzableByteSet {
-  bytes uuid = 1;         /* compute this as md5sum of label set */
-  repeated uint32 label = 2;      /* set of taint labels, i.e. input bytes */
+  bytes uuid = 1;                   // compute this as md5sum of label set 
+  repeated uint32 label = 2;        // set of taint labels, i.e. input bytes 
 }
 
-
-/* 
-  An instruction that is tainted by a fuzzable byte set.  
-*/
-
+ 
+//  An instruction that is tainted by a fuzzable byte set.  
+//
 message TaintedInstruction {
-  bytes uuid = 1;           /* compute this as md5sum of rest of contents */
-  uint64 pc = 2;           /* program counter within module */
-  string module = 3;       /* module this instruction is in */
-  string type = 4;         /* type of instruction */
+  bytes uuid = 1;                   // compute this as md5sum of rest of contents 
+  uint64 pc = 2;                    // program counter within module 
+  string module = 3;                // module this instruction is in 
+  string type = 4;                  // type of instruction 
+  bytes instr_bytes = 5;            // the bytes for this instruction
 }
  
 
-/*
-  Mapping from FuzzableByteSet to TaintedInstruction
-*/
-
+// Mapping from FuzzableByteSet to TaintedInstruction
+//
 message TaintMapping {
-  bytes inp_uuid = 1;               /* uuid of input */
-  bytes fbs_uuid = 2;               /* uuid of fuzzable byte set */
-  bytes ti_uuid = 3;                /* uuid of tainted instruction */
-  uint64 value = 4;                 /* actual internal program value that was tainted */
-  uint32 value_length = 5;          /* number of bytes in the tainted value */
-  float trace_point = 6;            /* where in program trace.  0=start, 1=end */
-  uint32 min_compute_distance = 7;  /* min compute distance for tainted byte in value */
-  uint32 max_compute_distance = 8;  /* max compute distance for tainted byte in value */
+  bytes inp_uuid = 1;               // uuid of input 
+  bytes fbs_uuid = 2;               // uuid of fuzzable byte set 
+  bytes ti_uuid = 3;                // uuid of tainted instruction 
+  uint64 value = 4;                 // actual internal program value that was tainted 
+  uint32 value_length = 5;          // number of bytes in the tainted value 
+  float trace_point = 6;            // where in program trace.  0=start, 1=end 
+  uint32 min_compute_distance = 7;  // min compute distance for tainted byte in value 
+  uint32 max_compute_distance = 8;  // max compute distance for tainted byte in value 
 } 
 
+
+
+// Used to identify a taint mapping in the knowledge base
+//
+messageTaintMappingKey {
+  Input input = 1;                  // The input for the taint analysis
+  FuzzableByteSet = 2;              // The set of bytes within that input
+  TaintedInstruction = 3;           // The instruction tainted by those bytes
+}
