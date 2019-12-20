@@ -6,7 +6,23 @@
 syntax = "proto3";
 
 
-package taint_analysis;
+service KnowledgeBase {
+
+  // add a bunch of fuzzable byte sets to the knowledge base  
+  rpc AddFuzzableByteSets (stream FuzzableByteSet) returns (KnowledgeBaseResult) {}
+
+  // add a bunch of tainted instructions to the knowledge base
+  rpc AddTaintedInstructions (stream TaintedInstruction) returns (KnowledgeBaseResult) {}
+ 
+  // add a bunch of taint mappings ...
+  rpc AddTaintMapping (stream TaintMapping) returns (KnowledgeBaseResults) {}
+
+  rpc 
+
+    
+    
+    
+}
 
 
 /*
