@@ -1,0 +1,64 @@
+
+/*
+  proto buf spec for Spitfire taint analysis tool output
+*/
+
+syntax = "proto3";
+
+
+package taint_analysis;
+
+
+/*
+  A taint analysis is with respect to a specific concrete input.
+  Here is its md5sum which uniquely identifies it.
+*/
+
+message TaintAnalysisSummary {
+  string program_hash = 1;   /* identifies the version of target program */
+  string input_hash = 2;     /* identifies the program input */
+}
+
+
+/*
+  A FuzzableByteSet is a set of input bytes that a taint analysis has 
+  identified as influencing some program value at some point in execution.
+  Assumes program input bytes (file, network, etc) are labeled with sequential
+  integers.
+
+  So this is just a set of uint32 values, the taint labels
+*/
+
+message FuzzableByteSet {
+  bytes uuid = 1;         /* compute this as md5sum of label set */
+  repeated uint32 label = 2;      /* set of taint labels, i.e. input bytes */
+}
+
+
+/* 
+  An instruction that is tainted by a fuzzable byte set.  
+*/
+
+message TaintedInstruction {
+  bytes uuid = 1;           /* compute this as md5sum of rest of contents */
+  uint64 pc = 2;           /* program counter within module */
+  string module = 3;       /* module this instruction is in */
+  string type = 4;         /* type of instruction */
+}
+ 
+
+/*
+  Mapping from FuzzableByteSet to TaintedInstruction
+*/
+
+message TaintMapping {
+  bytes inp_uuid = 1;               /* uuid of input */
+  bytes fbs_uuid = 2;               /* uuid of fuzzable byte set */
+  bytes ti_uuid = 3;                /* uuid of tainted instruction */
+  uint64 value = 4;                 /* actual internal program value that was tainted */
+  uint32 value_length = 5;          /* number of bytes in the tainted value */
+  float trace_point = 6;            /* where in program trace.  0=start, 1=end */
+  uint32 min_compute_distance = 7;  /* min compute distance for tainted byte in value */
+  uint32 max_compute_distance = 8;  /* max compute distance for tainted byte in value */
+} 
+
