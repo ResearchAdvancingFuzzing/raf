@@ -17,6 +17,8 @@ persist.
 
 """
 
+import hashlib
+
 from enum import Enum
 import struct
 
@@ -48,21 +50,29 @@ class FuzzableByteSet:
     def __init__(self, label_set):
         # this is so that we can hash on it
         self.labels = tuple(label_set)
-        self.index = None
+        self.uuid = hashlib.md5(str(self.labels)).hexdigest()
 
     # marshal FuzzableByteSet object to f
     # f should be a file-like object
     def marshal(self, f):
-        assert (not (self.index is None))
         msg = taint_analysis_pb2.FuzzableByteSet()
-        msg.index = self.index
         msg.label.extend(list(self.labels))
+        msg.uuid = self.uuid
         msg_str =  msg.SerializeToString()
         marshal_len(f, len(msg_str))
         f.write(msg_str)
 
+    def __eq__(self, other):
+        return self.uuid == other.uuid
+
+    def __cmp__(self, other):
+        return cmp(self.uuid, other.uuid)
+
     def __str__(self):
-        return "(Fbs,index=%d,labels=%s)" % (self.index, str(self.labels))
+        return "(Fbs,labels=%s)" % (str(self.labels))
+
+    def __hash__(self):
+        return hash(self.uuid)
 
 
 # read a fuzzable byte set out of the file
@@ -70,7 +80,6 @@ class FuzzableByteSet:
 def unmarshal_fuzzable_byte_set(f):    
     msg = get_len_prefix_msg(f, taint_analysis_pb2.FuzzableByteSet)
     fbs = FuzzableByteSet(msg.label)
-    fbs.index = msg.index
     return fbs
 
 
@@ -91,14 +100,13 @@ class TaintedInstruction:
         self.pc = pc
         self.module = module
         self.type = typ
-        self.index = None
+        self.uuid = hashlib.md5(str(pc) + str(module) + str(typ))
 
     # marshal TaintedInstr object to f
     # f must be file-like
     def marshal(self, f):
-        assert (not (self.index is None))
         msg = taint_analysis_pb2.TaintedInstruction()
-        msg.index = self.index
+        msg.uuid = self.uuid
         msg.pc = self.pc
         msg.module = self.module
         msg.type = str(self.type)
@@ -107,13 +115,12 @@ class TaintedInstruction:
         f.write(msg_str)
 
     def __str__(self):
-        return "(Ti,index=%d,pc=%x,module=%s,type=%s)" % (self.index,self.pc,self.module,self.type)
+        return "(Ti,pc=%x,module=%s,type=%s)" % (self.pc,self.module,self.type)
 
 
 def unmarshal_tainted_instruction(f):
     msg = get_len_prefix_msg(f, taint_analysis_pb2.TaintedInstruction)
     ti = TaintedInstruction(msg.pc, msg.module, msg.type)
-    ti.index = msg.index
     return ti
 
 
@@ -136,12 +143,11 @@ class TaintMapping:
         self.min_compute_distance = min_compute_distance
         self.max_compute_distance = max_compute_distance
         
-    def marshal(self, f):
+    # note: 
+    def marshal(self, fsbi, tii):
         msg = taint_analysis_pb2.TaintMapping()
-        assert (not (self.fbs.index is None))
-        assert (not (self.ti.index is None))
-        msg.fuzzable_byte_set = self.fbs.index
-        msg.tainted_instruction = self.ti.index
+        msg.fbs_uuid = self.fbs.uuid
+        msg.ti_uuid = self.ti.uuid
         msg.value = self.value
         msg.value_length = self.value_length
         msg.trace_point = self.trace_point
@@ -188,17 +194,17 @@ class TaintAnalysis:
     # fbs must be a FuzzableByteSet
     def add_fuzzable_byte_set(self, fbs):
         if not (fbs in self.fbsi):
-            fbs.index = len(self.fbsa)
+            index = len(self.fbsa)
             self.fbsa.append(fbs)
-            self.fbsi[fbs] = fbs.index
+            self.fbsi[fbs] = index
 
     # Add a tainted instruction
     # ti must be a TaintedInstruction
     def add_tainted_instruction(self, ti):
         if not (ti in self.tii):
-            ti.index = len(self.tia)
+            index = len(self.tia)
             self.tia.append(ti)
-            self.tii[ti] = ti.index
+            self.tii[ti] = index
 
     # Add a taint mapping between a fuzzable byte set and a tainted instruction
     # tm must be a TaintMapping
@@ -206,10 +212,7 @@ class TaintAnalysis:
         # get indices for fbs and ti
         self.add_fuzzable_byte_set(tm.fbs)
         self.add_tainted_instruction(tm.ti)
-        i_fbs = self.fbsi[tm.fbs]
-        i_ti = self.tii[tm.ti]
         # add mapping to list of mappings
-#        mapping = (i_fbs, i_ti, tm.trace_point, tm.min_compute_distance, tm.max_compute_distance)
         self.tma.append(tm)
 
 
@@ -226,7 +229,7 @@ class TaintAnalysis:
         # now the mappings
         marshal_len(f, len(self.tma))
         for tm in self.tma:
-            tm.marshal(f)
+            tm.marshal(f, self.fsbi, self.tii)
 
     def __str__(self):
         buf = ""

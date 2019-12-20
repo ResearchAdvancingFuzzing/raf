@@ -92,6 +92,7 @@ max_pcs_for_an_fbs     If too many SfTaintedInstructions are associated
 """
 
 
+import time
 import sys
 import itertools
 import os
@@ -100,6 +101,18 @@ from os.path import dirname
 
 from google.protobuf.json_format import MessageToJson
 
+
+last_time = None
+
+def tick():
+    global last_time
+    last_time = time.time()
+
+def tock():
+    return time.time() - last_time
+
+
+tick()
 
 sys.path.append("/home/tleek/git/panda-spitfire/build/i386-softmmu")
 import plog_pb2
@@ -115,9 +128,6 @@ class TaintedInstrValue:
 
     def __init__(self, le):
         self.pc = le.pc
-
-        if (le.pc >= 0x08048154 and le.pc <= 0x0804c0e0):
-            print "le.pc = %x" % le.pc
         self.instr = le.instr
         # size of value, in bytes
         ti = le.tainted_instr
@@ -142,13 +152,11 @@ class TaintedInstrValue:
             tcnstr = "[%d..%d]" % (self.tcn_min, self.tcn_max)
         return "pc=%x instr=%x len=%d tcn=%s labels=[%s]" % (self.pc, self.instr, self.len, tcnstr, self.labels)
 
-
             
 
 the_program = "file-32"
 
 panda_protobuf_in = sys.argv[1]
-
 
 spitfire_protobuf_out = sys.argv[2]
 
@@ -176,6 +184,7 @@ last_instr_for_program = None
 
 last_instr = None
 
+print "Ingesting pandalog"
 # process the pandalog protobuf messages
 with open(panda_protobuf_in, "rb") as pbf:
 
@@ -184,7 +193,7 @@ with open(panda_protobuf_in, "rb") as pbf:
         if ntq > 1 and (0 == (ntq % 100000)):
             print ntq
 
-        if ntq > 50000:
+        if ntq > 200000:
             break
         
         try:
@@ -238,6 +247,7 @@ with open(panda_protobuf_in, "rb") as pbf:
             break
 
 
+print (str(tock())) + " seconds"
 
 print "Found %d tainting fuzzable byte sets (fbs)" % (len(tainting_fbs))
 
@@ -249,6 +259,8 @@ for fbs in tainting_fbs.keys():
     pcs_for_this_fbs = set([])
     for tiv in tainting_fbs[fbs]:
         pcs_for_this_fbs.add(tiv.pc)
+    if fbs == frozenset([0L]):
+        print pcs_for_this_fbs
     if len(pcs_for_this_fbs) > max_pcs_for_an_fbs:
         excluded_fbs.add(fbs)
 
@@ -270,6 +282,7 @@ for pc in fbs_for_pc.keys():
 
 print "excluding %d pcs since they are tainted by too many fbs" % (len(excluded_pcs))
 
+print "Constructing spitfire TaintAnalysis"
 
 # construct the spitfire taint analyiss
 ta = TaintAnalysis()
@@ -284,7 +297,7 @@ for fbs in tainting_fbs.keys():
         num_pcs +=1
     if num_pcs == 0:
         continue
-    print "fbs=%s" % (str(fbs))
+#    print "fbs=%s" % (str(fbs))
     for tiv in tainting_fbs[fbs]:
         if tiv.pc in excluded_pcs:
             continue
@@ -292,6 +305,9 @@ for fbs in tainting_fbs.keys():
         i = TaintedInstruction(tiv.pc, "Unk", None)
         tm = TaintMapping(f, i, 42, tiv.len, (float(tiv.instr - first_instr_for_program) / (last_instr_for_program - first_instr_for_program)), tiv.tcn_min, tiv.tcn_max)
         ta.add_taint_mapping(tm)
+#        ta.add_taint_mapping(f, i, 42, tiv.len, (float(tiv.instr - first_instr_for_program) / (last_instr_for_program - first_instr_for_program)), tiv.tcn_min, tiv.tcn_max)
+#
+#        ta.add_taint_mapping(tm)
 
 print "------------------------"
 print ta
