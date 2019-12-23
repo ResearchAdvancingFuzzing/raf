@@ -5,6 +5,8 @@
 
 syntax = "proto3";
 
+import "google/protobuf/timestamp.proto";
+
 package spitfire;
 
 
@@ -46,7 +48,7 @@ service KnowledgeBase {
   // TaintedInstruction, but by uuid only.  So you have to have called 
   // AddFuzzableByteSet and AddTaintedInstruction on the corresponding 
   // items beforehand.
-  rpc AddTaintMapping (stream TaintMapping) returns (KnowledgeBaseResults) {}
+  rpc AddTaintMapping (stream TaintMapping) returns (KnowledgeBaseResult) {}
 
   // Returns set of TaintedInstructions discovered thus far by 
   // all taint analyses that have run.
@@ -60,7 +62,7 @@ service KnowledgeBase {
   rpc GetTaintInputsForTantedInstruction(TaintedInstruction) returns (stream Input) {}
 
   // Returns set of FuzzableByteSets for this input
-  rpc GetFuzzableBytesSetsForTaintInput(Input) return (stream FuzzableByteSet) {}
+  rpc GetFuzzableBytesSetsForTaintInput(Input) returns (stream FuzzableByteSet) {}
 
   // Returns set of instructions seen to be tainted when we analyzed this input
   rpc GetTaintedInstructionsForTaintInput(Input) returns (stream TaintedInstruction) {}
@@ -68,6 +70,15 @@ service KnowledgeBase {
   // Returns set of TaintMappings from this Input+FuzzableByteSet to this TaintedInstruction
   rpc GetTaintMappings(TaintMappingKey) returns (stream TaintMapping) {}    
     
+}
+
+
+message Empty {
+}
+
+message KnowledgeBaseResult {
+  bool success = 1;                 // true iff no error
+  string message = 2;               // message, if necessary
 }
 
 
@@ -87,15 +98,15 @@ message Input {
 message Corpus {
   bytes uuid = 1;                   // compute this as md5sum of all Input uuids
   string name = 2;                  // name for this corpus
-  repeated Input = 3;               // Inputs in this corpus
+  repeated Input input = 3;               // Inputs in this corpus
 }
 
 
 // A fuzzing experiment 
 message Experiment {
   bytes uuid = 1;                   // Note: knowledge base assigned
-  TimeStamp start = 2;              // start time of experiment (Note: knowledge base assigned)
-  TimeStamp end = 3;                // end time of experiment (Note: knowledge base assigned)
+  google.protobuf.Timestamp start = 2;              // start time of experiment (Note: knowledge base assigned)
+  google.protobuf.Timestamp end = 3;                // end time of experiment (Note: knowledge base assigned)
   string description = 4;           // description of this experiment
   bytes program_uuid = 5;           // uuid for the program fuzzed
   bytes seed_corpus = 6;            // uuid for seed corpus used
@@ -142,8 +153,8 @@ message TaintMapping {
 
 // Used to identify a taint mapping in the knowledge base
 //
-messageTaintMappingKey {
+message TaintMappingKey {
   Input input = 1;                  // The input for the taint analysis
-  FuzzableByteSet = 2;              // The set of bytes within that input
-  TaintedInstruction = 3;           // The instruction tainted by those bytes
+  FuzzableByteSet fbs = 2;          // The set of bytes within that input
+  TaintedInstruction ti = 3;        // The instruction tainted by those bytes
 }
