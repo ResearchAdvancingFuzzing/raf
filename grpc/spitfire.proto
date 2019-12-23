@@ -76,11 +76,28 @@ service KnowledgeBase {
 message Empty {
 }
 
+
+message TaintAnalysis {
+  bytes uuid = 1;
+  bytes taint_engine_uuid = 2;
+  bytes program_uuid = 3;
+  bytes input_uuid = 4;
+}
+
+
 message KnowledgeBaseResult {
   bool success = 1;                 // true iff no error
   string message = 2;               // message, if necessary
 }
 
+
+message TaintEngine {
+  bytes uuid = 1;                   //
+  string install_string = 2;        // string to use to install taint engine,
+                                    // which should uniquely identify version
+                                    // for example,
+				    // 'git clone -b spitfire_0 https://github.com/panda-re/panda.git'
+}				    
 
 message Program {
   bytes uuid = 1;                   // compute this as md5sum of rest of this message
