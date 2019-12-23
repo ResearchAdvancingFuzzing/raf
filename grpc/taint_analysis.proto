@@ -7,21 +7,25 @@ syntax = "proto3";
 
 package spitfire;
 
+
 service KnowledgeBase {
 
-  // Add a program to the knowledge base
-  rpc AddProgram(Program) returns (KnowledgeBaseResult) {}
+  // NOTE: Many of the messages types contain uuids. When using RPC calls such
+  // as GetProgram, GetInput, leave this field empty (don't specify uuid).
+  // The knowledge base will compute or generate it and return a message of 
+  // the same type containing the correct uuid and duplicating all other fields.
 
-  // Add a new input to the knowledge base
-  rpc AddInput(Input) returns (KnowledgeBaseResult) {}
+  // Obtain canonical message for this program
+  rpc GetProgram(Program) returns (Program) {}
 
-  // Add a corpus to the knowledge base
-  rpc AddCorpus(Corpus) returns (KnowledgeBaseResult) {}
+  // Obtain canonical message for this input
+  rpc GetInput(Input) returns (Input) {}
 
-  // Add a new experiment to knowledge base
-  // returns a UUID for this experiment 
-  // note that uuid field should be passed in as "0"
-  rpc AddExperiment(Experiment) returns (KnowledgeBaseUUID) {}
+  // Obtain canonical message for this corpus
+  rpc GetCorpus(Corpus) returns (Corpus) {}
+
+  // Obtain canonical message for this experiment
+  rpc GetExperiment(Experiment) returns (Experiment) {}
 
 
   // coverage API fns 
@@ -65,9 +69,6 @@ service KnowledgeBase {
   rpc GetTaintMappings(TaintMappingKey) returns (stream TaintMapping) {}    
     
 }
-
-
-
 
 
 message Program {
