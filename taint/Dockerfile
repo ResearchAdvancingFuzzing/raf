@@ -20,7 +20,7 @@ ENV FEATURES clang pyyaml
 RUN mkdir /root/.panda
 RUN wget -q http://panda.moyix.net/~moyix/wheezy_panda2.qcow2 -O /root/.panda/wheezy_panda2.qcow2
 
-RUN git clone -b docker  https://github.com/panda-re/panda
+RUN git clone -b spitfire_0  https://github.com/panda-re/panda
 
 ENV PANDA_DOCKER=1
 
@@ -30,4 +30,4 @@ RUN cd panda && ./panda/scripts/install_ubuntu.sh
 #ENTRYPOINT panda/panda/scripts/run_debian.py 
 
 
-CMD panda/panda/scripts/run_debian.py /transfer/toy /transfer/testsmall.bin && panda/build/i386-softmmu/panda-system-i386 -replay replays/toy/toy -os linux-32-debian:3.2.0-4-686-pae -pandalog /transfer/toy.plog -panda file_taint:filename=testsmall.bin -panda tainted_branch && panda/panda/scripts/plog_reader.py /transfer/toy.plog > /transfer/toy.plog.txt
+CMD panda/panda/scripts/run_debian.py /transfer/toy /transfer/testsmall.bin && panda/build/i386-softmmu/panda-system-i386 -replay replays/toy/toy -os linux-32-debian:3.2.0-4-686-pae -pandalog /transfer/toy.plog -panda file_taint:filename=testsmall.bin,pos=1 -panda tainted_branch && panda/panda/scripts/plog_reader.py /transfer/toy.plog > /transfer/toy.plog.txt

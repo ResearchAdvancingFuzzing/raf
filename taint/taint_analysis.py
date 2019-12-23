@@ -23,8 +23,9 @@ from enum import Enum
 import struct
 
 import sys
-sys.path.append("../interfaces")
-import taint_analysis_pb2
+sys.path.append("../grpc")
+import spitfire_pb2
+import spitfire_pb2_grpc
 
 
 def marshal_len(f, l):
@@ -52,8 +53,7 @@ class FuzzableByteSet:
         self.labels = tuple(label_set)
         self.uuid = hashlib.md5(str(self.labels)).hexdigest()
 
-    # marshal FuzzableByteSet object to f
-    # f should be a file-like object
+    # marshal FuzzableByteSet object to knowledge base
     def marshal(self, f):
         msg = taint_analysis_pb2.FuzzableByteSet()
         msg.label.extend(list(self.labels))
@@ -74,6 +74,8 @@ class FuzzableByteSet:
     def __hash__(self):
         return hash(self.uuid)
 
+    
+    
 
 # read a fuzzable byte set out of the file
 # and return it as a FuzzableByteSet object
@@ -175,7 +177,7 @@ def unmarshal_taint_mapping(f, fbsi, tii):
 
 class TaintAnalysis:
 
-    def __init__(self, protobuf=None):
+    def __init__(self, kb_stub):
         # array of fuzzable byte sets
         self.fbsa = []
         # map from labels in fuzzable byte set to index into fbsa
@@ -186,9 +188,6 @@ class TaintAnalysis:
         self.tii = {}
         # taint mappings
         self.tma = []
-        if not (protobuf is None):
-            self.from_protobuf(protobuf)
-            return
         
     # Add a fuzzable byte set
     # fbs must be a FuzzableByteSet

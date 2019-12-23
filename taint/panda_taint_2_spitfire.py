@@ -101,6 +101,10 @@ from os.path import dirname
 
 from google.protobuf.json_format import MessageToJson
 
+sys.path.append("../grpc")
+import spitfire_pb2
+import spitfire_pb2_grpc
+
 
 last_time = None
 
@@ -312,6 +316,17 @@ for fbs in tainting_fbs.keys():
 print "------------------------"
 print ta
 
+
+# send the entire taint analysis over to the knowledge base
+# as a sequence of messages
+with grpc.insecure_channel('localhost:50051') as kb_channel:
+    kb_stub = spitire_pb2_grpc.SpitfireStub(kb_channel)
+    ta.send(kb_stub)
+
+    ta2 = 
+
+
+    
 with open(spitfire_protobuf_out, "w") as s:
     ta.marshal(s)
 
@@ -321,3 +336,6 @@ with open(spitfire_protobuf_out, "r") as s:
     print ta2
     
 print "done"
+
+
+
