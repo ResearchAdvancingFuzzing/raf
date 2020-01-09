@@ -17,18 +17,23 @@ service KnowledgeBase {
   // The knowledge base will compute or generate it and return a message of 
   // the same type containing the correct uuid and duplicating all other fields.
 
-  // Obtain canonical message for this program
+  // returns true iff exists in knowledge base
+  // note: don't fill in uuid
+  rpc ProgramExists(Program) returns (bool) {}
+  rpc InputExists(Input) returns (bool) {}
+  rpc CorpusExists(Corpus) returns (bool) {}
+  rpc ExperimentExists(Experiment) returns (bool) {}
+  rpc TaintEngineExists(TaintEngine) returns (bool) {}
+  rpc TaintAnalysisExists(TaintAnalysis) returns (bool) {}
+
+  // Obtain canonical message for each from the knowledge base,
+  // adding if not there already
   rpc GetProgram(Program) returns (Program) {}
-
-  // Obtain canonical message for this input
   rpc GetInput(Input) returns (Input) {}
-
-  // Obtain canonical message for this corpus
   rpc GetCorpus(Corpus) returns (Corpus) {}
-
-  // Obtain canonical message for this experiment
   rpc GetExperiment(Experiment) returns (Experiment) {}
-
+  rpc GetTaintEngine(TaintEngine) returns (TaintEngine) {}
+  rpc GetTaintAnalysis(TaintAnalysis) returns (TaintAnalysis) {}
 
   // coverage API fns 
   // Andy and Heather?
@@ -77,14 +82,42 @@ message Empty {
 }
 
 
-message TaintAnalysis {
-  bytes uuid = 1;
-  bytes taint_engine_uuid = 2;
-  bytes program_uuid = 3;
-  bytes input_uuid = 4;
+// a program to be fuzzed
+message Program {
+  bytes uuid = 1;                   // compute this as md5sum of rest of this message
+  string name = 2;                  // program name, like "awk" or "node" or "mount"
+  string filepath = 3;              // path to file on spitfire shared file system
+  string git_hash = 4;              // git hash string for version 
 }
 
 
+// an input to a program being fuzzed
+message Input {
+  bytes uuid = 1;                   // compute this as md5sum of input (file?) contents
+  string filepath = 2;              // path to file on the spitfire shared file system 
+}
+
+// a set of inputs
+message Corpus {
+  bytes uuid = 1;                   // compute this as md5sum of all Input uuids
+  string name = 2;                  // name for this corpus
+  repeated Input input = 3;         // Inputs in this corpus
+}
+
+
+// A fuzzing experiment 
+message Experiment {
+  bytes uuid = 1;                       // Note: knowledge base assigned
+  google.protobuf.Timestamp start = 2;  // start time of experiment (Note: knowledge base assigned)
+  google.protobuf.Timestamp end = 3;    // end time of experiment (Note: knowledge base assigned)
+  string description = 4;               // description of this experiment
+  bytes program = 5;                    // uuid for the program fuzzed
+  bytes seed_corpus = 6;                // uuid for seed corpus used
+  uint64 prng_seed = 7;                 // seed of all randomness in this experiment
+}
+
+
+// generic response when no return value, to indicate success/fail
 message KnowledgeBaseResult {
   bool success = 1;                 // true iff no error
   string message = 2;               // message, if necessary
@@ -92,43 +125,25 @@ message KnowledgeBaseResult {
 
 
 message TaintEngine {
-  bytes uuid = 1;                   //
-  string install_string = 2;        // string to use to install taint engine,
-                                    // which should uniquely identify version
-                                    // for example,
-				    // 'git clone -b spitfire_0 https://github.com/panda-re/panda.git'
+  bytes uuid = 1;                 //
+  string name = 2;                // panda, e.g.
+  string clone_string = 3;        // string to use to obtain correct version of taint engine,
+                                  // this should uniquely identify version
+                                  // for example, the following suffices 
+                                  // for panda:
+            		              // 'git clone -b spitfire_0 https://github.com/panda-re/panda.git'
 }				    
 
-message Program {
-  bytes uuid = 1;                   // compute this as md5sum of rest of this message
-  string name = 2;                  // program name, like "awk" or "node" or "mount"
-  string git_hash = 3;              // git hash string for version 
+
+message TaintAnalysis {
+  bytes uuid = 1;
+  // these three are uuids by the way
+  bytes taint_engine = 2;      // the taint analysis tool 
+  bytes program = 3;           // the target program 
+  bytes input = 4;             // the input to that program
 }
 
 
-message Input {
-  bytes uuid = 1;                   // compute this as md5sum of input (file?) contents
-  string filepath = 2;              // path to file on the spitfire shared file system 
-}
-
-
-message Corpus {
-  bytes uuid = 1;                   // compute this as md5sum of all Input uuids
-  string name = 2;                  // name for this corpus
-  repeated Input input = 3;               // Inputs in this corpus
-}
-
-
-// A fuzzing experiment 
-message Experiment {
-  bytes uuid = 1;                   // Note: knowledge base assigned
-  google.protobuf.Timestamp start = 2;              // start time of experiment (Note: knowledge base assigned)
-  google.protobuf.Timestamp end = 3;                // end time of experiment (Note: knowledge base assigned)
-  string description = 4;           // description of this experiment
-  bytes program_uuid = 5;           // uuid for the program fuzzed
-  bytes seed_corpus = 6;            // uuid for seed corpus used
-  uint64 prng_seed = 7;             // seed of all randomness in this experiment
-}
   
 
 // A FuzzableByteSet is a set of input bytes that a taint analysis has 

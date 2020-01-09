@@ -2,7 +2,7 @@
 
 # You can build this panda container from here with the following
 
-docker build -t panda18 .
+docker build -t panda_spitfire .
 
 # And there's a long line of commands at the bottom of the Docker file
 # that will do the following as a demonstration
