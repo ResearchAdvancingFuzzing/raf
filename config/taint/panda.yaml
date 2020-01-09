@@ -1,0 +1,10 @@
+
+#
+# This is the yaml file for panda 
+# So, all config necessary to run panda taint analysis
+#
+
+clone_string: "git clone -b spitfire_0 https://github.com/panda-re/panda.git"
+
+container_name: panda_spitfire
+
