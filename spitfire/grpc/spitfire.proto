@@ -19,12 +19,12 @@ service KnowledgeBase {
 
   // returns true iff exists in knowledge base
   // note: don't fill in uuid
-  rpc ProgramExists(Program) returns (bool) {}
-  rpc InputExists(Input) returns (bool) {}
-  rpc CorpusExists(Corpus) returns (bool) {}
-  rpc ExperimentExists(Experiment) returns (bool) {}
-  rpc TaintEngineExists(TaintEngine) returns (bool) {}
-  rpc TaintAnalysisExists(TaintAnalysis) returns (bool) {}
+  rpc ProgramExists(Program) returns (KnowledgeBaseResult) {}
+  rpc InputExists(Input) returns (KnowledgeBaseResult) {}
+  rpc CorpusExists(Corpus) returns (KnowledgeBaseResult) {}
+  rpc ExperimentExists(Experiment) returns (KnowledgeBaseResult) {}
+  rpc TaintEngineExists(TaintEngine) returns (KnowledgeBaseResult) {}
+  rpc TaintAnalysisExists(TaintAnalysis) returns (KnowledgeBaseResult) {}
 
   // Obtain canonical message for each from the knowledge base,
   // adding if not there already

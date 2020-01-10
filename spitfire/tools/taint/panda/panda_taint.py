@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 
 """
 
@@ -15,6 +16,14 @@ panda_taint.py fuzz_config input_filename
 import sys
 import docker
 import logging
+import os
+
+this_dir = os.path.dirname(a_module.__file__)
+
+sys.path.append("
+
+>>> os.path.abspath(os.path.join(p, ".."))                                                                                                                    
+
 
 import spitfire.knowledge_base as knowledge_base
 from google.protobuf import text_format
@@ -69,7 +78,7 @@ def main(cfg):
     volume_dict = {}
     volume_dict[prog_dir] = {'bind': prog_dir, 'mode': 'rw'}
     volume_dict[input_dir] = {'bind': input_dir, 'mode': 'rw'}
-    volume_dict[transfer_dir] = {'bind', transfer_dir, 'mode': 'rw'}
+    volume_dict[transfer_dir] = {'bind': transfer_dir, 'mode': 'rw'}
     cmd = "panda/panda/scripts/run_debian.py --replaybase=" + progname + " " + program.filepath + " " + taint_input + filepath
     client.containers.run(cfg.taint.panda.container_name, cmd, volumes=volume_dict)
 
@@ -83,6 +92,7 @@ def main(cfg):
     # pfx of saved replay
     replay_pfx = os.path.join(spitfire_replays_dir, pshort)
 
+"""
     # replay using taint
     pandalog_filename = os.path.join(fcp.fs.pandalogdir, pshort + ".plog")
     cmd = fcp.panda.binary \
@@ -126,3 +136,4 @@ def main(cfg):
 
 
     # japan 
+"""
