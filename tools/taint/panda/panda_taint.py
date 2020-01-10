@@ -26,6 +26,7 @@ fuzzing_config_dir = sys.argv[1]
 input_filepath = sys.argv[2]
 
 
+
 @hydra.main(config_path=fuzzing_config_dir)
 def main(cfg):
 
@@ -40,12 +41,10 @@ def main(cfg):
     inp_msg = spitfire_pb2.Input(filepath=input_filepath)
     taint_input = kbs.GetInput(inp_msg)
 
-
+    # if we have already performed this taint analysis, bail
     ta_msg = spitfire_pb2.TaintAnalysis(taint_engine=taint_engine.uuid, \
                                         program=program.uuid, \
                                         input=taint_input.uuid)
-
-    # if we have already performed this taint analysis, bail
     if (kbs.TaintAnalysisExists(ta_msg)):
         log.info("Taint analysis already performed for taint_engine=[%s] program=[%s] input=[%s]" \
                  % (text_format.MessageToString(taint_engine), \
@@ -55,12 +54,24 @@ def main(cfg):
     
     # canonical representation of this taint analysis
     taint_analysis = kbs.GetTaintAnalysis(ta_msg)
+
+    log.info("Taint analysis proceeding for taint_engine=[%s] program=[%s] input=[%s]" \
+             % (text_format.MessageToString(taint_engine), \
+                text_format.MessageToString(program), \
+                text_format.MessageToString(taint_input)))
     
     client = docker.from_env()
 
     # create recording
-    cmd = "panda/panda/scripts/run_debian.py " + program.filepath + " " + taint_input.filepath
-    client.containers.run(cfg.taint.panda.container_name, cmd)
+    (prog_dir, progname) = os.path.split(program.filepath)
+    (input_dir, dc) = os.path.split(taint_input.filepath)
+    transfer_dir = cfg.taint.panda.transfer_dir
+    volume_dict = {}
+    volume_dict[prog_dir] = {'bind': prog_dir, 'mode': 'rw'}
+    volume_dict[input_dir] = {'bind': input_dir, 'mode': 'rw'}
+    volume_dict[transfer_dir] = {'bind', transfer_dir, 'mode': 'rw'}
+    cmd = "panda/panda/scripts/run_debian.py --replaybase=" + progname + " " + program.filepath + " " + taint_input + filepath
+    client.containers.run(cfg.taint.panda.container_name, cmd, volumes=volume_dict)
 
     # move the recording
     pshort = program.shortname
