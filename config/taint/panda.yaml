@@ -8,3 +8,4 @@ clone_string: "git clone -b spitfire_0 https://github.com/panda-re/panda.git"
 
 container_name: panda_spitfire
 
+transfer_dir: /home/tleek/transfer
