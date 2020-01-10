@@ -1,0 +1,8 @@
+
+#
+# This is the yaml file for the program being fuzzed
+#
+
+filepath = /home/tleek/transfer/libxml2/xmllint
+
+
