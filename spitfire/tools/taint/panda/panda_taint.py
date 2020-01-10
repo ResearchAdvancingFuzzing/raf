@@ -11,6 +11,10 @@ Usage:
 panda_taint.py fuzz_config input_filename
 
 
+
+panda_taint.py /home/tleek/git/raf/spitfire/config/expt1 /home/tleek/transfer/libxml2/test/slashdot.xml
+
+
 """
 
 import sys
@@ -18,11 +22,18 @@ import docker
 import logging
 import os
 
-this_dir = os.path.dirname(a_module.__file__)
+import hydra
 
-sys.path.append("
-
->>> os.path.abspath(os.path.join(p, ".."))                                                                                                                    
+# walk up the path to find 'spitfire' and add that to python path
+# at most 10 levels up?
+p = os.path.abspath(__file__)
+for i in range(10):
+    (hd, tl) = os.path.split(p)
+    if tl == "spitfire":
+        sys.path.append(p)
+        sys.path.append(hd)
+        break
+    p = hd
 
 
 import spitfire.knowledge_base as knowledge_base
@@ -37,7 +48,7 @@ input_filepath = sys.argv[2]
 
 
 @hydra.main(config_path=fuzzing_config_dir)
-def main(cfg):
+def run(cfg):
 
     # channel to talk to kb server
     kbc = grpc.insecure_channel("%s:%s" % (cfg.knowledge_base.host, cfg.knowledge_base.port))
@@ -137,3 +148,8 @@ def main(cfg):
 
     # japan 
 """
+
+
+
+if __name__ == "__main__":
+    run()

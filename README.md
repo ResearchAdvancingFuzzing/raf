@@ -15,3 +15,5 @@ python -m pip install grpcio-tools
 And to use python api to docker
 
 pip install docker
+
+pip install hydra-core --upgrade
