@@ -27,8 +27,9 @@ class KnowledgeBase(spitfire_pb2_grpc.KnowledgeBaseServicer):
     def __init__(self, ksc):
         self.ks = ks.KnowledgeStore(kcs.knowledge_store)
 
-    # determines if any of these are already in the kb
-    # All of these return KnowledgeBaseResult
+    # Determines if item is already in the knowledge store
+    # All of these return KnowledgeBaseResult with success=True to indicate 
+    # that the item exists.  success=False otherwise
     def ProgramExists(self, program):
         return ks.program_exists(program)
 
@@ -46,35 +47,53 @@ class KnowledgeBase(spitfire_pb2_grpc.KnowledgeBaseServicer):
 
     def TaintAnlysisExists(self, taint_analysis):
         return ks.taint_analysis_exists(taint_analysis)
-    
-    # obtains canonical representation for each in the kb
-    # note: adds if not present
-    # Returns: Program
+
+
+    # Add item to the ks (or not if already there)
+    # Return canonical message for each of these, with
+    # uuid filled in.
+    def AddProgram(self, program):        
+        return ks.add_program(program)
+
+    def AddInput(self, input):        
+        return ks.add_input(input)
+
+    def AddCorpus(self, corpus):        
+        return ks.add_corpus(corpus)
+
+    def AddExperiment(self, experiment):        
+        return ks.add_experiment(experiment)
+
+    def AddTaintEngine(self, taint_engine):        
+        return ks.add_taint_engine(taint_engine)
+
+    def AddTaintAnalysis(self, taint_analysis):        
+        return ks.add_tain_tanalysis(taint_analysis)
+
+
+    # obtains canonical protobuf repr for each if its in the kb
+    # exception if its not there
     def GetProgram(self, program):        
         return ks.get_program(program)
-        
-    # Returns Input
+
     def GetInput(self, inp):
         return ks.get_input(inp)
 
-    # Returns Corpus
     def GetCorpus(self, corp):
         return ks.get_corpus(corp)
 
-    # Returns Experiment
     def GetExperiment(self, experiment):
         return ks.get_experiment(experiment)
 
-    # Returns TaintEngine
     def GetTaintEngine(self, taint_engine):
         return ks.get_taint_engine(taint_engine)
 
-    # Returns TaintAnalysis
     def GetTaintAnalysis(self, taint_engine, program, inp):
         return ks.get_taint_analysis(taint_engine, program, inp):
 
 
     # Returns KnowledgeBaseResult
+    # note, these fbs should be unique (no dups) but shouldt have uuids
     def AddFuzzableByteSets(self, fbs_iterator):
         try:
             for fbs in fbs_iterator:
@@ -97,7 +116,7 @@ class KnowledgeBase(spitfire_pb2_grpc.KnowledgeBaseServicer):
         try:
             for tm in tm_iterator:
                 ks.add_taint_mapping(tm)
-            return(KnowledgeBaseResult(success=True, message="All tainted mappings added"))
+            return(KnowledgeBaseResult(success=True, message="All taint mappings added"))
         except Exception as e:
             return(KnowledgeBaseResult(success=False, message=str(e)))        
 

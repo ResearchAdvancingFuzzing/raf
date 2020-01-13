@@ -36,7 +36,7 @@ for i in range(10):
     p = hd
 
 
-import spitfire.knowledge_base as knowledge_base
+import knowledge_base 
 from google.protobuf import text_format
 
 log = logging.getLogger(__name__)
@@ -54,17 +54,23 @@ def run(cfg):
 
     # channel to talk to kb server
     kbc = grpc.insecure_channel("%s:%s" % (cfg.knowledge_base.host, cfg.knowledge_base.port))
-    kbs = spitfire_pb2_grpc.KnowledgeBaseStub(kbc)
+    kbs = knowledge_base_pb2_grpc.KnowledgeBaseStub(kbc)
 
     # get canonical representations for all of these things
-    program = kbs.GetProgram(cfg.program)
-    te_msg = spitfire_pb2.TaintEngine(name="panda", clone_string=cfg.taint.panda.clone_string)
-    taint_engine = kbs.GetTaintEngine(te_msg)
-    inp_msg = spitfire_pb2.Input(filepath=input_filepath)
-    taint_input = kbs.GetInput(inp_msg)
+    prog_msg = knowledge_base_pb2.Program(name=cfg.program.name, \
+                                       filepath=cfg.program.filepath \
+                                       git_hash=cfg.program.git_hash)
+    program = kbs.AddProgram(prog_msg)
+
+    te_msg = knowledge_base_pb2.TaintEngine(name="panda", \
+                                            clone_string=cfg.taint.panda.clone_string)
+    taint_engine = kbs.AddTaintEngine(te_msg)
+    
+    inp_msg = knowledge_base_pb2.Input(filepath=input_filepath)
+    taint_input = kbs.AddInput(inp_msg)
 
     # if we have already performed this taint analysis, bail
-    ta_msg = spitfire_pb2.TaintAnalysis(taint_engine=taint_engine.uuid, \
+    ta_msg = knowledge_base_pb2.TaintAnalysis(taint_engine=taint_engine.uuid, \
                                         program=program.uuid, \
                                         input=taint_input.uuid)
     if (kbs.TaintAnalysisExists(ta_msg)):
@@ -100,10 +106,10 @@ def run(cfg):
     # path to replay we just created
     this_replay_pfx = os.path.join("replays", os.path.join(pshort, pshort))
     # and this is where we will save it for later
-    spitfire_replays_dir = os.path.join(fcp.fs.replays_dir, pshort)
-    cmd = "mv %s* %s" % (replay_pfx, spitfire_replays_dir)
+    knowledge_base_replays_dir = os.path.join(fcp.fs.replays_dir, pshort)
+    cmd = "mv %s* %s" % (replay_pfx, knowledge_base_replays_dir)
     # pfx of saved replay
-    replay_pfx = os.path.join(spitfire_replays_dir, pshort)
+    replay_pfx = os.path.join(knowledge_base_replays_dir, pshort)
 
 """
     # replay using taint
@@ -130,10 +136,10 @@ def run(cfg):
 
     with grpc.insecure_channel('localhost:50059') as kb_channel:
 
-        kb_stub = spitfire_pb2_gprc.SpitfireStub(kb_channel)
+        kb_stub = knowledge_base_pb2_gprc.SpitfireStub(kb_channel)
 
         # get msg for taint engine
-        te = spitfire_pb2.TaintEngine(install_string = panda_install_string)
+        te = knowledge_base_pb2.TaintEngine(install_string = panda_install_string)
 
 
 
@@ -142,7 +148,7 @@ def run(cfg):
     input_uuid = spitfire.get_input_uuid(input_filename)
 
         # get canonical input msg from kb
-        im = spitfire_pb2.Input(uuid = input_uuid)
+        im = knowledge_base_pb2.Input(uuid = input_uuid)
         input_msg = kb_stub.Getaint_input(im)
 
 
