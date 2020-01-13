@@ -18,10 +18,6 @@ class KnowledgeStore(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def input_exists(self, input)
-        raise NotImplementedError
-
-    @abstractmethod
     def corpus_exists(self, corpus)
         raise NotImplementedError
 
@@ -38,9 +34,9 @@ class KnowledgeStore(ABC):
         raise NotImplementedError
 
 
-    # Obtain canonical message for each of these, with
-    # uuid filled in.  If item not in kb, it will be added first
-
+    # Add item to the ks (or not if already there)
+    # Return canonical message for each of these, with
+    # uuid filled in.
     @abstractmethod
     def add_program(self, program):
         raise NotImplementedError
@@ -64,7 +60,6 @@ class KnowledgeStore(ABC):
     @abstractmethod   
     def add_taint_analysis(self, taint_analysis):
         raise NotImplementedError
-
 
 
     # Obtain canonical message for each of these, with
