@@ -1,8 +1,39 @@
 
+
+
 from abc import ABC
 
 
 class KnowledgeStore(ABC):
+
+    @abstractmethod
+    def program_exists(self, program):
+        raise NotImplementedError
+
+    @abstractmethod
+    def input_exists(self, input)
+        raise NotImplementedError
+
+    @abstractmethod
+    def input_exists(self, input)
+        raise NotImplementedError
+
+    @abstractmethod
+    def corpus_exists(self, corpus)
+        raise NotImplementedError
+
+    @abstractmethod
+    def experiment_exists(self, experiment)
+        raise NotImplementedError
+
+    @abstractmethod
+    def taint_engine_exists(self, taint_engine)
+        raise NotImplementedError
+
+    @abstractmethod
+    def taint_analysis_exists(self, taint_analysis)
+        raise NotImplementedError
+
 
 
     # Retrieve canonical representation for this program from the store
@@ -53,4 +84,15 @@ class KnowledgeStore(ABC):
     @abstractmethod   
     def get_taint_engine(self, taint_engine):
         raise NotImplementedError
+
+    @abstractmethod   
+    def get_taint_analysis(self, taint_analysis):
+        raise NotImplementedError
         
+
+    @abstractmethod   
+    def add_fuzzable_byte_set(self, fbs):
+        raise NotImplementedError
+
+
+

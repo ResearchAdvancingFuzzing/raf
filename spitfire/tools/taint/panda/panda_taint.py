@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/python3.6
 
 """
 
@@ -42,8 +42,10 @@ from google.protobuf import text_format
 log = logging.getLogger(__name__)
 
 
-fuzzing_config_dir = sys.argv[1]
-input_filepath = sys.argv[2]
+fuzzing_config_dir = "/home/tleek/git/raf/spitfire/config/expt1"
+# sys.argv[1]
+input_filepath = "/home/tleek/transfer/libxml2/test/slashdot.xml"
+#sys.argv[2]
 
 
 

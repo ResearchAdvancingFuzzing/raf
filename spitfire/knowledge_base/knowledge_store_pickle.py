@@ -180,3 +180,17 @@ class KnowledgeStorePickle(KnowledgeStore):
         return ta
 
 
+
+    def add_fuzzable_byte_set(self, fbs):
+        labelset = tuple(fbs.label)
+        uuid = len(self.labelset2uuid)
+        self.labelset2uuid[labelset] = uuid
+        self.uuid2labelset[uuid] = labelset
+        return uuid
+
+
+    def add_tainted_instruction(self, ti):
+        
+        
+            
+            

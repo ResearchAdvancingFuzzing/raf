@@ -12,7 +12,7 @@ package spitfire;
 
 service KnowledgeBase {
 
-  // NOTE: Many of the messages types contain uuids. When using RPC calls such
+  // NOTE: Many of the message types contain uuids. When using RPC calls such
   // as GetProgram, GetInput, leave this field empty (don't specify uuid).
   // The knowledge base will compute or generate it and return a message of 
   // the same type containing the correct uuid and duplicating all other fields.
@@ -57,7 +57,7 @@ service KnowledgeBase {
 
   // Returns set of TaintedInstructions discovered thus far by 
   // all taint analyses that have run.
-  rpc GetTaintedInstruction(Empty) returns (stream TaintedInstruction) {}
+  rpc GetTaintedInstructions(Empty) returns (stream TaintedInstruction) {}
 
   // Returns set of Inputs that have been used to perform taint analysis 
   // thus far.

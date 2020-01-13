@@ -9,11 +9,9 @@ kubectl apply -f config.yaml
 
 Ok to use google rpc you have to
 
-python -m pip install grpcio
-python -m pip install grpcio-tools
+sudo python3.6 -m pip install grpcio
+sudo python3.6 -m pip install grpcio-tools
+sudo python3.6 -m pip install docker
+sudo python3.6 -m pip install hydra-core --upgrade
 
-And to use python api to docker
 
-pip install docker
-
-pip install hydra-core --upgrade
