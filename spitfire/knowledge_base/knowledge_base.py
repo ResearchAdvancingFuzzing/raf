@@ -25,6 +25,7 @@ for i in range(10):
     p = hd
 
 
+
 import knowledge_store_pickle as ks
 
 import spitfire.protos.knowledge_base_pb2 as kbp
@@ -41,124 +42,130 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
     # Determines if item is already in the knowledge store
     # All of these return KnowledgeBaseResult with success=True to indicate 
     # that the item exists.  success=False otherwise
-    def ProgramExists(self, program):
-        return ks.program_exists(program)
+    def ProgramExists(self, program, context):
+        return kbp.KnowledgeBaseResult(success=self.ks.program_exists(program), \
+                                       message="None")
 
-    def InputExists(self, inp):
-        return ks.input_exists(inp)
+    def InputExists(self, inp, context):
+        return kbp.KnowledgeBaseResult(success=self.ks.input_exists(inp), \
+                                       message="None")                                       
 
-    def CorpusExists(self, corpus):
-        return ks.corpus_exists(corpus)
+    def CorpusExists(self, corpus, context):
+        return kbp.KnowledgeBaseResult(success=self.ks.corpus_exists(corpus), \
+                                       message="None")
 
-    def ExperimentExists(self, experiment):
-        return ks.experiment_exists(experiment)
+    def ExperimentExists(self, experiment, context):
+        return kbp.KnowledgeBaseResult(success=self.ks.experiment_exists(experiment), \
+                                       message="None")
 
-    def TaintEngineExists(self, taint_engine):
-        return ks.taint_engine_exists(taint_engine)
+    def TaintEngineExists(self, taint_engine, context):
+        return kbp.KnowledgeBaseResult(success=self.ks.taint_engine_exists(taint_engine), \
+                                       message="None")
 
-    def TaintAnlysisExists(self, taint_analysis):
-        return ks.taint_analysis_exists(taint_analysis)
+    def TaintAnalysisExists(self, taint_analysis, context):
+        return kbp.KnowledgeBaseResult(success=self.ks.taint_analysis_exists(taint_analysis), \
+                                       message="None")
 
 
     # Add item to the ks (or not if already there)
     # Return canonical message for each of these, with
     # uuid filled in.
-    def AddProgram(self, program):        
-        return ks.add_program(program)
+    def AddProgram(self, program, context):        
+        return self.ks.add_program(program)
 
-    def AddInput(self, input):        
-        return ks.add_input(input)
+    def AddInput(self, inp, context):        
+        return self.ks.add_input(inp)
 
-    def AddCorpus(self, corpus):        
-        return ks.add_corpus(corpus)
+    def AddCorpus(self, corpus, context):        
+        return self.ks.add_corpus(corpus)
 
-    def AddExperiment(self, experiment):        
-        return ks.add_experiment(experiment)
+    def AddExperiment(self, experiment, context):        
+        return self.ks.add_experiment(experiment)
 
-    def AddTaintEngine(self, taint_engine):        
-        return ks.add_taint_engine(taint_engine)
+    def AddTaintEngine(self, taint_engine, context):        
+        return self.ks.add_taint_engine(taint_engine)
 
-    def AddTaintAnalysis(self, taint_analysis):        
-        return ks.add_tain_tanalysis(taint_analysis)
+    def AddTaintAnalysis(self, taint_analysis, context):        
+        return self.ks.add_taint_analysis(taint_analysis)
 
 
     # obtains canonical protobuf repr for each if its in the kb
     # exception if its not there
-    def GetProgram(self, program):        
-        return ks.get_program(program)
+    def GetProgram(self, program, context):        
+        return self.ks.get_program(program)
 
-    def GetInput(self, inp):
-        return ks.get_input(inp)
+    def GetInput(self, inp, context):
+        return self.ks.get_input(inp)
 
-    def GetCorpus(self, corp):
-        return ks.get_corpus(corp)
+    def GetCorpus(self, corp, context):
+        return self.ks.get_corpus(corp)
 
-    def GetExperiment(self, experiment):
-        return ks.get_experiment(experiment)
+    def GetExperiment(self, experiment, context):
+        return self.ks.get_experiment(experiment)
 
-    def GetTaintEngine(self, taint_engine):
-        return ks.get_taint_engine(taint_engine)
+    def GetTaintEngine(self, taint_engine, context):
+        return self.ks.get_taint_engine(taint_engine)
 
-    def GetTaintAnalysis(self, taint_engine, program, inp):
-        return ks.get_taint_analysis(taint_engine, program, inp)
+    def GetTaintAnalysis(self, taint_engine, program, inp, context):
+        return self.ks.get_taint_analysis(taint_engine, program, inp)
 
 
     # Returns KnowledgeBaseResult
     # note, these fbs should be unique (no dups) but shouldt have uuids
-    def AddFuzzableByteSets(self, fbs_iterator):
+    def AddFuzzableByteSets(self, fbs_iterator, context):
         try:
             for fbs in fbs_iterator:
-                ks.add_fuzzable_byte_set(fbs)
+                self.ks.add_fuzzable_byte_set(fbs)
             return(KnowledgeBaseResult(success=True, message="All fbs added"))
         except Exception as e:
             return(KnowledgeBaseResult(success=False, message=str(e)))
 
     # Returns KnowledgeBaseResult
-    def AddTaintedInstructions(self, ti_iterator):
+    def AddTaintedInstructions(self, ti_iterator, context):
         try:
             for ti in ti_iterator:
-                ks.add_tainted_instruction(ti)
+                self.ks.add_tainted_instruction(ti)
             return(KnowledgeBaseResult(success=True, message="All tainted instructions added"))
         except Exception as e:
             return(KnowledgeBaseResult(success=False, message=str(e)))        
 
     # Returns KnowledgeBaseResult
-    def AddTaintMappings(self, tm_iterator):
+    def AddTaintMappings(self, tm_iterator, context):
         try:
             for tm in tm_iterator:
-                ks.add_taint_mapping(tm)
+                self.ks.add_taint_mapping(tm)
             return(KnowledgeBaseResult(success=True, message="All taint mappings added"))
         except Exception as e:
             return(KnowledgeBaseResult(success=False, message=str(e)))        
 
     # iterator over tainted instructions in the knowledge base
-    def GetTaintedInstructions(self, emp):
-        for instr in ks.get_tainted_instructions():
+    def GetTaintedInstructions(self, emp, context):
+        for instr in self.ks.get_tainted_instructions():
             yield instr
 
     # iterator over inputs that have been taint analyzed
-    def GetTaintInputs(self, emp):
-        for inp in ks.get_taint_inputs():
+    def GetTaintInputs(self, emp, context):
+        for inp in self.ks.get_taint_inputs():
             yield inp
 
     # iterator over inputs that taint this instruction
-    def GetTaintInputsForTaintedInstruction(self, instr):
-        for inp in ks.get_taint_inputs_for_tainted_instruction(instr):
+    def GetTaintInputsForTaintedInstruction(self, instr, context):
+        for inp in self.ks.get_taint_inputs_for_tainted_instruction(instr):
             yield inp
 
     # iterator over fbs for this input
-    def GetFuzzableByteSetsForTaintInput(self, inp):
-        for fbs in ks.get_fuzzable_byte_sets_for_taint_input(inp):
+    def GetFuzzableByteSetsForTaintInput(self, inp, context):
+        for fbs in self.ks.get_fuzzable_byte_sets_for_taint_input(inp):
             yield fbs
 
     # iterator over instructions that are tainted for this input
-    def GetTaintedInstructionsForTaintInput(self, inp):
-        for instr in ks.get_tainted_instructions_for_taint_input(inp):
+    def GetTaintedInstructionsForTaintInput(self, inp, context):
+        for instr in self.ks.get_tainted_instructions_for_taint_input(inp):
             yield instr
 
     # interator over taint mappings for this inp-fbs/instr key
-    def GetTaintMappings(self, tmk):
-        for tm in ks.get_taint_mappings(tmk):
+    def GetTaintMappings(self, tmk, context):
+        for tm in self.ks.get_taint_mappings(tmk):
             yield tm
 
 

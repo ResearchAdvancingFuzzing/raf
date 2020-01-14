@@ -31,7 +31,7 @@ def md5(strToMd5):
     bytesToMd5 = bytes(strToMd5, "UTF-8")
     md5Instance.update(bytesToMd5)
     encrptedMd5 = md5Instance.hexdigest()
-    return encrptedMd5
+    return bytes(encrptedMd5, "UTF-8")
 
 
 class ProgramNotFound(Exception):
@@ -56,29 +56,45 @@ class InputNotFound(Exception):
 
 class ThingPickle:
 
-    def __init__(self):
+    def __init__(self, name):
         self.things = {}
+        self.name = name
+
+    def pickle(self):
+        with open(self.name, "w") as f:
+            pickle.dump(f, self.things)
+
+    def unpickle(self):
+        with open(self.name, "r") as f:
+            self.things = pickle.load(f)
     
-    def __check(self, thing):
-        pass
+    def check(self, thing):
+        raise NotImplementedError
 
-    def __hash(self, thing):
-        pass
+    def hash(self, thing):
+        raise NotImplementedError
 
-    def __find(self, thing):
-        thing_uuid = self.__hash(thing)
-        if thing_uuid in self.thing:
+    def find(self, thing):
+        thing_uuid = self.hash(thing)
+        if thing_uuid in self.things:
             return (self.things[thing_uuid], thing_uuid)
         return (None, thing_uuid)
         
     def exists(self, thing):
-        self.__check(thing)
-        (th, th_uuid) = self.__find(thing)
+        print(" exists? " + (str(thing)))
+        self.check(thing)
+        (th, th_uuid) = self.find(thing)
+        if th is None:
+            print (" .. no")
+        else:
+            print (" .. yes")
         return (not (th is None))
 
     def add(self, thing):
-        self.__check(thing)
-        (th, th_uuid) = self.__find(thing)
+        print(" add " + (str(thing)))
+        self.check(thing)
+        (th, th_uuid) = self.find(thing)
+        print ("uuid = %s" % (str(th_uuid)))
         if th is None:
             thing.uuid = th_uuid
             self.things[th_uuid] = thing
@@ -86,81 +102,102 @@ class ThingPickle:
         return th
 
     def get(self, thing):
-        self.__check(thing)
-        (th, th_uuid) = self.__find(thing)
+        self.check(thing)
+        (th, th_uuid) = self.find(thing)
         if th is None:
             raise ThingNotFound(str(thing))
         return th
 
 
 class ProgramPickle(ThingPickle):
-    
-    def __check(self, program):
-        assert hasattr(program,"name")
-        assert hasattr(program,"filepath")
-        assert hasattr(program,"git_hash")
 
-    def __hash(self, program):
-        return md5.new(program.name + program.filepath + program.git_hash)
+    def __init__(self):
+        super().__init__("programs")
+    
+    def check(self, thing):
+        assert hasattr(thing,"name")
+        assert hasattr(thing,"filepath")
+        assert hasattr(thing,"git_hash")
+
+    def hash(self, thing):
+        return md5(thing.name + thing.filepath + thing.git_hash)
 
 
 class InputPickle(ThingPickle):
 
-    def __check(self, inp):
-        assert(hasattr(inp,"filename"))
+    def __init__(self):
+        super().__init__("inputs")
+    
+    def check(self, inp):
+        assert(hasattr(inp,"filepath"))
 
-    def __hash(self, inp):
-        return md5.new(inp.filepath)
+    def hash(self, inp):
+        return md5(inp.filepath)
 
 
 class TaintEnginePickle(ThingPickle):
-    
-    def __check(self, te):
-        assert hasattr(taint_engine,"name")
-        assert hasattr(taint_engine,"install_string")
 
-    def __hash(self, te):
-        return md5.new(te.name + te.clone_string)
+    def __init__(self):
+        super().__init__("taintengines")
+        
+    def check(self, te):
+        assert hasattr(te,"name")
+        assert hasattr(te,"clone_string")
+
+    def hash(self, te):
+        return md5(te.name + te.clone_string)
 
 
 class TaintAnalysisPickle(ThingPickle):
-    
-    def __check(self, ta):
-        assert hasattr(taint_analysis, "taint_engine")
-        assert hasattr(taint_analysis, "program")
-        assert hasattr(taint_analysis, "input")
 
-    def __hash(self, ta):
-        return md5.new(taint_analysis.taint_engine + \
-                       taint_analysis.program + \
-                       taint_analysis.input)
+    def __init__(self):
+        super().__init__("taintanalyses")
+        
+    def check(self, ta):
+        assert hasattr(ta, "taint_engine")
+        assert hasattr(ta, "program")
+        assert hasattr(ta, "input")
+
+    def hash(self, ta):
+        return md5(str(ta.taint_engine) + \
+                   str(ta.program) + \
+                   str(ta.input))
 
 
 class FuzzableByteSetPickle(ThingPickle):
 
-    def __check(self, fbs):
+    def __init__(self):
+        super().__init__("fuzzablebytesets")
+    
+    def check(self, fbs):
         assert hasattr(fuzzbs, "label")
         
-    def __hash(self, fbs):
-        return md5.new(str(fbs.label))
+    def hash(self, fbs):
+        return md5(str(fbs.label))
 
 
 class TaintedInstructionPickle(ThingPickle):
     
-    def __check(self, tinstr):
+    def __init__(self):
+        super().__init__("taintedinstructions")
+    
+    def check(self, tinstr):
         assert hasattr(tinstr, "pc")
         assert hasattr(tinstr, "module")
         assert hasattr(tinstr, "type")
         assert hasattr(tinstr, "instr_bytes")
 
-    def __hash(self, tinstr):
-        return md5.new(str(tinstr.pc) + tinstr.module + str(tinstr.type) \
-                       + tinstr.instr_bytes)
+    def hash(self, tinstr):
+        return md5(str(tinstr.pc) + tinstr.module + str(tinstr.type) \
+                   + tinstr.instr_bytes)
 
 
 class TaintMappingPickle(ThingPickle):
 
-    def __check(self, taintm):
+    def __init__(self):
+        super().__init__("taintmappings")
+    
+    def check(self, taintm):
         assert hasattr(taintm, "inp_uuid")
         assert hasattr(taintm, "fbs_uuid")
         assert hasattr(taintm, "ti_uuid")
@@ -170,12 +207,12 @@ class TaintMappingPickle(ThingPickle):
         assert hasattr(taintm, "min_compute_distance")
         assert hasattr(taintm, "max_compute_distance")
 
-    def __hash(self, taintm):
-        return  md5.new(str(taintm.inp_uuid) + str(taintm.fbs_uuid) \
-                        + str(taintm.ti_uuid) + str(taintm.value) \
-                        + str(taintm.value_length) + str(taintm.trace_point) \
-                        + str(taintm.min_compute_distance) \
-                        + str(taintm.max_compute_distance)) 
+    def hash(self, taintm):
+        return  md5(str(taintm.inp_uuid) + str(taintm.fbs_uuid) \
+                    + str(taintm.ti_uuid) + str(taintm.value) \
+                    + str(taintm.value_length) + str(taintm.trace_point) \
+                    + str(taintm.min_compute_distance) \
+                    + str(taintm.max_compute_distance)) 
     
 
 class KnowledgeStorePickle(KnowledgeStore):
@@ -226,7 +263,7 @@ class KnowledgeStorePickle(KnowledgeStore):
 
    
     def taint_analysis_exists(self, taint_analysis):
-        return self.taint_analysess.exists(taint_analysis)
+        return self.taint_analyses.exists(taint_analysis)
 
     def add_taint_analysis(self, taint_analysis):
         return self.taint_analyses.add(taint_analysis)
