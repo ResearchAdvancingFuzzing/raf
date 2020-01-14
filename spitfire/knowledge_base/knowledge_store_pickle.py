@@ -2,17 +2,36 @@
 """
 A very simple in-memory and pickle-based knowledge store
 
->>> import md5
->>> m = md5.new()
->>> m.update("Nobody inspects")
->>> m.update(" the spammish repetition")
->>> m.digest()
-
 
 """
 
-import md5
+import os
+import sys
 
+
+# walk up the path to find 'spitfire' and add that to python path
+# at most 10 levels up?
+p = os.path.abspath(__file__)
+for i in range(10):
+    (hd, tl) = os.path.split(p)
+    if tl == "spitfire":
+        sys.path.append(p)
+        sys.path.append(hd)
+        break
+    p = hd
+
+
+from knowledge_store import KnowledgeStore
+
+import hashlib
+
+def md5(strToMd5):
+    encrptedMd5 = ""
+    md5Instance = hashlib.md5()
+    bytesToMd5 = bytes(strToMd5, "UTF-8")
+    md5Instance.update(bytesToMd5)
+    encrptedMd5 = md5Instance.hexdigest()
+    return encrptedMd5
 
 
 class ProgramNotFound(Exception):
@@ -167,7 +186,7 @@ class KnowledgeStorePickle(KnowledgeStore):
         self.programs = ProgramPickle()
         self.inputs = InputPickle()
         self.taint_engines = TaintEnginePickle()
-        self.taint_analyses = TaintAnalyisPickle()
+        self.taint_analyses = TaintAnalysisPickle()
         self.fuzzable_byte_sets = FuzzableByteSetPickle()
         self.tainted_instructions = TaintedInstructionPickle()
         self.taint_mappings = TaintMappingPickle()
@@ -240,19 +259,21 @@ class KnowledgeStorePickle(KnowledgeStore):
         return self.taint_mappings.exists(taintm)
 
     def add_taint_mapping(self, taintm):
-        tm = self.taint_mapping_exists(taintm):
-        # keep track of set of inputs that we've taint analyzed
-        self.taint_inputs.add(tm.inp_uuid)
-        # keep track, by instruction, of what inputs taint it
-        if not (tm.ti_uuid in self.instr2tainted_inputs):
-            self.instr2tainted_inputs[tm.ti_uuid] = set([])
-        self.instr2tainted_inputs[tm.ti_uuid].add(tm.inp_uuid)
-        if not (tm.inp_uuid in self.inp2fuzzable_byte_sets):
-            self.inp2fuzzable_byte_sets[tm.inp_uuid] = set([])
-        self.inp2fuzzable_byte_sets[tm.inp_uuid].add(tm.fbs_uuid)
-        if not (tm.inp_uuid in self.inp2tainted_instructions):
-            self.inp2tainted_instructions[tm.inp_uuid] = set([])
-        self.inp2tainted_instructions.add(tm.ti.uuid)
+        if self.taint_mapping_exists(taintm):
+           tm = self.get_taint_mapping(taintm)
+        else:
+            # keep track of set of inputs that we've taint analyzed
+            tm = self.taint_inputs.add(tm.inp_uuid)
+            # keep track, by instruction, of what inputs taint it
+            if not (tm.ti_uuid in self.instr2tainted_inputs):
+                self.instr2tainted_inputs[tm.ti_uuid] = set([])
+            self.instr2tainted_inputs[tm.ti_uuid].add(tm.inp_uuid)
+            if not (tm.inp_uuid in self.inp2fuzzable_byte_sets):
+                self.inp2fuzzable_byte_sets[tm.inp_uuid] = set([])
+            self.inp2fuzzable_byte_sets[tm.inp_uuid].add(tm.fbs_uuid)
+            if not (tm.inp_uuid in self.inp2tainted_instructions):
+                self.inp2tainted_instructions[tm.inp_uuid] = set([])
+            self.inp2tainted_instructions.add(tm.ti.uuid)
         return tm
     
     def get_taint_mapping(self, taintm):

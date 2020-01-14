@@ -1,7 +1,7 @@
+#!/usr/bin/python3.6
 
 
-
-from abc import ABC
+from abc import ABC,abstractmethod
 
 
 class KnowledgeStore(ABC):
@@ -14,23 +14,23 @@ class KnowledgeStore(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def input_exists(self, input)
+    def input_exists(self, input):
         raise NotImplementedError
 
     @abstractmethod
-    def corpus_exists(self, corpus)
+    def corpus_exists(self, corpus):
         raise NotImplementedError
 
     @abstractmethod
-    def experiment_exists(self, experiment)
+    def experiment_exists(self, experiment):
         raise NotImplementedError
 
     @abstractmethod
-    def taint_engine_exists(self, taint_engine)
+    def taint_engine_exists(self, taint_engine):
         raise NotImplementedError
 
     @abstractmethod
-    def taint_analysis_exists(self, taint_analysis)
+    def taint_analysis_exists(self, taint_analysis):
         raise NotImplementedError
 
 

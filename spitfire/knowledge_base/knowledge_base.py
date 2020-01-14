@@ -1,8 +1,13 @@
 #!/usr/bin/python3.6
 
+import os
+import sys
 import logging
 import grpc
 import hydra
+
+from concurrent import futures
+
 
 # walk up the path to find 'spitfire' and add that to python path 
 # at most 10 levels up?  
@@ -11,21 +16,27 @@ p = os.path.abspath(__file__)
 for i in range(10):
     (hd, tl) = os.path.split(p)
     if tl == "spitfire":
+        print("adding path " + p)
+        print("adding path " + hd)
         sys.path.append(p)
         sys.path.append(hd)
+        sys.path.append(p + "/protos")
         break
     p = hd
 
-import knowledge_base_pb2
-import knowledge_base_pb2_grpc
-import knowledge_store as ks
 
+import knowledge_store_pickle as ks
 
-class KnowledgeBase(spitfire_pb2_grpc.KnowledgeBaseServicer):
+import spitfire.protos.knowledge_base_pb2 as kbp
+import spitfire.protos.knowledge_base_pb2_grpc as kbpg
+
+fuzzing_config_dir = "/home/tleek/git/raf/spitfire/config/expt1"
+
+class KnowledgeBase(kbpg.KnowledgeBaseServicer):
     
     # ksc is knowledge_store config
     def __init__(self, ksc):
-        self.ks = ks.KnowledgeStore(kcs.knowledge_store)
+        self.ks = ks.KnowledgeStorePickle(ksc.knowledge_store)
 
     # Determines if item is already in the knowledge store
     # All of these return KnowledgeBaseResult with success=True to indicate 
@@ -89,7 +100,7 @@ class KnowledgeBase(spitfire_pb2_grpc.KnowledgeBaseServicer):
         return ks.get_taint_engine(taint_engine)
 
     def GetTaintAnalysis(self, taint_engine, program, inp):
-        return ks.get_taint_analysis(taint_engine, program, inp):
+        return ks.get_taint_analysis(taint_engine, program, inp)
 
 
     # Returns KnowledgeBaseResult
@@ -151,9 +162,10 @@ class KnowledgeBase(spitfire_pb2_grpc.KnowledgeBaseServicer):
             yield tm
 
 
-def serve():
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    knowledge_base_pb2_grpc.add_KnowledgeBaseServicer_to_server(KnowledgeBase(), server)
+@hydra.main(config_path=fuzzing_config_dir)
+def serve(cfg):
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=1))
+    kbpg.add_KnowledgeBaseServicer_to_server(KnowledgeBase(cfg), server)
     server.add_insecure_port('[::]:50051')
     server.start()
     server.wait_for_termination()
