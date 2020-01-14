@@ -153,8 +153,6 @@ message TaintAnalysis {
   bytes program = 3;           // the target program 
   bytes input = 4;             // the input to that program
 }
-
-
   
 
 // A FuzzableByteSet is a set of input bytes that a taint analysis has 
@@ -182,14 +180,15 @@ message TaintedInstruction {
 // Mapping from FuzzableByteSet to TaintedInstruction
 //
 message TaintMapping {
-  bytes inp_uuid = 1;               // uuid of input 
-  bytes fbs_uuid = 2;               // uuid of fuzzable byte set 
-  bytes ti_uuid = 3;                // uuid of tainted instruction 
-  uint64 value = 4;                 // actual internal program value that was tainted 
-  uint32 value_length = 5;          // number of bytes in the tainted value 
-  float trace_point = 6;            // where in program trace.  0=start, 1=end 
-  uint32 min_compute_distance = 7;  // min compute distance for tainted byte in value 
-  uint32 max_compute_distance = 8;  // max compute distance for tainted byte in value 
+  bytes uuid = 1;
+  bytes inp_uuid = 2;               // uuid of input 
+  bytes fbs_uuid = 3;               // uuid of fuzzable byte set 
+  bytes ti_uuid = 4;                // uuid of tainted instruction 
+  uint64 value = 5;                 // actual internal program value that was tainted 
+  uint32 value_length = 6;          // number of bytes in the tainted value 
+  float trace_point = 7;            // where in program trace.  0=start, 1=end 
+  uint32 min_compute_distance = 8;  // min compute distance for tainted byte in value 
+  uint32 max_compute_distance = 9;  // max compute distance for tainted byte in value 
 } 
 
 

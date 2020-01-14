@@ -58,8 +58,8 @@ def run(cfg):
 
     # get canonical representations for all of these things
     prog_msg = knowledge_base_pb2.Program(name=cfg.program.name, \
-                                       filepath=cfg.program.filepath \
-                                       git_hash=cfg.program.git_hash)
+                                          filepath=cfg.program.filepath \
+                                          git_hash=cfg.program.git_hash)
     program = kbs.AddProgram(prog_msg)
 
     te_msg = knowledge_base_pb2.TaintEngine(name="panda", \
@@ -71,8 +71,8 @@ def run(cfg):
 
     # if we have already performed this taint analysis, bail
     ta_msg = knowledge_base_pb2.TaintAnalysis(taint_engine=taint_engine.uuid, \
-                                        program=program.uuid, \
-                                        input=taint_input.uuid)
+                                              program=program.uuid, \
+                                              input=taint_input.uuid)
     if (kbs.TaintAnalysisExists(ta_msg)):
         log.info("Taint analysis already performed for taint_engine=[%s] program=[%s] input=[%s]" \
                  % (text_format.MessageToString(taint_engine), \
@@ -80,8 +80,7 @@ def run(cfg):
                     text_format.MessageToString(taint_input)))                    
         return 
     
-    # canonical representation of this taint analysis
-    taint_analysis = kbs.GetTaintAnalysis(ta_msg)
+    taint_analysis = kbs.AddtTaintAnalysis(ta_msg)
 
     log.info("Taint analysis proceeding for taint_engine=[%s] program=[%s] input=[%s]" \
              % (text_format.MessageToString(taint_engine), \

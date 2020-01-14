@@ -115,8 +115,49 @@ class TaintAnalysisPickle(ThingPickle):
         return md5.new(taint_analysis.taint_engine + \
                        taint_analysis.program + \
                        taint_analysis.input)
- 
 
+
+class FuzzableByteSetPickle(ThingPickle):
+
+    def __check(self, fbs):
+        assert hasattr(fuzzbs, "label")
+        
+    def __hash(self, fbs):
+        return md5.new(str(fbs.label))
+
+
+class TaintedInstructionPickle(ThingPickle):
+    
+    def __check(self, tinstr):
+        assert hasattr(tinstr, "pc")
+        assert hasattr(tinstr, "module")
+        assert hasattr(tinstr, "type")
+        assert hasattr(tinstr, "instr_bytes")
+
+    def __hash(self, tinstr):
+        return md5.new(str(tinstr.pc) + tinstr.module + str(tinstr.type) \
+                       + tinstr.instr_bytes)
+
+
+class TaintMappingPickle(ThingPickle):
+
+    def __check(self, taintm):
+        assert hasattr(taintm, "inp_uuid")
+        assert hasattr(taintm, "fbs_uuid")
+        assert hasattr(taintm, "ti_uuid")
+        assert hasattr(taintm, "value")
+        assert hasattr(taintm, "value_length")
+        assert hasattr(taintm, "trace_point")
+        assert hasattr(taintm, "min_compute_distance")
+        assert hasattr(taintm, "max_compute_distance")
+
+    def __hash(self, taintm):
+        return  md5.new(str(taintm.inp_uuid) + str(taintm.fbs_uuid) \
+                        + str(taintm.ti_uuid) + str(taintm.value) \
+                        + str(taintm.value_length) + str(taintm.trace_point) \
+                        + str(taintm.min_compute_distance) \
+                        + str(taintm.max_compute_distance)) 
+    
 
 class KnowledgeStorePickle(KnowledgeStore):
     
@@ -127,7 +168,13 @@ class KnowledgeStorePickle(KnowledgeStore):
         self.inputs = InputPickle()
         self.taint_engines = TaintEnginePickle()
         self.taint_analyses = TaintAnalyisPickle()
-
+        self.fuzzable_byte_sets = FuzzableByteSetPickle()
+        self.tainted_instructions = TaintedInstructionPickle()
+        self.taint_mappings = TaintMappingPickle()
+        self.taint_inputs = set([])
+        self.instr2tainted_inputs = {}
+        self.inp2fuzzable_byte_sets = {}
+        self.inp2tainted_instructions = {}
 
     def program_exists(self, program):
         return self.programs.exists(program)
@@ -169,6 +216,50 @@ class KnowledgeStorePickle(KnowledgeStore):
         return self.taint_analyses.get(taint_analysis)
 
 
+    def fuzzable_byte_set_exists(self, fbs):
+        return self.fuzzable_byte_sets.exists(fbs)
+
+    def add_fuzzable_byte_set(self, fbs):
+        return self.fuzzable_byte_sets.add(fbs)
+    
+    def get_fuzzable_byte_set(self, fbs):
+        return self.fuzzable_byte_sets.get(fbs)
+
+    
+    def tainted_instruction_exists(self, tinstr):
+        return self.tainted_instructions.exists(tinstr)
+
+    def add_tainted_instruction(self, tinstr):
+        return self.tainted_instructions.add(tinstr)
+    
+    def get_tainted_instruction(self, tinstr):
+        return self.tainted_instructions.get(tinstr)
+
+
+    def taint_mapping_exists(self, taintm):
+        return self.taint_mappings.exists(taintm)
+
+    def add_taint_mapping(self, taintm):
+        tm = self.taint_mapping_exists(taintm):
+        # keep track of set of inputs that we've taint analyzed
+        self.taint_inputs.add(tm.inp_uuid)
+        # keep track, by instruction, of what inputs taint it
+        if not (tm.ti_uuid in self.instr2tainted_inputs):
+            self.instr2tainted_inputs[tm.ti_uuid] = set([])
+        self.instr2tainted_inputs[tm.ti_uuid].add(tm.inp_uuid)
+        if not (tm.inp_uuid in self.inp2fuzzable_byte_sets):
+            self.inp2fuzzable_byte_sets[tm.inp_uuid] = set([])
+        self.inp2fuzzable_byte_sets[tm.inp_uuid].add(tm.fbs_uuid)
+        if not (tm.inp_uuid in self.inp2tainted_instructions):
+            self.inp2tainted_instructions[tm.inp_uuid] = set([])
+        self.inp2tainted_instructions.add(tm.ti.uuid)
+        return tm
+    
+    def get_taint_mapping(self, taintm):
+        return self.taint_mappings.get(taintm)
+
+    
+
     # XXX 
     # Corpus & Experiment not yet implemented 
 
@@ -191,102 +282,23 @@ class KnowledgeStorePickle(KnowledgeStore):
         raise NotImplemented
 
 
-
-
-    def __fuzzable_byte_set_check(self, fuzzbs):
-        assert hasattr(fuzzbs, "label")
-
-    def __fuzzable_byte_set_find(self, fuzzbs):
-        labelset = tuple(fuzzbs.label)
-        fuzzbs_uuid = md5.new(str(labelset))
-        if fuzzbs_uuid in self.fbs:
-            return (self.fbs[fuzzbs_uuid], fuzzbs_uuid)
-        return (None, fuzzbs_uuid)
-
-    def add_fuzzable_byte_set(self, fuzzbs):
-        self.__fuzzable_byte_set_check(fuzzbs)
-        (fbs, fuzzbs_uuid) = self.__fuzzable_byte_set_find(fuzzbs)
-        if (fbs is None):
-            fuzzbs.uuid = fuzzbs_uuid
-            self.fbs[fuzzbs_uuid] = fuzzbs
-    
-    def get_fuzzable_byte_set(self, fuzzbs):
-        self.__fuzzable_byte_set_check(fuzzbs)
-        (fbs, fuzzbs_uuid) = self.__fuzzable_byte_set_find(fuzzbs)
-        if (fbs is None):
-            raise FbsNotFound
-        return fbs
-
-    
-    def __tainted_instruction_check(self, tinstr):
-        assert hasattr(tinstr, "pc")
-        assert hasattr(tinstr, "module")
-        assert hasattr(tinstr, "type")
-        assert hasattr(tinstr, "instr_bytes")
-
-    def __tainted_instruction_find(self, tinstr): 
-        tinstr_uuid = md5.new(str(tinstr.pc) + tinstr.module + str(tinstr.type) + tinstr.instr_bytes)
-        if tinstr_uuid in self.tainted_instructions:
-            return (self.tainted_instructions[tinstr_uuid], tinstr_uuid)
-        return (None, tinstr_uuid)
-
-    def add_tainted_instruction(self, tinstr):
-        self.__tainted_instruction_check(tinstr)
-        (ti, tinstr_uuid) = self.__tainted_instruction_find(tinstr)
-        if (ti is None):
-            tinstr.uuid = tinstr_uuid
-            self.tainted_instructions[tinstr_uuid] = tinstr
-
-    def get_tainted_instruction(self, tinstr):
-        self.__tainted_instruction_check(tinstr)
-        (ti, tinstr_uuid) = self.__tainted_instruction_find(tinstr)
-        if (ti is None):
-            raise TiNotFound
-        return ti
-
-
-    def __taint_mapping_check(self, taintm):
-        assert hasattr(taintm, "inp_uuid")
-        assert hasattr(taintm, "fbs_uuid")
-        assert hasattr(taintm, "ti_uuid")
-        assert hasattr(taintm, "value")
-        assert hasattr(taintm, "value_length")
-        assert hasattr(taintm, "trace_point")
-        assert hasattr(taintm, "min_compute_distance")
-        assert hasattr(taintm, "max_compute_distance")
-
-
-    def __taint_mapping_find(self, taintm):
-        taintm_uuid = md5.new(str(taintm.inp_uuid) + str(taintm.fbs_uuid) \
-                              + str(taintm.ti_uuid) + str(taintm.value) \
-                              + str(taintm.value_length) + str(taintm.trace_point) \
-                              + str(taintm.min_compute_distance) \
-                              + str(taintm.max_compute_distance)) 
-        if taintm_uuid in self.taint_mappings:
-            return (self.taint_mappings[taintm_uuid], taintm_uuid)
-        return (None, taintm_uuid)
-
-    def add_taint_mapping(self, taintm):
-        self.__taint_mapping_check(taintm)
-        (tm, taintm_uuid) = self.__taint_mapping_find(taintm)
-        if (tm is None):
-            taintm.uuid = taintm_uuid
-            self.taint_mappings[taintm_uuid] = taintm
-    
-    def get_taint_mapping(self, taintm):
-        self.__taint_mapping_check(taintm)
-        (tm, taintm_uuid) = self.__taint_mapping_find(taintm)
-        if (tm is None):
-            raise TmNotFound
-        return tm
-
-
     def get_tainted_instructions(self):
-        for instr in self.tainted_instructions:
-            yield instr
+        return self.tainted_instructions
         
-
     def get_taint_inputs(self):
-        
-            
-            
+        return self.taint_inputs
+
+    def get_taint_inputs_for_tainted_instruction(self, instr):
+        if not instr.uuid in self.instr2tainted_inputs:
+            return None # is this how we have a generator with no elements?
+        return self.instr2tainted_inputs[instr.uuid]
+                
+    def get_fuzzable_byte_sets_for_taint_input(self, inp):
+        if not inp.uuid in self.inp2fuzzable_byte_sets:
+            return None
+        return self.inp2fuzzable_byte_sets[inp.uuid]
+
+    def get_tainted_instructions_for_taint_input(self, inp):
+        if not inp.uuid in self.inp2tainted_instructions:
+            return None
+        return self.inp2tainted_instructions[inp.uuid]
