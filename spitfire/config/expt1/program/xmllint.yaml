@@ -1,4 +1,6 @@
 #
 # This is the yaml file for the program being fuzzed
 #
-filepath: "/home/tleek/transfer/libxml2/xmllint"
+prog_name: "xmllint"
+prog_filepath: "/home/tleek/transfer/libxml2/xmllint"
+prog_git_hash: "ksdjfhdskjfh"

@@ -4,8 +4,8 @@
 # So, all config necessary to run panda taint analysis
 #
 
-clone_string: "git clone -b spitfire_0 https://github.com/panda-re/panda.git"
+panda_clone_string: "git clone -b spitfire_0 https://github.com/panda-re/panda.git"
 
-container_name: "panda_spitfire"
+panda_container_name: "panda_spitfire"
 
-transfer_dir: "/home/tleek/transfer"
+panda_container_transfer_dir: "/home/tleek/transfer"

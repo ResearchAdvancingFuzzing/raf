@@ -152,6 +152,9 @@ message TaintAnalysis {
   bytes taint_engine = 2;      // the taint analysis tool 
   bytes program = 3;           // the target program 
   bytes input = 4;             // the input to that program
+  bool complete = 5;           // this will be false until analysis is truly 
+                               // complete and all results successfully handed 
+                               // off to the kb
 }
   
 

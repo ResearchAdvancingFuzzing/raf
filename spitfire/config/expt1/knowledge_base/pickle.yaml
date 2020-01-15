@@ -1,2 +1,2 @@
-host: "localhost"
-port: 90210
+kb_host: "localhost"
+kb_port: 90210

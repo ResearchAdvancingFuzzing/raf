@@ -28,6 +28,8 @@ import spitfire.protos.knowledge_base_pb2 as kbp
 import spitfire.protos.knowledge_base_pb2_grpc as kbpg
 
 
+log = logging.getLogger(__name__)
+
 
 def run():
     # NOTE(gRPC Python Team): .close() is possible on a channel and should be
