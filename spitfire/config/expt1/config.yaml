@@ -1,0 +1,4 @@
+defaults:
+    - taint: panda
+    - program: xmllint
+    - knowledge_base: pickle

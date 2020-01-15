@@ -37,7 +37,7 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
     
     # ksc is knowledge_store config
     def __init__(self, ksc):
-        self.ks = ks.KnowledgeStorePickle(ksc.knowledge_store)
+        self.ks = ks.KnowledgeStorePickle(ksc)
 
     # Determines if item is already in the knowledge store
     # All of these return KnowledgeBaseResult with success=True to indicate 
@@ -185,11 +185,12 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
             yield tm
 
 
-@hydra.main(config_path=fuzzing_config_dir)
+@hydra.main(config_path=fuzzing_config_dir + "/config.yaml")
 def serve(cfg):
+    print(cfg.pretty())
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=1))
     kbpg.add_KnowledgeBaseServicer_to_server(KnowledgeBase(cfg), server)
-    server.add_insecure_port('[::]:50051')
+    server.add_insecure_port("[::]:%d" % cfg.port)
     server.start()
     server.wait_for_termination()
 
