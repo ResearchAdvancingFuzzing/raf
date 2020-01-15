@@ -189,7 +189,7 @@ class TaintedInstructionPickle(ThingPickle):
 
     def hash(self, tinstr):
         return md5(str(tinstr.pc) + tinstr.module + str(tinstr.type) \
-                   + tinstr.instr_bytes)
+                   + str(tinstr.instr_bytes))
 
 
 class TaintMappingPickle(ThingPickle):

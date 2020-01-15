@@ -65,6 +65,14 @@ def run():
         check_program(prog1_msg)
         check_program(prog2_msg)
 
+        # if we get those programs (msg with uuid not filled in)
+        # we should get same uuid
+        prog1_1 = stub.GetProgram(prog1_msg)
+        assert (prog1_1.uuid == prog1.uuid)
+        prog2_1 = stub.GetProgram(prog2_msg)
+        assert (prog2_1.uuid == prog2.uuid)
+
+
         inp1_msg = kbp.Input(filepath="/etc//paswd")
         inp2_msg = kbp.Input(filepath="/var/stuff.txt")
 
@@ -90,6 +98,12 @@ def run():
 
         check_input(inp1_msg)
         check_input(inp2_msg)
+
+        inp1_1 = stub.GetInput(inp1_msg)
+        assert (inp1_1.uuid == inp1.uuid)
+        inp2_1 = stub.GetInput(inp2_msg)
+        assert (inp2_1.uuid == inp2.uuid)
+
         
         te1_msg = kbp.TaintEngine(name="pandataint0", clone_string="git clone -b spitfire_0 https://github.com/panda-re/panda.git")
         te2_msg = kbp.TaintEngine(name="pandataint2", clone_string="git clone -b spitfire_2 https://github.com/panda-re/panda.git")
@@ -117,10 +131,16 @@ def run():
         check_taint_engine(te1_msg)
         check_taint_engine(te2_msg)
 
+        te1_1 = stub.GetTaintEngine(te1_msg)
+        assert (te1_1.uuid == te1.uuid)
+        te2_1 = stub.GetTaintEngine(te2_msg)
+        assert (te2_1.uuid == te2.uuid)
+
 
         def add_taint_analysis(ta):
             print("Adding taint_analysis [%s]" % (str(ta)))
-            response = stub.AddTaintAnalysis(ta)
+            return stub.AddTaintAnalysis(ta)
+            
 
         def check_taint_analysis(ta):
             print("Checking on taint_analysis [%s] " % (str(ta)), end="")
@@ -144,19 +164,10 @@ def run():
         check_taint_analysis(ta1_msg)
         check_taint_analysis(ta2_msg)
 
-#        exit()
-
-        def add_fuzzable_byte_set(fbs):
-            print("Adding fuzzable_byte_set [%s]" % (str(fbs)))
-            response = stub.AddTaintAnalysis(ta)
-
-        def check_fuzzable_byte_set(ta):
-            print("Checking on fuzzable_byte_set [%s] " % (str(ta)), end="")
-            response = stub.TaintAnalysisExists(ta)
-            if response.success:
-                print(" -- Exists")
-            else:
-                print(" -- NotThere")            
+        ta1_1 = stub.GetTaintAnalysis(ta1_msg)
+        assert(ta1_1.uuid == ta1.uuid)
+        ta2_1 = stub.GetTaintAnalysis(ta2_msg)
+        assert(ta2_1.uuid == ta2.uuid)
 
 
         fbs1 = kbp.FuzzableByteSet(label=list(set([1,2,3])))
@@ -177,10 +188,27 @@ def run():
         # this should say 0 were added
         print(resp.message)
 
-            
-        
+        ti1 = kbp.TaintedInstruction(pc=0xdeadbeef, module="/some/module/thing.so", type="jmp", instr_bytes=bytes("abcd", "utf-8"))
+        ti2 = kbp.TaintedInstruction(pc=0xfeedbeef, module="/usr/bin//thang", type="branch", instr_bytes=bytes("98724", "utf-8"))
 
-                                    
+        tis = [ti1, ti2]
+
+        def ti_iterator(x):
+            for ti in x:
+                yield ti
+
+        resp = stub.AddTaintedInstructions(ti_iterator(tis))
+        # this should say 2 added
+        print(resp.message)
+
+        resp = stub.AddTaintedInstructions(ti_iterator(tis))
+        # and this should say 0 added
+        print(resp.message)
+
+
+
+
+
 
 if __name__ == '__main__':
     logging.basicConfig()

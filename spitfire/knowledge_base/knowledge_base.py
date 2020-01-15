@@ -112,8 +112,8 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
     def GetTaintEngine(self, taint_engine, context):
         return self.ks.get_taint_engine(taint_engine)
 
-    def GetTaintAnalysis(self, taint_engine, program, inp, context):
-        return self.ks.get_taint_analysis(taint_engine, program, inp)
+    def GetTaintAnalysis(self, taint_analysis, context):
+        return self.ks.get_taint_analysis(taint_analysis)
 
 
     # Returns KnowledgeBaseResult
@@ -129,16 +129,21 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
             return(kbp.KnowledgeBaseResult(success=True, message="%d fbs added" % num_new))
         except Exception as e:
             print ("Exception: %s" % str(e))
-            return(kbp.KnowledgeBaseResult(success=False, message="AddFuzzableByte_sets exception: " + str(e)))
+            return(kbp.KnowledgeBaseResult(success=False, message="AddFuzzableByteSets exception: " + str(e)))
 
     # Returns KnowledgeBaseResult
     def AddTaintedInstructions(self, ti_iterator, context):
         try:
+            num_new = 0
             for ti in ti_iterator:
-                self.ks.add_tainted_instruction(ti)
-            return(KnowledgeBaseResult(success=True, message="All tainted instructions added"))
+                print ("Adding ti [%s]" % (str(ti)))
+                (was_new, ti) = self.ks.add_tainted_instruction(ti)
+                if was_new:
+                    num_new += 1
+            return(kbp.KnowledgeBaseResult(success=True, message="%d ti added" % num_new))
         except Exception as e:
-            return(KnowledgeBaseResult(success=False, message=str(e)))        
+            print ("Exception: %s" % str(e))
+            return(kbp.KnowledgeBaseResult(success=False, message="AddTaintedInstructions exception: " + str(e)))
 
     # Returns KnowledgeBaseResult
     def AddTaintMappings(self, tm_iterator, context):
