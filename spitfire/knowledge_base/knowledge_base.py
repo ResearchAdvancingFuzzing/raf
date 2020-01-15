@@ -71,22 +71,28 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
     # Return canonical message for each of these, with
     # uuid filled in.
     def AddProgram(self, program, context):        
-        return self.ks.add_program(program)
+        (was_new, p) = self.ks.add_program(program)
+        return p
 
     def AddInput(self, inp, context):        
-        return self.ks.add_input(inp)
+        (was_new, i) = self.ks.add_input(inp)
+        return i
 
     def AddCorpus(self, corpus, context):        
-        return self.ks.add_corpus(corpus)
+        (was_new, c) = self.ks.add_corpus(corpus)
+        return c
 
     def AddExperiment(self, experiment, context):        
-        return self.ks.add_experiment(experiment)
+        (was_new, e) = self.ks.add_experiment(experiment)
+        return e
 
     def AddTaintEngine(self, taint_engine, context):        
-        return self.ks.add_taint_engine(taint_engine)
+        (was_new, te) = self.ks.add_taint_engine(taint_engine)
+        return te
 
     def AddTaintAnalysis(self, taint_analysis, context):        
-        return self.ks.add_taint_analysis(taint_analysis)
+        (was_new, ta) = self.ks.add_taint_analysis(taint_analysis)
+        return ta
 
 
     # obtains canonical protobuf repr for each if its in the kb
@@ -114,11 +120,16 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
     # note, these fbs should be unique (no dups) but shouldt have uuids
     def AddFuzzableByteSets(self, fbs_iterator, context):
         try:
+            num_new = 0 
             for fbs in fbs_iterator:
-                self.ks.add_fuzzable_byte_set(fbs)
-            return(KnowledgeBaseResult(success=True, message="All fbs added"))
+                print ("Adding fbs [%s]" % (str(fbs)))
+                (was_new, fbs) = self.ks.add_fuzzable_byte_set(fbs)
+                if was_new:
+                    num_new += 1
+            return(kbp.KnowledgeBaseResult(success=True, message="%d fbs added" % num_new))
         except Exception as e:
-            return(KnowledgeBaseResult(success=False, message=str(e)))
+            print ("Exception: %s" % str(e))
+            return(kbp.KnowledgeBaseResult(success=False, message="AddFuzzableByte_sets exception: " + str(e)))
 
     # Returns KnowledgeBaseResult
     def AddTaintedInstructions(self, ti_iterator, context):

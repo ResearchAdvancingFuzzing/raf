@@ -28,6 +28,7 @@ import spitfire.protos.knowledge_base_pb2 as kbp
 import spitfire.protos.knowledge_base_pb2_grpc as kbpg
 
 
+
 def run():
     # NOTE(gRPC Python Team): .close() is possible on a channel and should be
     # used in circumstances in which the with statement does not fit the needs
@@ -143,7 +144,41 @@ def run():
         check_taint_analysis(ta1_msg)
         check_taint_analysis(ta2_msg)
 
+#        exit()
 
+        def add_fuzzable_byte_set(fbs):
+            print("Adding fuzzable_byte_set [%s]" % (str(fbs)))
+            response = stub.AddTaintAnalysis(ta)
+
+        def check_fuzzable_byte_set(ta):
+            print("Checking on fuzzable_byte_set [%s] " % (str(ta)), end="")
+            response = stub.TaintAnalysisExists(ta)
+            if response.success:
+                print(" -- Exists")
+            else:
+                print(" -- NotThere")            
+
+
+        fbs1 = kbp.FuzzableByteSet(label=list(set([1,2,3])))
+        fbs2 = kbp.FuzzableByteSet(label=list(set([2,3,4,5,6])))
+        fbs3 = kbp.FuzzableByteSet(label=list(set([22,23,34,35])))
+    
+        fbss = [fbs1, fbs2, fbs3]
+        
+        def fbs_iterator(x):
+            for fbs in x:
+                yield fbs
+        
+        resp = stub.AddFuzzableByteSets(fbs_iterator(fbs_iterator(fbss)))
+        # this should say 3 were added
+        print(resp.message)
+
+        resp = stub.AddFuzzableByteSets(fbs_iterator(fbs_iterator(fbss)))
+        # this should say 0 were added
+        print(resp.message)
+
+            
+        
 
                                     
 

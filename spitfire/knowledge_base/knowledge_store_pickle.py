@@ -81,25 +81,25 @@ class ThingPickle:
         return (None, thing_uuid)
         
     def exists(self, thing):
-        print(" exists? " + (str(thing)))
+#        print(" exists? " + (str(thing)))
         self.check(thing)
         (th, th_uuid) = self.find(thing)
-        if th is None:
-            print (" .. no")
-        else:
-            print (" .. yes")
+#        if th is None:
+#            print (" .. no")
+#        else:
+#            print (" .. yes")
         return (not (th is None))
 
     def add(self, thing):
-        print(" add " + (str(thing)))
+#        print(" add " + (str(thing)))
         self.check(thing)
         (th, th_uuid) = self.find(thing)
-        print ("uuid = %s" % (str(th_uuid)))
+#        print ("uuid = %s" % (str(th_uuid)))
         if th is None:
             thing.uuid = th_uuid
             self.things[th_uuid] = thing
-            return thing
-        return th
+            return (True, thing)
+        return (False, th)
 
     def get(self, thing):
         self.check(thing)
@@ -170,7 +170,7 @@ class FuzzableByteSetPickle(ThingPickle):
         super().__init__("fuzzablebytesets")
     
     def check(self, fbs):
-        assert hasattr(fuzzbs, "label")
+        assert hasattr(fbs, "label")
         
     def hash(self, fbs):
         return md5(str(fbs.label))
