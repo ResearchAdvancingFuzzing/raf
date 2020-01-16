@@ -94,6 +94,11 @@ service KnowledgeBase {
     
 }
 
+/*
+	In the below, when a type is commented (shallow) only the uuid field is populated
+*/
+
+
 
 message Empty {
 }
@@ -104,7 +109,7 @@ message Target {
   bytes uuid = 1;                   // compute this as md5sum of rest of this message
   string name = 2;                  // program name, like "awk" or "node" or "mount"
   string filepath = 3;              // path to file on spitfire shared file system
-  string git_hash = 4;              // git hash string for version
+  string source_hash = 4;              // source hash string for version
   map<string, string> additional_infomation = 16;
 }
 
@@ -122,7 +127,7 @@ message Input {
 message Corpus {
   bytes uuid = 1;                   // compute this as md5sum of all Input uuids
   string name = 2;                  // name for this corpus
-  repeated Input input = 3;         // Inputs in this corpus
+  repeated Input input = 3;         // Inputs (shallow) in this corpus
 }
 
 
@@ -132,9 +137,10 @@ message Experiment {
   google.protobuf.Timestamp start = 2;  // start time of experiment (Note: knowledge base assigned)
   google.protobuf.Timestamp end = 3;    // end time of experiment (Note: knowledge base assigned)
   string description = 4;               // description of this experiment
-  bytes target = 5;                    // uuid for the program fuzzed
-  bytes seed_corpus = 6;                // uuid for seed corpus used
+  Target target = 5;                    // the program fuzzed (shallow)
+  Corpus seed_corpus = 6;                // seed corpus used (shallow)
   bytes prng_seed = 7;                 // seed of all randomness in this experiment
+  bytes manager_hash = 17;	       // hash of the fuzzing manager
 }
 
 
@@ -145,23 +151,29 @@ message KnowledgeBaseResult {
 }
 
 
-message TaintEngine {
+message AnalysisTool {
   bytes uuid = 1;                 //
   string name = 2;                // panda, e.g.
   string source_string = 3;        // string to use to obtain correct version of taint engine,
                                   // this should uniquely identify version
                                   // for example, the following suffices 
                                   // for panda:
-            		              // 'git clone -b spitfire_0 https://github.com/panda-re/panda.git'
-}				    
+            		              // 'git clone -b spitfire_0 https://github.com/panda-re/panda.git
+  enum AnalysisType {		  // what type of analysis this tool runs
+       MUTATION_FUZZER = 0;
+       TAINT = 1;
+       SYMBOLIC_EXECUTION = 2;
+  }
+  AnaysisType type = 4;
+}
 
 
 message TaintAnalysis {
   bytes uuid = 1;
   // these three are uuids by the way
-  bytes taint_engine = 2;      // the taint analysis tool 
-  bytes target = 3;           // the target program 
-  bytes input = 4;             // the input to that program
+  AnalysisTool taint_engine = 2;      // the taint analysis tool (shallow)
+  Target target = 3;           // the target program (shallow)
+  Input input = 4;             // the input to that program (shallow)
   bool complete = 5;           // this will be false until analysis is truly 
                                // complete and all results successfully handed 
                                // off to the kb
@@ -195,9 +207,9 @@ message TaintedInstruction {
 //
 message TaintMapping {
   bytes uuid = 1;
-  bytes input = 2;               // uuid of input 
-  bytes fuzzable_byte_set = 3;               // uuid of fuzzable byte set 
-  bytes tainted_instruction = 4;                // uuid of tainted instruction 
+  Input input = 2;               // input (shallow)
+  FuzzableByteSet fuzzable_byte_set = 3;               // fuzzable byte set (shallow)
+  TaintedInstruction tainted_instruction = 4;                // tainted instruction (shallow)
   uint64 value = 5;                 // actual internal program value that was tainted 
   uint32 value_length = 6;          // number of bytes in the tainted value 
   uint64 instruction_count = 7;            // instruction count in target
@@ -217,6 +229,7 @@ message TaintMappingKey {
   map<string, string> additional_infomation = 16;
 }
 
+// An module in the target program's memory (these can overlap)
 message Module {
         bytes uuid = 1;
         string name = 2;
@@ -226,17 +239,19 @@ message Module {
         string filepath = 17;
 }
 
+// An address in the target program's memory represented as a module and an offset
 message Address {
         bytes uuid = 1;
-        bytes module_uuid = 2;
+        Module module = 2;
         uint64 offset = 3;
         map<string, string> additional_infomation = 16;
 }
 
+// The coverage of an edge for an input. NOTE: this supports n-edge coverage
 message EdgeCoverage {
         bytes uuid = 1;
-        uint64 cardinality = 2;
-        uint64 hit_count = 3;
-        repeated bytes address_uuid = 4;
+        uint64 hit_count = 2;					// how many 
+        repeated Address address = 3;				// the edge represented as a series of addresses
+	Input input = 4;					// (shallow)
         map<string, string> additional_infomation = 16;
 }
