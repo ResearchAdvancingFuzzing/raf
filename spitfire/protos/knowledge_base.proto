@@ -23,7 +23,7 @@ service KnowledgeBase {
   rpc InputExists(Input) returns (KnowledgeBaseResult) {}
   rpc CorpusExists(Corpus) returns (KnowledgeBaseResult) {}
   rpc ExperimentExists(Experiment) returns (KnowledgeBaseResult) {}
-  rpc TaintEngineExists(TaintEngine) returns (KnowledgeBaseResult) {}
+  rpc AnalysisToolExists(AnalysisTool) returns (KnowledgeBaseResult) {}
   rpc TaintAnalysisExists(TaintAnalysis) returns (KnowledgeBaseResult) {}
 
   // Add this item to kb
@@ -33,7 +33,7 @@ service KnowledgeBase {
   rpc AddInput(Input) returns (Input) {}
   rpc AddCorpus(Corpus) returns (Corpus) {}
   rpc AddExperiment(Experiment) returns (Experiment) {}
-  rpc AddTaintEngine(TaintEngine) returns (TaintEngine) {}
+  rpc AddAnalysisTool(AnalysisTool) returns (AnalysisTool) {}
   rpc AddTaintAnalysis(TaintAnalysis) returns (TaintAnalysis) {}
   
 
@@ -43,7 +43,7 @@ service KnowledgeBase {
   rpc GetInput(Input) returns (Input) {}
   rpc GetCorpus(Corpus) returns (Corpus) {}
   rpc GetExperiment(Experiment) returns (Experiment) {}
-  rpc GetTaintEngine(TaintEngine) returns (TaintEngine) {}
+  rpc GetAnalysisTool(AnalysisTool) returns (AnalysisTool) {}
   rpc GetTaintAnalysis(TaintAnalysis) returns (TaintAnalysis) {}
 
 
@@ -164,7 +164,7 @@ message AnalysisTool {
        TAINT = 1;
        SYMBOLIC_EXECUTION = 2;
   }
-  AnaysisType type = 4;
+  AnalysisType type = 4;
 }
 
 

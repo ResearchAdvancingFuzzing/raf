@@ -34,14 +34,14 @@ def md5(strToMd5):
     return bytes(encrptedMd5, "UTF-8")
 
 
-class ProgramNotFound(Exception):
+class TargetNotFound(Exception):
 
-    def __init__(self, prog):
-        self.prog = prog
+    def __init__(self, target):
+        self.target = target
 
     def __str__(self):
-        return "Program not found exception name=%s filepath=%s" \
-            % (prog.name, prog.filepath) 
+        return "Target not found exception name=%s filepath=%s" \
+            % (target.name, target.filepath) 
 
 
 class InputNotFound(Exception):
@@ -109,18 +109,18 @@ class ThingPickle:
         return th
 
 
-class ProgramPickle(ThingPickle):
+class TargetPickle(ThingPickle):
 
     def __init__(self):
-        super().__init__("programs")
+        super().__init__("target")
     
     def check(self, thing):
         assert hasattr(thing,"name")
         assert hasattr(thing,"filepath")
-        assert hasattr(thing,"git_hash")
+        assert hasattr(thing,"source_hash")
 
     def hash(self, thing):
-        return md5(thing.name + thing.filepath + thing.git_hash)
+        return md5(thing.name + thing.filepath + thing.source_hash)
 
 
 class InputPickle(ThingPickle):
@@ -135,17 +135,17 @@ class InputPickle(ThingPickle):
         return md5(inp.filepath)
 
 
-class TaintEnginePickle(ThingPickle):
+class AnalysisToolPickle(ThingPickle):
 
     def __init__(self):
-        super().__init__("taintengines")
+        super().__init__("analysistool")
         
     def check(self, te):
         assert hasattr(te,"name")
-        assert hasattr(te,"clone_string")
+        assert hasattr(te,"source_string")
 
     def hash(self, te):
-        return md5(te.name + te.clone_string)
+        return md5(te.name + te.source_string)
 
 
 class TaintAnalysisPickle(ThingPickle):
@@ -155,11 +155,11 @@ class TaintAnalysisPickle(ThingPickle):
         
     def check(self, ta):
         assert hasattr(ta, "taint_engine")
-        assert hasattr(ta, "program")
+        assert hasattr(ta, "target")
         assert hasattr(ta, "input")
 
     def hash(self, ta):
-        return md5(str(ta.taint_engine) + \
+        return md5(str(ta.taint_engine.uuid) + \
                    str(ta.program) + \
                    str(ta.input))
 
@@ -182,14 +182,13 @@ class TaintedInstructionPickle(ThingPickle):
         super().__init__("taintedinstructions")
     
     def check(self, tinstr):
-        assert hasattr(tinstr, "pc")
-        assert hasattr(tinstr, "module")
+        assert hasattr(tinstr, "address")
         assert hasattr(tinstr, "type")
-        assert hasattr(tinstr, "instr_bytes")
+        assert hasattr(tinstr, "instruction_bytes")
 
     def hash(self, tinstr):
-        return md5(str(tinstr.pc) + tinstr.module + str(tinstr.type) \
-                   + str(tinstr.instr_bytes))
+        return md5(str(tinstr.address.offset) + str(tinstr.address.module.uuid) + tinstr.module + str(tinstr.type) \
+                   + str(tinstr.instruction_bytes))
 
 
 class TaintMappingPickle(ThingPickle):
@@ -198,31 +197,64 @@ class TaintMappingPickle(ThingPickle):
         super().__init__("taintmappings")
     
     def check(self, taintm):
-        assert hasattr(taintm, "inp_uuid")
-        assert hasattr(taintm, "fbs_uuid")
-        assert hasattr(taintm, "ti_uuid")
+        assert hasattr(taintm, "input")
+        assert hasattr(taintm, "fuzzable_byte_set")
+        assert hasattr(taintm, "tainted_instruction")
         assert hasattr(taintm, "value")
         assert hasattr(taintm, "value_length")
-        assert hasattr(taintm, "trace_point")
+        assert hasattr(taintm, "instruction_count")
         assert hasattr(taintm, "min_compute_distance")
         assert hasattr(taintm, "max_compute_distance")
 
     def hash(self, taintm):
-        return  md5(str(taintm.inp_uuid) + str(taintm.fbs_uuid) \
-                    + str(taintm.ti_uuid) + str(taintm.value) \
-                    + str(taintm.value_length) + str(taintm.trace_point) \
+        return  md5(str(taintm.input.uuid) + str(taintm.fuzzable_byte_set.uuid) \
+                    + str(taintm.tainted_instruction.uuid) + str(taintm.value) \
+                    + str(taintm.value_length) + str(taintm.instruction_count) \
                     + str(taintm.min_compute_distance) \
                     + str(taintm.max_compute_distance)) 
-    
+
+class ModulePickle(ThingPickle):
+    def __init__(self):
+        super().__init__("module")
+
+    def check(self, module):
+        assert hasattr(module, "base")
+        assert hasattr(module, "end")
+
+    def hash(self, module):
+        return md5(str(module.base) + str(module.end))
+        
+class AddressPickle(ThingPickle):
+    def __init__(self):
+        super().__init__("address")
+
+    def check(self, address):
+        assert hasattr(address, "module")
+        assert hasattr(address, "offset")
+
+    def hash(self, address):
+        return md5(str(address.module.uuid) + str(address.offset))
+
+class EdgeCoveragePickle(ThingPickle):
+    def __init__(self):
+        super().__init__("edgecoverage")
+
+    def check(self, edge):
+        assert hasattr(edge, "hit_count")
+        assert hasattr(edge, "address")
+        assert hasattr(edge, "input")
+
+    def hash(self, edge):
+        return md5(str(edge.hit_count) + str(edge.address.uuid) + str(edge.input.uuid))
 
 class KnowledgeStorePickle(KnowledgeStore):
     
     # ksc is knowledge_store config
     def __init__(self, ksc):
         self.config = ksc
-        self.programs = ProgramPickle()
+        self.target = TargetPickle()
         self.inputs = InputPickle()
-        self.taint_engines = TaintEnginePickle()
+        self.analysis_tool = AnalysisToolPickle()
         self.taint_analyses = TaintAnalysisPickle()
         self.fuzzable_byte_sets = FuzzableByteSetPickle()
         self.tainted_instructions = TaintedInstructionPickle()
@@ -231,15 +263,18 @@ class KnowledgeStorePickle(KnowledgeStore):
         self.instr2tainted_inputs = {}
         self.inp2fuzzable_byte_sets = {}
         self.inp2tainted_instructions = {}
+        self.modules = ModulePickle()
+        self.addresses = AddressPickle()
+        self.edges = EdgeCoveragePickle()
+        
+    def target_exists(self, target):
+        return self.target.exists(target)
 
-    def program_exists(self, program):
-        return self.programs.exists(program)
-
-    def add_program(self, program):
-        return self.programs.add(program)
+    def add_target(self, target):
+        return self.target.add(target)
     
-    def get_program(self, program):
-        return self.programs.get(program)
+    def get_target(self, target):
+        return self.target.get(target)
 
 
     def input_exists(self, input):
@@ -252,14 +287,14 @@ class KnowledgeStorePickle(KnowledgeStore):
         return self.inputs.get(input)
 
     
-    def taint_engine_exists(self, taint_engine):
-        return self.taint_engines.exists(taint_engine)
+    def analysis_tool_exists(self, tool):
+        return self.analysis_tool.exists(tool)
 
-    def add_taint_engine(self, taint_engine):
-        return self.taint_engines.add(taint_engine)
+    def add_analysis_tool(self, tool):
+        return self.analysis_tool.add(tool)
     
-    def get_taint_engine(self, taint_engine):
-        return self.taint_engines.get(taint_engine)
+    def get_analysis_tool(self, tool):
+        return self.analysis_tool.get(tool)
 
    
     def taint_analysis_exists(self, taint_analysis):
@@ -291,7 +326,6 @@ class KnowledgeStorePickle(KnowledgeStore):
     def get_tainted_instruction(self, tinstr):
         return self.tainted_instructions.get(tinstr)
 
-
     def taint_mapping_exists(self, taintm):
         return self.taint_mappings.exists(taintm)
 
@@ -316,7 +350,14 @@ class KnowledgeStorePickle(KnowledgeStore):
     def get_taint_mapping(self, taintm):
         return self.taint_mappings.get(taintm)
 
-    
+    def add_address(self, address):
+        return self.addresses.add(address)
+
+    def add_edge_coverage(self, edge):
+        return self.edges.add(edge)
+
+    def add_module(self, module):
+        return self.modules.add(module)
 
     # XXX 
     # Corpus & Experiment not yet implemented 

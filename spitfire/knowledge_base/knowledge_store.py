@@ -10,7 +10,7 @@ class KnowledgeStore(ABC):
     # All of these return KnowledgeBaseResult with success=True to indicate
     # that the item exists in the kb. success=False otherwise
     @abstractmethod
-    def program_exists(self, program):
+    def target_exists(self, target):
         raise NotImplementedError
 
     @abstractmethod
@@ -26,7 +26,7 @@ class KnowledgeStore(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def taint_engine_exists(self, taint_engine):
+    def analysis_tool_exists(self, taint_engine):
         raise NotImplementedError
 
     @abstractmethod
@@ -38,7 +38,7 @@ class KnowledgeStore(ABC):
     # Return canonical message for each of these, with
     # uuid filled in.
     @abstractmethod
-    def add_program(self, program):
+    def add_target(self, target):
         raise NotImplementedError
        
     @abstractmethod
@@ -54,7 +54,7 @@ class KnowledgeStore(ABC):
         raise NotImplementedError
 
     @abstractmethod   
-    def add_taint_engine(self, taint_engine):
+    def add_analysis_tool(self, taint_engine):
         raise NotImplementedError
 
     @abstractmethod   
@@ -66,7 +66,7 @@ class KnowledgeStore(ABC):
     # uuid filled in.  If item not in kb, it will be added first
 
     @abstractmethod
-    def get_program(self, program):
+    def get_target(self, target):
         raise NotImplementedError
        
     @abstractmethod
@@ -82,7 +82,7 @@ class KnowledgeStore(ABC):
         raise NotImplementedError
 
     @abstractmethod   
-    def get_taint_engine(self, taint_engine):
+    def get_analysis_tool(self, taint_engine):
         raise NotImplementedError
 
     @abstractmethod   
@@ -109,6 +109,18 @@ class KnowledgeStore(ABC):
     def get_taint_inputs(self):
         raise NotImplementedError
 
+    @abstractmethod
+    def add_module(self, module):
+        raise NotImplementedError
+    
+    @abstractmethod
+    def add_address(self, address):
+        raise NotImplementedError
+
+    @abstractmethod
+    def add_edge_coverage(self, cov):
+        raise NotImplementedError
+    
     # iterator over inputs that tait this instruction
     def get_taint_inputs_for_tainted_instruction(self, ti):
         raise NotImplementedError
@@ -124,9 +136,5 @@ class KnowledgeStore(ABC):
     # iterator over taint mappings for this inp-fbs/instr key
     def get_taint_mappings(self, tmk):
         raise NotImplementedError
-
-
-
-
 
     
