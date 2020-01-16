@@ -8,7 +8,7 @@ import sys
 import logging
 
 import grpc
-
+import hydra
                                                                                                                              
 p = os.path.abspath(__file__)
 for i in range(10):
@@ -31,11 +31,13 @@ import spitfire.protos.knowledge_base_pb2_grpc as kbpg
 log = logging.getLogger(__name__)
 
 
-def run():
+
+@hydra.main(config_path="../config/expt1/config.yaml")
+def run(cfg):
     # NOTE(gRPC Python Team): .close() is possible on a channel and should be
     # used in circumstances in which the with statement does not fit the needs
     # of the code.
-    with grpc.insecure_channel('localhost:50051') as channel:
+    with grpc.insecure_channel('%s:%d' % (cfg.kb_host, cfg.kb_port)) as channel:
         stub = kbpg.KnowledgeBaseStub(channel)
         prog1_msg = kbp.Target(name="gzip", filepath="/usr/bin/gzip", \
                                 source_hash="ksjdfhsdjkfhds")
