@@ -29,7 +29,7 @@ import knowledge_store_pickle as ks
 import protos.knowledge_base_pb2 as kbp
 import protos.knowledge_base_pb2_grpc as kbpg
 
-fuzzing_config_dir = "/home/tleek/git/raf/spitfire/config/expt1"
+fuzzing_config_dir = "../config/expt1"
 
 class KnowledgeBase(kbpg.KnowledgeBaseServicer):
     
