@@ -40,8 +40,8 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
     # Determines if item is already in the knowledge store
     # All of these return KnowledgeBaseResult with success=True to indicate 
     # that the item exists.  success=False otherwise
-    def ProgramExists(self, program, context):
-        return kbp.KnowledgeBaseResult(success=self.ks.program_exists(program), \
+    def TargetExists(self, program, context):
+        return kbp.KnowledgeBaseResult(success=self.ks.target_exists(program), \
                                        message="None")
 
     def InputExists(self, inp, context):
@@ -56,8 +56,8 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
         return kbp.KnowledgeBaseResult(success=self.ks.experiment_exists(experiment), \
                                        message="None")
 
-    def TaintEngineExists(self, taint_engine, context):
-        return kbp.KnowledgeBaseResult(success=self.ks.taint_engine_exists(taint_engine), \
+    def AnalysisToolExists(self, taint_engine, context):
+        return kbp.KnowledgeBaseResult(success=self.ks.analysis_tool_exists(taint_engine), \
                                        message="None")
 
     def TaintAnalysisExists(self, taint_analysis, context):
@@ -68,8 +68,8 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
     # Add item to the ks (or not if already there)
     # Return canonical message for each of these, with
     # uuid filled in.
-    def AddProgram(self, program, context):        
-        (was_new, p) = self.ks.add_program(program)
+    def AddTarget(self, program, context):        
+        (was_new, p) = self.ks.add_target(program)
         return p
 
     def AddInput(self, inp, context):        
@@ -84,8 +84,8 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
         (was_new, e) = self.ks.add_experiment(experiment)
         return e
 
-    def AddTaintEngine(self, taint_engine, context):        
-        (was_new, te) = self.ks.add_taint_engine(taint_engine)
+    def AddAnalysisTools(self, taint_engine, context):        
+        (was_new, te) = self.ks.add_analysis_tool(taint_engine)
         return te
 
     def AddTaintAnalysis(self, taint_analysis, context):        
@@ -95,8 +95,8 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
 
     # obtains canonical protobuf repr for each if its in the kb
     # exception if its not there
-    def GetProgram(self, program, context):        
-        return self.ks.get_program(program)
+    def GetTarget(self, program, context):        
+        return self.ks.get_target(program)
 
     def GetInput(self, inp, context):
         return self.ks.get_input(inp)
@@ -107,8 +107,8 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
     def GetExperiment(self, experiment, context):
         return self.ks.get_experiment(experiment)
 
-    def GetTaintEngine(self, taint_engine, context):
-        return self.ks.get_taint_engine(taint_engine)
+    def GetAnalysisTool(self, taint_engine, context):
+        return self.ks.get_analysis_tool(taint_engine)
 
     def GetTaintAnalysis(self, taint_analysis, context):
         return self.ks.get_taint_analysis(taint_analysis)
