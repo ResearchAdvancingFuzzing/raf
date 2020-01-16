@@ -19,7 +19,7 @@ service KnowledgeBase {
 
   // returns true iff exists in knowledge base
   // note: don't fill in uuid
-  rpc ProgramExists(Program) returns (KnowledgeBaseResult) {}
+  rpc TargetExists(Target) returns (KnowledgeBaseResult) {}
   rpc InputExists(Input) returns (KnowledgeBaseResult) {}
   rpc CorpusExists(Corpus) returns (KnowledgeBaseResult) {}
   rpc ExperimentExists(Experiment) returns (KnowledgeBaseResult) {}
@@ -29,7 +29,7 @@ service KnowledgeBase {
   // Add this item to kb
   // note UUID should not be filled in
   // returns the correct canonical protobuf representation
-  rpc AddProgram(Program) returns (Program) {}
+  rpc AddTarget(Target) returns (Target) {}
   rpc AddInput(Input) returns (Input) {}
   rpc AddCorpus(Corpus) returns (Corpus) {}
   rpc AddExperiment(Experiment) returns (Experiment) {}
@@ -39,16 +39,22 @@ service KnowledgeBase {
 
   // Obtain canonical protobuf message for each from the knowledge base,
   // raise an exception if its not there.
-  rpc GetProgram(Program) returns (Program) {}
+  rpc GetTarget(Target) returns (Target) {}
   rpc GetInput(Input) returns (Input) {}
   rpc GetCorpus(Corpus) returns (Corpus) {}
   rpc GetExperiment(Experiment) returns (Experiment) {}
   rpc GetTaintEngine(TaintEngine) returns (TaintEngine) {}
   rpc GetTaintAnalysis(TaintAnalysis) returns (TaintAnalysis) {}
 
-  // coverage API fns 
-  // Andy and Heather?
 
+
+  // Memory APIs - all tools should store references to the target's memory as
+  // a module + an offset which is represented in the address message
+  rpc AddModules (stream Module) returns (stream Module);
+  rpc AddAddresses (stream Address) returns (stream Address);
+
+  // coverage API fns
+  rpc AddEdgeCoverage (stream EdgeCoverage) returns (stream EdgeCoverage);
 
   // Add a bunch of fuzzable byte sets to the knowledge base  
   // If any were already there, we dont add twice
@@ -94,18 +100,22 @@ message Empty {
 
 
 // a program to be fuzzed
-message Program {
+message Target {
   bytes uuid = 1;                   // compute this as md5sum of rest of this message
   string name = 2;                  // program name, like "awk" or "node" or "mount"
   string filepath = 3;              // path to file on spitfire shared file system
-  string git_hash = 4;              // git hash string for version 
+  string git_hash = 4;              // git hash string for version
+  map<string, string> additional_infomation = 16;
 }
 
 
 // an input to a program being fuzzed
 message Input {
   bytes uuid = 1;                   // compute this as md5sum of input (file?) contents
-  string filepath = 2;              // path to file on the spitfire shared file system 
+  string filepath = 2;              // path to file on the spitfire shared file system
+  uint64 size = 3;  		    // size of the input
+  string source = 4;		    // where this input came from
+  map<string, string> additional_infomation = 16;
 }
 
 // a set of inputs
@@ -122,9 +132,9 @@ message Experiment {
   google.protobuf.Timestamp start = 2;  // start time of experiment (Note: knowledge base assigned)
   google.protobuf.Timestamp end = 3;    // end time of experiment (Note: knowledge base assigned)
   string description = 4;               // description of this experiment
-  bytes program = 5;                    // uuid for the program fuzzed
+  bytes target = 5;                    // uuid for the program fuzzed
   bytes seed_corpus = 6;                // uuid for seed corpus used
-  uint64 prng_seed = 7;                 // seed of all randomness in this experiment
+  bytes prng_seed = 7;                 // seed of all randomness in this experiment
 }
 
 
@@ -138,7 +148,7 @@ message KnowledgeBaseResult {
 message TaintEngine {
   bytes uuid = 1;                 //
   string name = 2;                // panda, e.g.
-  string clone_string = 3;        // string to use to obtain correct version of taint engine,
+  string source_string = 3;        // string to use to obtain correct version of taint engine,
                                   // this should uniquely identify version
                                   // for example, the following suffices 
                                   // for panda:
@@ -150,7 +160,7 @@ message TaintAnalysis {
   bytes uuid = 1;
   // these three are uuids by the way
   bytes taint_engine = 2;      // the taint analysis tool 
-  bytes program = 3;           // the target program 
+  bytes target = 3;           // the target program 
   bytes input = 4;             // the input to that program
   bool complete = 5;           // this will be false until analysis is truly 
                                // complete and all results successfully handed 
@@ -165,7 +175,8 @@ message TaintAnalysis {
 //
 message FuzzableByteSet {
   bytes uuid = 1;                   // compute this as md5sum of label set 
-  repeated uint32 label = 2;        // set of taint labels, i.e. input bytes 
+  repeated uint32 label = 2;        // set of taint labels, i.e. input bytes
+  map<string, string> additional_infomation = 16;
 }
 
  
@@ -173,10 +184,10 @@ message FuzzableByteSet {
 //
 message TaintedInstruction {
   bytes uuid = 1;                   // compute this as md5sum of rest of contents 
-  uint64 pc = 2;                    // program counter within module 
-  string module = 3;                // module this instruction is in 
-  string type = 4;                  // type of instruction 
-  bytes instr_bytes = 5;            // the bytes for this instruction
+  Address address = 2;
+  string type = 3;                  // type of instruction 
+  bytes instruction_bytes = 4;      // the bytes for this instruction
+  map<string, string> additional_infomation = 16;
 }
  
 
@@ -184,14 +195,15 @@ message TaintedInstruction {
 //
 message TaintMapping {
   bytes uuid = 1;
-  bytes inp_uuid = 2;               // uuid of input 
-  bytes fbs_uuid = 3;               // uuid of fuzzable byte set 
-  bytes ti_uuid = 4;                // uuid of tainted instruction 
+  bytes input = 2;               // uuid of input 
+  bytes fuzzable_byte_set = 3;               // uuid of fuzzable byte set 
+  bytes tainted_instruction = 4;                // uuid of tainted instruction 
   uint64 value = 5;                 // actual internal program value that was tainted 
   uint32 value_length = 6;          // number of bytes in the tainted value 
-  float trace_point = 7;            // where in program trace.  0=start, 1=end 
+  uint64 instruction_count = 7;            // instruction count in target
   uint32 min_compute_distance = 8;  // min compute distance for tainted byte in value 
-  uint32 max_compute_distance = 9;  // max compute distance for tainted byte in value 
+  uint32 max_compute_distance = 9;  // max compute distance for tainted byte in value
+  map<string, string> additional_infomation = 16;
 } 
 
 
@@ -199,7 +211,32 @@ message TaintMapping {
 // Used to identify a taint mapping in the knowledge base
 //
 message TaintMappingKey {
-  Input input = 1;                  // The input for the taint analysis
-  FuzzableByteSet fbs = 2;          // The set of bytes within that input
-  TaintedInstruction ti = 3;        // The instruction tainted by those bytes
+  Input input = 1;					// The input for the taint analysis
+  FuzzableByteSet fuzzable_byte_set = 2;          	// The set of bytes within that input
+  TaintedInstruction tainted_instruction = 3;        	// The instruction tainted by those bytes
+  map<string, string> additional_infomation = 16;
+}
+
+message Module {
+        bytes uuid = 1;
+        string name = 2;
+        fixed64 base = 3;
+        fixed64 end = 4;
+        map<string, string> additional_infomation = 16;
+        string filepath = 17;
+}
+
+message Address {
+        bytes uuid = 1;
+        bytes module_uuid = 2;
+        uint64 offset = 3;
+        map<string, string> additional_infomation = 16;
+}
+
+message EdgeCoverage {
+        bytes uuid = 1;
+        uint64 cardinality = 2;
+        uint64 hit_count = 3;
+        repeated bytes address_uuid = 4;
+        map<string, string> additional_infomation = 16;
 }
