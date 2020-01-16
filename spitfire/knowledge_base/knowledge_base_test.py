@@ -37,41 +37,41 @@ def run():
     # of the code.
     with grpc.insecure_channel('localhost:50051') as channel:
         stub = kbpg.KnowledgeBaseStub(channel)
-        prog1_msg = kbp.Program(name="gzip", filepath="/usr/bin/gzip", \
-                                git_hash="ksjdfhsdjkfhds")
+        prog1_msg = kbp.Target(name="gzip", filepath="/usr/bin/gzip", \
+                                source_hash="ksjdfhsdjkfhds")
 
-        prog2_msg = kbp.Program(name="cat", filepath="/usr/bin/cat", \
-                                git_hash="kaj;sdfhak;jsdfh")
+        prog2_msg = kbp.Target(name="cat", filepath="/usr/bin/cat", \
+                                source_hash="kaj;sdfhak;jsdfh")
 
-        def add_program(pm):
-            print("Adding program [%s]" % pm.name)
-            return stub.AddProgram(pm)
+        def add_target(pm):
+            print("Adding Target [%s]" % pm.name)
+            return stub.AddTarget(pm)
             
-        def check_program(pm):
-            print("Checking on program [%s] " % pm.name, end="")
-            response = stub.ProgramExists(pm)
+        def check_target(pm):
+            print("Checking on target [%s] " % pm.name, end="")
+            response = stub.TargetExists(pm)
             if response.success:
                 print(" -- Exists")
             else:
                 print(" -- NotThere")
 
-        check_program(prog1_msg)
-        prog1 = add_program(prog1_msg)
-        check_program(prog1_msg)
+        check_target(prog1_msg)
+        prog1 = add_target(prog1_msg)
+        check_target(prog1_msg)
 
-        check_program(prog2_msg)
-        prog2 = add_program(prog2_msg)
-        check_program(prog2_msg)
+        check_target(prog2_msg)
+        prog2 = add_target(prog2_msg)
+        check_target(prog2_msg)
 
         # make sure we can check twice
-        check_program(prog1_msg)
-        check_program(prog2_msg)
+        check_target(prog1_msg)
+        check_target(prog2_msg)
 
         # if we get those programs (msg with uuid not filled in)
         # we should get same uuid
-        prog1_1 = stub.GetProgram(prog1_msg)
+        prog1_1 = stub.GetTarget(prog1_msg)
         assert (prog1_1.uuid == prog1.uuid)
-        prog2_1 = stub.GetProgram(prog2_msg)
+        prog2_1 = stub.GetTarget(prog2_msg)
         assert (prog2_1.uuid == prog2.uuid)
 
 
@@ -107,35 +107,35 @@ def run():
         assert (inp2_1.uuid == inp2.uuid)
 
         
-        te1_msg = kbp.TaintEngine(name="pandataint0", clone_string="git clone -b spitfire_0 https://github.com/panda-re/panda.git")
-        te2_msg = kbp.TaintEngine(name="pandataint2", clone_string="git clone -b spitfire_2 https://github.com/panda-re/panda.git")
+        te1_msg = kbp.AnalysisTool(name="pandataint0", clone_string="git clone -b spitfire_0 https://github.com/panda-re/panda.git")
+        te2_msg = kbp.AnalysisTool(name="pandataint2", clone_string="git clone -b spitfire_2 https://github.com/panda-re/panda.git")
 
-        def add_taint_engine(te):
-            print("Adding taint_engine [%s]" % te.name)
-            return stub.AddTaintEngine(te)
+        def add_analysis_tool(te):
+            print("Adding analysis_tool [%s]" % te.name)
+            return stub.AddAnalysisTool(te)
 
-        def check_taint_engine(te):
-            print("Checking on taint_engine [%s] " % te.name, end="")
-            response = stub.TaintEngineExists(te)
+        def check_analysis_tool(te):
+            print("Checking on analysis_tool [%s] " % te.name, end="")
+            response = stub.AnalysisToolExists(te)
             if response.success:
                 print(" -- Exists")
             else:
                 print(" -- NotThere")            
 
-        check_taint_engine(te1_msg)
-        te1 = add_taint_engine(te1_msg)
-        check_taint_engine(te1_msg)
+        check_analysis_tool(te1_msg)
+        te1 = add_analysis_tool(te1_msg)
+        check_analysis_tool(te1_msg)
 
-        check_taint_engine(te2_msg)
-        te2 = add_taint_engine(te2_msg)
-        check_taint_engine(te2_msg)
+        check_analysis_tool(te2_msg)
+        te2 = add_analysis_tool(te2_msg)
+        check_analysis_tool(te2_msg)
 
-        check_taint_engine(te1_msg)
-        check_taint_engine(te2_msg)
+        check_analysis_tool(te1_msg)
+        check_analysis_tool(te2_msg)
 
-        te1_1 = stub.GetTaintEngine(te1_msg)
+        te1_1 = stub.GetAnalysisTool(te1_msg)
         assert (te1_1.uuid == te1.uuid)
-        te2_1 = stub.GetTaintEngine(te2_msg)
+        te2_1 = stub.GetAnalysisTool(te2_msg)
         assert (te2_1.uuid == te2.uuid)
 
 
