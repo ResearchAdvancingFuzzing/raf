@@ -84,7 +84,7 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
         (was_new, e) = self.ks.add_experiment(experiment)
         return e
 
-    def AddAnalysisTools(self, taint_engine, context):        
+    def AddAnalysisTool(self, taint_engine, context):        
         (was_new, te) = self.ks.add_analysis_tool(taint_engine)
         return te
 
@@ -92,7 +92,16 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
         (was_new, ta) = self.ks.add_taint_analysis(taint_analysis)
         return ta
 
+    def AddModules(self, module_itr, context):
+        for mod in module_itr:
+            (was_new, m) = self.ks.add_module(mod)
+            yield m
 
+    def AddAddresses(self, address_itr, context):
+        for addr in address_itr:
+            (was_new, a) = self.ks.add_address(addr)
+            yield a
+            
     # obtains canonical protobuf repr for each if its in the kb
     # exception if its not there
     def GetTarget(self, program, context):        

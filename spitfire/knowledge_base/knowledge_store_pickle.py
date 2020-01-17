@@ -160,7 +160,7 @@ class TaintAnalysisPickle(ThingPickle):
 
     def hash(self, ta):
         return md5(str(ta.taint_engine.uuid) + \
-                   str(ta.program) + \
+                   str(ta.target) + \
                    str(ta.input))
 
 
@@ -187,7 +187,7 @@ class TaintedInstructionPickle(ThingPickle):
         assert hasattr(tinstr, "instruction_bytes")
 
     def hash(self, tinstr):
-        return md5(str(tinstr.address.offset) + str(tinstr.address.module.uuid) + tinstr.module + str(tinstr.type) \
+        return md5(str(tinstr.address.offset) + str(tinstr.address.module.uuid) + str(tinstr.type) \
                    + str(tinstr.instruction_bytes))
 
 
@@ -230,8 +230,9 @@ class AddressPickle(ThingPickle):
 
     def check(self, address):
         assert hasattr(address, "module")
+        assert address.module.uuid != ""
         assert hasattr(address, "offset")
-
+        
     def hash(self, address):
         return md5(str(address.module.uuid) + str(address.offset))
 

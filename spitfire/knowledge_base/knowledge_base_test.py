@@ -109,8 +109,8 @@ def run(cfg):
         assert (inp2_1.uuid == inp2.uuid)
 
         
-        te1_msg = kbp.AnalysisTool(name="pandataint0", clone_string="git clone -b spitfire_0 https://github.com/panda-re/panda.git")
-        te2_msg = kbp.AnalysisTool(name="pandataint2", clone_string="git clone -b spitfire_2 https://github.com/panda-re/panda.git")
+        te1_msg = kbp.AnalysisTool(name="pandataint0", source_string="git clone -b spitfire_0 https://github.com/panda-re/panda.git")
+        te2_msg = kbp.AnalysisTool(name="pandataint2", source_string="git clone -b spitfire_2 https://github.com/panda-re/panda.git")
 
         def add_analysis_tool(te):
             print("Adding analysis_tool [%s]" % te.name)
@@ -154,8 +154,8 @@ def run(cfg):
             else:
                 print(" -- NotThere")            
 
-        ta1_msg = kbp.TaintAnalysis(taint_engine=te1.uuid, program=prog1.uuid, input=inp1.uuid)
-        ta2_msg = kbp.TaintAnalysis(taint_engine=te1.uuid, program=prog2.uuid, input=inp1.uuid)
+        ta1_msg = kbp.TaintAnalysis(taint_engine=te1, target=prog1, input=inp1)
+        ta2_msg = kbp.TaintAnalysis(taint_engine=te1, target=prog2, input=inp1)
         
         check_taint_analysis(ta1_msg)
         ta1 = add_taint_analysis(ta1_msg)
@@ -192,8 +192,37 @@ def run(cfg):
         # this should say 0 were added
         print(resp.message)
 
-        ti1 = kbp.TaintedInstruction(pc=0xdeadbeef, module="/some/module/thing.so", type="jmp", instr_bytes=bytes("abcd", "utf-8"))
-        ti2 = kbp.TaintedInstruction(pc=0xfeedbeef, module="/usr/bin//thang", type="branch", instr_bytes=bytes("98724", "utf-8"))
+        m1 = kbp.Module(name="thing.so", base=0xdead0000, end=0xdeadffff, filepath="/some/module/thing.so")
+        m2 = kbp.Module(name="thang", base=0xfeed0000, end=0xfeedffff, filepath="/usr/bin/thang")
+        
+        mods = [m1, m2]
+
+        def mod_iterator(x):
+            for m in x:
+                yield m
+
+        i = 0
+        for r in stub.AddModules(mod_iterator(mods)):
+            print("Added module: " + str(r.uuid))
+            mods[i] = r
+            i += 1
+            
+        a1 = kbp.Address(module=mods[0], offset=0xbeef)
+        a2 = kbp.Address(module=mods[1], offset=0xbeef)
+        addrs = [a1, a2]
+
+        i = 0
+        def addr_iterator(x):
+            for a in x:
+                yield a
+
+        for r in stub.AddAddresses(addr_iterator(addrs)):
+            print("Added address: " + str(r.uuid))
+            addrs[i] = r
+            i += 1
+                
+        ti1 = kbp.TaintedInstruction(address=addrs[0], type="jmp", instruction_bytes=bytes("abcd", "utf-8"))
+        ti2 = kbp.TaintedInstruction(address=addrs[1], type="branch", instruction_bytes=bytes("98724", "utf-8"))
 
         tis = [ti1, ti2]
 
