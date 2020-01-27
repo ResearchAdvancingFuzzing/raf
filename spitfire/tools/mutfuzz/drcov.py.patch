@@ -1,0 +1,36 @@
+133c133
+<         self.version = int(version_line.split(":")[1])
+---
+>         self.version = int(version_line.decode('utf8').split(":")[1])
+138c138
+<         self.flavor = flavor_line.split(":")[1]
+---
+>         self.flavor = flavor_line.decode('utf8').split(":")[1]
+167c167
+<         field_name, field_data = header_line.split(": ")
+---
+>         field_name, field_data = header_line.decode('utf8').split(": ")
+239c239
+<         field_name, field_data = column_line.split(": ")
+---
+>         field_name, field_data = column_line.decode('utf8').split(": ")
+253c253
+<         for i in xrange(self.module_table_count):
+---
+>         for i in range(self.module_table_count):
+272c272
+<         field_name, field_data = header_line.split(": ")
+---
+>         field_name, field_data = header_line.decode('utf8').split(": ")
+363c363
+<         data = module_line.split(", ")
+---
+>         data = module_line.decode('utf8').split(", ")
+471c471
+<         print "usage: %s <coverage filename>" % os.path.basename(sys.argv[0])
+---
+>         print("usage: %s <coverage filename>" % os.path.basename(sys.argv[0]))
+477c477
+<         print "0x%08x" % bb.start
+---
+>         print("0x%08x" % bb.start)
