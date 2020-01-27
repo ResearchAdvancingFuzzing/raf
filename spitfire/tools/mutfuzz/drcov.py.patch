@@ -18,19 +18,56 @@
 <         for i in xrange(self.module_table_count):
 ---
 >         for i in range(self.module_table_count):
+263c263
+< 
+---
+>         
 272c272
 <         field_name, field_data = header_line.split(": ")
 ---
 >         field_name, field_data = header_line.decode('utf8').split(": ")
-363c363
+285,290c285,295
+<         # is this an ascii table?
+<         if f.read(len(token)) == token:
+<             self.bb_table_is_binary = False
+< 
+<         # nope! binary table
+<         else:
+---
+>         peek = f.read(len(token))
+>         try:
+>             # is this an ascii table?
+>             if peek.decode('utf8') == token:
+>                 self.bb_table_is_binary = False
+> 
+>             # nope! binary table
+>             else:
+>                 self.bb_table_is_binary = True
+>                 
+>         except UnicodeDecodeError:
+292c297
+< 
+---
+>             
+308,309c313
+<             text_entry = f.readline().strip()
+< 
+---
+>             text_entry = f.readline().decode('utf8').strip()
+315,316c319
+<                 text_entry = f.readline().strip()
+< 
+---
+>                 text_entry = f.readline().decode('utf8').strip()
+363c366
 <         data = module_line.split(", ")
 ---
 >         data = module_line.decode('utf8').split(", ")
-471c471
+471c474
 <         print "usage: %s <coverage filename>" % os.path.basename(sys.argv[0])
 ---
 >         print("usage: %s <coverage filename>" % os.path.basename(sys.argv[0]))
-477c477
+477c480
 <         print "0x%08x" % bb.start
 ---
 >         print("0x%08x" % bb.start)
