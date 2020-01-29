@@ -220,7 +220,12 @@ def run(cfg):
             print("Added address: " + str(r.uuid))
             addrs[i] = r
             i += 1
-                
+
+        edge = kbp.EdgeCoverage(hit_count=1234, input=inp1_1, address=[a1,a2])
+        for r in stub.AddEdgeCoverage(iter([edge])):
+            edge = r
+        
+                                    
         ti1 = kbp.TaintedInstruction(address=addrs[0], type="jmp", instruction_bytes=bytes("abcd", "utf-8"))
         ti2 = kbp.TaintedInstruction(address=addrs[1], type="branch", instruction_bytes=bytes("98724", "utf-8"))
 

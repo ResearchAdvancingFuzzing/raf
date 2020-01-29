@@ -246,7 +246,12 @@ class EdgeCoveragePickle(ThingPickle):
         assert hasattr(edge, "input")
 
     def hash(self, edge):
-        return md5(str(edge.hit_count) + str(edge.address.uuid) + str(edge.input.uuid))
+        uuid_data = str(edge.hit_count)
+        for a in edge.address:
+            uuid_data += str(a.uuid)
+        uuid_data += str(edge.input.uuid)
+        
+        return md5(uuid_data)
 
 class KnowledgeStorePickle(KnowledgeStore):
     

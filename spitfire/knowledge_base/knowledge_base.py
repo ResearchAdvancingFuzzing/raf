@@ -101,6 +101,12 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
         for addr in address_itr:
             (was_new, a) = self.ks.add_address(addr)
             yield a
+
+    def AddEdgeCoverage(self, coverage_itr, context):
+        for edge in coverage_itr:
+            (was_new, e) = self.ks.add_edge_coverage(edge)
+            print("new edge: " + str(e.uuid))
+            yield e
             
     # obtains canonical protobuf repr for each if its in the kb
     # exception if its not there
