@@ -56,12 +56,12 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
         return kbp.KnowledgeBaseResult(success=self.ks.experiment_exists(experiment), \
                                        message="None")
 
-    def AnalysisToolExists(self, taint_engine, context):
-        return kbp.KnowledgeBaseResult(success=self.ks.analysis_tool_exists(taint_engine), \
+    def AnalysisToolExists(self, tool, context):
+        return kbp.KnowledgeBaseResult(success=self.ks.analysis_tool_exists(tool), \
                                        message="None")
 
-    def TaintAnalysisExists(self, taint_analysis, context):
-        return kbp.KnowledgeBaseResult(success=self.ks.taint_analysis_exists(taint_analysis), \
+    def AnalysisExists(self, analysis, context):
+        return kbp.KnowledgeBaseResult(success=self.ks.analysis_exists(analysis), \
                                        message="None")
 
 
@@ -84,12 +84,12 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
         (was_new, e) = self.ks.add_experiment(experiment)
         return e
 
-    def AddAnalysisTool(self, taint_engine, context):        
-        (was_new, te) = self.ks.add_analysis_tool(taint_engine)
+    def AddAnalysisTool(self, tool, context):        
+        (was_new, te) = self.ks.add_analysis_tool(tool)
         return te
 
-    def AddTaintAnalysis(self, taint_analysis, context):        
-        (was_new, ta) = self.ks.add_taint_analysis(taint_analysis)
+    def AddAnalysis(self, analysis, context):        
+        (was_new, ta) = self.ks.add_analysis(analysis)
         return ta
 
     def AddModules(self, module_itr, context):
@@ -122,11 +122,11 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
     def GetExperiment(self, experiment, context):
         return self.ks.get_experiment(experiment)
 
-    def GetAnalysisTool(self, taint_engine, context):
-        return self.ks.get_analysis_tool(taint_engine)
+    def GetAnalysisTool(self, tool, context):
+        return self.ks.get_analysis_tool(tool)
 
-    def GetTaintAnalysis(self, taint_analysis, context):
-        return self.ks.get_taint_analysis(taint_analysis)
+    def GetAnalysis(self, analysis, context):
+        return self.ks.get_analysis(taint_analysis)
 
 
     # Returns KnowledgeBaseResult
@@ -203,7 +203,7 @@ def serve(cfg):
     print(cfg.pretty())
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=1))
     kbpg.add_KnowledgeBaseServicer_to_server(KnowledgeBase(cfg), server)
-    server.add_insecure_port("[::]:%d" % cfg.kb_port)
+    server.add_insecure_port("[::]:%d" % cfg.knowledge_base.port)
     server.start()
     server.wait_for_termination()
 

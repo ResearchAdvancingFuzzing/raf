@@ -116,11 +116,10 @@ class TargetPickle(ThingPickle):
     
     def check(self, thing):
         assert hasattr(thing,"name")
-        assert hasattr(thing,"filepath")
         assert hasattr(thing,"source_hash")
 
     def hash(self, thing):
-        return md5(thing.name + thing.filepath + thing.source_hash)
+        return md5(thing.name + thing.source_hash)
 
 
 class InputPickle(ThingPickle):
@@ -132,7 +131,8 @@ class InputPickle(ThingPickle):
         assert(hasattr(inp,"filepath"))
 
     def hash(self, inp):
-        return md5(inp.filepath)
+        with open(inp.filepath) as inp:
+            return md5(inp.read())
 
 
 class AnalysisToolPickle(ThingPickle):
@@ -148,18 +148,19 @@ class AnalysisToolPickle(ThingPickle):
         return md5(te.name + te.source_string)
 
 
-class TaintAnalysisPickle(ThingPickle):
+class AnalysisPickle(ThingPickle):
 
     def __init__(self):
-        super().__init__("taintanalyses")
+        super().__init__("analyses")
         
     def check(self, ta):
-        assert hasattr(ta, "taint_engine")
+        assert hasattr(ta, "tool")
         assert hasattr(ta, "target")
         assert hasattr(ta, "input")
 
     def hash(self, ta):
-        return md5(str(ta.taint_engine.uuid) + \
+        # NB: each of these is a uuid
+        return md5(str(ta.tool) + \
                    str(ta.target) + \
                    str(ta.input))
 
@@ -261,7 +262,7 @@ class KnowledgeStorePickle(KnowledgeStore):
         self.target = TargetPickle()
         self.inputs = InputPickle()
         self.analysis_tool = AnalysisToolPickle()
-        self.taint_analyses = TaintAnalysisPickle()
+        self.analyses = AnalysisPickle()
         self.fuzzable_byte_sets = FuzzableByteSetPickle()
         self.tainted_instructions = TaintedInstructionPickle()
         self.taint_mappings = TaintMappingPickle()
@@ -303,14 +304,14 @@ class KnowledgeStorePickle(KnowledgeStore):
         return self.analysis_tool.get(tool)
 
    
-    def taint_analysis_exists(self, taint_analysis):
-        return self.taint_analyses.exists(taint_analysis)
+    def analysis_exists(self, analysis):
+        return self.analyses.exists(analysis)
 
-    def add_taint_analysis(self, taint_analysis):
-        return self.taint_analyses.add(taint_analysis)
+    def add_analysis(self, analysis):
+        return self.analyses.add(analysis)
     
-    def get_taint_analysis(self, taint_analysis):
-        return self.taint_analyses.get(taint_analysis)
+    def get_analysis(self, analysis):
+        return self.analyses.get(analysis)
 
 
     def fuzzable_byte_set_exists(self, fbs):

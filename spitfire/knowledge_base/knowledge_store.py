@@ -26,11 +26,11 @@ class KnowledgeStore(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def analysis_tool_exists(self, taint_engine):
+    def analysis_tool_exists(self, tool):
         raise NotImplementedError
 
     @abstractmethod
-    def taint_analysis_exists(self, taint_analysis):
+    def analysis_exists(self, analysis):
         raise NotImplementedError
 
 
@@ -54,11 +54,11 @@ class KnowledgeStore(ABC):
         raise NotImplementedError
 
     @abstractmethod   
-    def add_analysis_tool(self, taint_engine):
+    def add_analysis_tool(self, tool):
         raise NotImplementedError
 
     @abstractmethod   
-    def add_taint_analysis(self, taint_analysis):
+    def add_analysis(self, analysis):
         raise NotImplementedError
 
 
@@ -82,11 +82,11 @@ class KnowledgeStore(ABC):
         raise NotImplementedError
 
     @abstractmethod   
-    def get_analysis_tool(self, taint_engine):
+    def get_analysis_tool(self, tool):
         raise NotImplementedError
 
     @abstractmethod   
-    def get_taint_analysis(self, taint_analysis):
+    def get_analysis(self, analysis):
         raise NotImplementedError
 
     @abstractmethod   

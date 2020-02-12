@@ -1,5 +1,5 @@
 defaults:
     - taint: panda
-    - program: xmllint
+    - target: xmllint
     - knowledge_base: pickle
     - coverage: drcov
