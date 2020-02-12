@@ -13,7 +13,7 @@ package spitfire;
 service KnowledgeBase {
 
   // NOTE: Many of the message types contain uuids. When using RPC calls such
-  // as GetProgram, GetInput, leave this field empty (don't specify uuid).
+  // as GetTarget, GetInput, leave this field empty (don't specify uuid).
   // The knowledge base will compute or generate it and return a message of 
   // the same type containing the correct uuid and duplicating all other fields.
 
@@ -24,19 +24,20 @@ service KnowledgeBase {
   rpc CorpusExists(Corpus) returns (KnowledgeBaseResult) {}
   rpc ExperimentExists(Experiment) returns (KnowledgeBaseResult) {}
   rpc AnalysisToolExists(AnalysisTool) returns (KnowledgeBaseResult) {}
-  rpc TaintAnalysisExists(TaintAnalysis) returns (KnowledgeBaseResult) {}
+  rpc AnalysisExists(Analysis) returns (KnowledgeBaseResult) {}
 
   // Add this item to kb
   // note UUID should not be filled in
+  // if its already there, we dont create new but just return
+  // the one that is there
   // returns the correct canonical protobuf representation
   rpc AddTarget(Target) returns (Target) {}
   rpc AddInput(Input) returns (Input) {}
   rpc AddCorpus(Corpus) returns (Corpus) {}
   rpc AddExperiment(Experiment) returns (Experiment) {}
   rpc AddAnalysisTool(AnalysisTool) returns (AnalysisTool) {}
-  rpc AddTaintAnalysis(TaintAnalysis) returns (TaintAnalysis) {}
+  rpc AddAnalysis(Analysis) returns (Analysis) {}
   
-
   // Obtain canonical protobuf message for each from the knowledge base,
   // raise an exception if its not there.
   rpc GetTarget(Target) returns (Target) {}
@@ -44,7 +45,7 @@ service KnowledgeBase {
   rpc GetCorpus(Corpus) returns (Corpus) {}
   rpc GetExperiment(Experiment) returns (Experiment) {}
   rpc GetAnalysisTool(AnalysisTool) returns (AnalysisTool) {}
-  rpc GetTaintAnalysis(TaintAnalysis) returns (TaintAnalysis) {}
+  rpc GetAnalysis(Analysis) returns (Analysis) {}
 
 
 
@@ -108,7 +109,6 @@ message Empty {
 message Target {
   bytes uuid = 1;                   // compute this as md5sum of rest of this message
   string name = 2;                  // program name, like "awk" or "node" or "mount"
-  string filepath = 3;              // path to file on spitfire shared file system
   string source_hash = 4;              // source hash string for version
   map<string, string> additional_infomation = 16;
 }
@@ -168,12 +168,15 @@ message AnalysisTool {
 }
 
 
-message TaintAnalysis {
+message Analysis {
   bytes uuid = 1;
   // these three are uuids by the way
-  AnalysisTool taint_engine = 2;      // the taint analysis tool (shallow)
-  Target target = 3;           // the target program (shallow)
-  Input input = 4;             // the input to that program (shallow)
+//  AnalysisTool tool = 2;       // the analysis tool (shallow)
+  bytes tool = 2;              // the analysis tool (shallow)
+//  Target target = 3;           // the target program (shallow)
+  bytes target = 3;           // the target program (shallow)
+//  Input input = 4;             // the input to that program (shallow)
+  bytes input = 4;             // the input to that program (shallow)
   bool complete = 5;           // this will be false until analysis is truly 
                                // complete and all results successfully handed 
                                // off to the kb

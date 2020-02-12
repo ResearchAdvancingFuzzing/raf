@@ -21,22 +21,28 @@ import sys
 import logging
 import os
 
+from os.path import join,basename
+
 import grpc
 import hydra
-import docker
+import subprocess as sp
 
 # walk up the path to find 'spitfire' and add that to python path
 # at most 10 levels up?
 p = os.path.abspath(__file__)
+spitfire_dir = None
 for i in range(10):
     (hd, tl) = os.path.split(p)
     if tl == "spitfire":
+        print ("p = %s" % p)
         sys.path.append(p)
+        spitfire_dir = p
         sys.path.append(hd)
         sys.path.append(p + "/protos")
         break
     p = hd
 
+assert (not (spitfire_dir is None))
 
 import spitfire.protos.knowledge_base_pb2 as kbp
 import spitfire.protos.knowledge_base_pb2_grpc as kbpg
@@ -47,52 +53,75 @@ from google.protobuf import text_format
 log = logging.getLogger(__name__)
 
 
-fuzzing_config_dir = "/home/tleek/git/raf/spitfire/config/expt1"
-# sys.argv[1]
-input_filepath = "/home/tleek/transfer/libxml2/test/slashdot.xml"
-#sys.argv[2]
+# this should really be argv[1]
+fuzzing_config_dir = "%s/config/expt1" % spitfire_dir
+
+# and this should be argv[2]
+
+
 
 
 
 @hydra.main(config_path=fuzzing_config_dir + "/config.yaml")
 def run(cfg):
-    print(cfg.pretty())
+#    print(cfg.pretty())
 
     # channel to talk to kb server
-    with grpc.insecure_channel("%s:%s" % (cfg.kb_host, cfg.kb_port)) as channel:
+    with grpc.insecure_channel("%s:%s" % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
         kbs = kbpg.KnowledgeBaseStub(channel)
 
         # get canonical representations for all of these things
-        prog_msg = kbp.Program(name=cfg.prog_name, \
-                               filepath=cfg.prog_filepath, \
-                               git_hash=cfg.prog_git_hash)
-        program = kbs.AddProgram(prog_msg)
+        target_msg = kbp.Target(name=cfg.target.name, \
+                                source_hash=cfg.target.source_hash)
+        target = kbs.AddTarget(target_msg)
         
-        te_msg = kbp.TaintEngine(name="panda", \
-                                 clone_string=cfg.panda_clone_string)
-        taint_engine = kbs.AddTaintEngine(te_msg)
-    
-        inp_msg = kbp.Input(filepath=input_filepath)
-        taint_input = kbs.AddInput(inp_msg)
+        panda_msg = kbp.AnalysisTool(name="panda", \
+                                   source_string=cfg.taint.source_string,
+                                   type=kbp.AnalysisTool.AnalysisType.TAINT)
+        panda = kbs.AddAnalysisTool(panda_msg)
+
+        print("input file is [%s]" % cfg.taint.input_file)
+        input_msg = kbp.Input(filepath=cfg.taint.input_file)
+        taint_input = kbs.AddInput(input_msg)
 
         # if we have already performed this taint analysis, bail
-        ta_msg = kbp.TaintAnalysis(taint_engine=taint_engine.uuid, \
-                                   program=program.uuid, \
-                                   input=taint_input.uuid)
-        taint_analysis = kbs.AddTaintAnalysis(ta_msg)
+        taint_analysis_msg = kbp.Analysis(tool=panda.uuid, \
+                                          target=target.uuid, \
+                                          input=taint_input.uuid)
+        taint_analysis = kbs.AddAnalysis(taint_analysis_msg)
+
+        msg_end = "\ntool:\n%s\ntarget:\n%s\ninput:\n%s\n" \
+                  % (text_format.MessageToString(panda), \
+                     text_format.MessageToString(target), \
+                     text_format.MessageToString(taint_input))
+
         if taint_analysis.complete:
-            log.info("Taint analysis already performed for taint_engine=[%s] program=[%s] input=[%s]" \
-                     % (text_format.MessageToString(taint_engine), \
-                        text_format.MessageToString(program), \
-                        text_format.MessageToString(taint_input)))                    
-            return 
+            log.info("Taint analysis already performed for %s" % msg_end)
+            return
         
-        log.info("Taint analysis proceeding for taint_engine=[%s] program=[%s] input=[%s]" \
-                 % (text_format.MessageToString(taint_engine), \
-                    text_format.MessageToString(program), \
-                    text_format.MessageToString(taint_input)))
+        log.info("Taint analysis proceeding for %s" % msg_end)
+        
+        log.info("Creating recording")
+        
+        run_sh = join(join(join(cfg.taint.harness_dir, "targets"), \
+                           "%s-%s-64bit" % (cfg.target.name, \
+                                            cfg.target.source_hash)), "run.sh")
+        retv = sp.check_call([run_sh, taint_input.filepath])
+        replay_dir = os.getcwd()
+        replay_pfx = join(os.getcwd(), basename(taint_input.filepath))
+
+        if retv == 0:
+            log.info("Recording created: pfx=%s" % replay_pfx)
+        else:
+            raise PandaTaintFailed("Couldn't create recording")
+
         
         client = docker.from_env()
+        
+        transfer_dir = os.getcwd()
+        volume_dict[transfer_dir] = {'bind': "/transfer"}
+        cmd = "panda/build/x
+        client.containsers.run(cfg.taint.panda_container,  
         
         # create recording
         (prog_dir, progname) = os.path.split(program.filepath)

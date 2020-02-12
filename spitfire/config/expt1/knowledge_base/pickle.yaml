@@ -1,2 +1,3 @@
-kb_host: "localhost"
-kb_port: 61111
+knowledge_base:
+    host: "localhost"
+    port: 61111
