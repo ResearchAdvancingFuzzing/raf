@@ -23,9 +23,10 @@ from enum import Enum
 import struct
 
 import sys
-sys.path.append("../grpc")
-import spitfire_pb2
-import spitfire_pb2_grpc
+
+sys.path.append("../../../protos")
+import knowledge_base_pb2
+import knowledge_base_pb2_grpc
 
 
 def marshal_len(f, l):

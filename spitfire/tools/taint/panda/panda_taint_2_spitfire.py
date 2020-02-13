@@ -1,3 +1,6 @@
+#!/usr/bin/python3.6
+
+
 """
 
 Generates Spitfire TaintAnalysis tool output from PANDA replay 
@@ -101,9 +104,9 @@ from os.path import dirname
 
 from google.protobuf.json_format import MessageToJson
 
-sys.path.append("../grpc")
-import spitfire_pb2
-import spitfire_pb2_grpc
+sys.path.append("../../../protos")
+import knowledge_base_pb2
+import knowledge_base_pb2_grpc
 
 
 last_time = None
@@ -118,7 +121,7 @@ def tock():
 
 tick()
 
-sys.path.append("/home/tleek/git/panda-spitfire/build/i386-softmmu")
+sys.path.append("/home/tleek/git/panda-spitfire/build/x86_64-softmmu")
 import plog_pb2
 
 from taint_analysis import *
@@ -188,14 +191,14 @@ last_instr_for_program = None
 
 last_instr = None
 
-print "Ingesting pandalog"
+print ("Ingesting pandalog")
 # process the pandalog protobuf messages
 with open(panda_protobuf_in, "rb") as pbf:
 
     while True:
 
         if ntq > 1 and (0 == (ntq % 100000)):
-            print ntq
+            print (ntq)
 
         if ntq > 200000:
             break
@@ -247,13 +250,13 @@ with open(panda_protobuf_in, "rb") as pbf:
                 ntq += 1
 
         except Exception as e: 
-            print e
+            print (str(e))
             break
 
 
 print (str(tock())) + " seconds"
 
-print "Found %d tainting fuzzable byte sets (fbs)" % (len(tainting_fbs))
+print ("Found %d tainting fuzzable byte sets (fbs)" % (len(tainting_fbs)))
 
 
 # determine set of fbs to exclude.
@@ -263,12 +266,12 @@ for fbs in tainting_fbs.keys():
     pcs_for_this_fbs = set([])
     for tiv in tainting_fbs[fbs]:
         pcs_for_this_fbs.add(tiv.pc)
-    if fbs == frozenset([0L]):
-        print pcs_for_this_fbs
+    if fbs == frozenset([0]):
+        print (pcs_for_this_fbs)
     if len(pcs_for_this_fbs) > max_pcs_for_an_fbs:
         excluded_fbs.add(fbs)
 
-print "excluding %d fbs since they taint too many pcs" % (len(excluded_fbs))
+print ("excluding %d fbs since they taint too many pcs" % (len(excluded_fbs)))
 
 # determine set of pcs to exclude
 # exclude any that are tainted by too many distinct fbs
@@ -284,9 +287,9 @@ for pc in fbs_for_pc.keys():
     if len(fbs_for_pc[pc]) > max_fbs_for_a_pc:
         excluded_pcs.add(pc)
 
-print "excluding %d pcs since they are tainted by too many fbs" % (len(excluded_pcs))
+print ("excluding %d pcs since they are tainted by too many fbs" % (len(excluded_pcs)))
 
-print "Constructing spitfire TaintAnalysis"
+print ("Constructing spitfire TaintAnalysis")
 
 # construct the spitfire taint analyiss
 ta = TaintAnalysis()
@@ -301,7 +304,6 @@ for fbs in tainting_fbs.keys():
         num_pcs +=1
     if num_pcs == 0:
         continue
-#    print "fbs=%s" % (str(fbs))
     for tiv in tainting_fbs[fbs]:
         if tiv.pc in excluded_pcs:
             continue
@@ -309,12 +311,9 @@ for fbs in tainting_fbs.keys():
         i = TaintedInstruction(tiv.pc, "Unk", None)
         tm = TaintMapping(f, i, 42, tiv.len, (float(tiv.instr - first_instr_for_program) / (last_instr_for_program - first_instr_for_program)), tiv.tcn_min, tiv.tcn_max)
         ta.add_taint_mapping(tm)
-#        ta.add_taint_mapping(f, i, 42, tiv.len, (float(tiv.instr - first_instr_for_program) / (last_instr_for_program - first_instr_for_program)), tiv.tcn_min, tiv.tcn_max)
-#
-#        ta.add_taint_mapping(tm)
 
-print "------------------------"
-print ta
+print ("------------------------")
+print (ta)
 
 
 # send the entire taint analysis over to the knowledge base
@@ -323,7 +322,7 @@ with grpc.insecure_channel('localhost:50051') as kb_channel:
     kb_stub = spitire_pb2_grpc.SpitfireStub(kb_channel)
     ta.send(kb_stub)
 
-    ta2 = 
+
 
 
     
@@ -332,10 +331,10 @@ with open(spitfire_protobuf_out, "w") as s:
 
 with open(spitfire_protobuf_out, "r") as s:
     ta2 = unmarshal_taint_analysis(s)
-    print "------------------------"
-    print ta2
+    print ("------------------------")
+    print (ta2)
     
-print "done"
+print ("done")
 
 
 
