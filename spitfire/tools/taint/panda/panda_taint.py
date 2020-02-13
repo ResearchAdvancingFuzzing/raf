@@ -95,7 +95,7 @@ def run(cfg):
                                           input=taint_input.uuid)
         taint_analysis = kbs.AddAnalysis(taint_analysis_msg)
 
-        msg_end = "tool:\n%starget:\n%sinput:\n%s" \
+        msg_end =  "\ntool[%s]\ntarget[%s]\ninput[%s]" \
                   % (text_format.MessageToString(panda), \
                      text_format.MessageToString(target), \
                      text_format.MessageToString(taint_input))
@@ -147,6 +147,5 @@ def run(cfg):
 
 
 if __name__ == "__main__":
-    log.info("panda_taint.py started")
     run()
     log.info("panda_taint.py finished")
