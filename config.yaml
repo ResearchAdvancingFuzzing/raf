@@ -1,3 +1,5 @@
+# This file will need to use a config file for the port that the service listens on
+
 # make sure we do a helm install stable/postgresql BEFORE any of this since
 # the setup requires that we have the postgres database already running 
 
@@ -24,52 +26,106 @@ roleRef: # what role they are getting
   name: pods-list
   apiGroup: rbac.authorization.k8s.io
 
----
-# What will be the Cron Job 
-apiVersion: apps/v1 # version of the api to use (group/version)
-kind: Deployment
-metadata: # data that helps uniquely identify the object
-  name: fuzzing-manager # must be unique within the namespace
-  labels: # used to organize&categorize; match selectors of controllers/services
-    app: fuzzing-manager
-spec: # specification of the desired behavior of the Deployment
-  selector: # label selector for the pods 
-    matchLabels:
-      app: fuzzing-manager 
-      #replicas: 1 # number of desired pods; # of desired fuzzers we want to start?
-  template: # describes the pods that will be created 
-    metadata:
-      labels:
-        app: fuzzing-manager
-    spec: 
-      containers:
-        - name: fuzzing-manager
-          image: hpreslier/fuzzing-manager:v1
-          imagePullPolicy: Always # container image will be pulled every time the pod is started
-          ports: 
-                - containerPort: 80 # states the port number to expose on the pod's IP address; provides info about the network connections a container uses
+#---
+# The fuzzing manager is the cron job that wakes up every x seconds,
+# surveys the system and dispatches Kubernetes jobs if need be 
+#apiVersion: batch/v1beta1 # version of the api to use (group/version)
+#kind: CronJob
+#metadata: # data that helps uniquely identify the object
+#name: fuzzing-manager # must be unique within the namespace
+  # labels: # used to organize&categorize; match selectors of controllers/services
+  # app: fuzzing-manager
+  #spec: # specification of the desired behavior of the Deployment
+  #schedule: "*/1 * * * *" 
+  #jobTemplate:
+    #spec:
+      #template:
+        #spec:
+          #containers:
+            #- name: fuzzing_manager
+            #image: hpreslier/fuzzing-manager:v1
+            #restartPolicy: OnFailure 
 
-# THis just needs to be a plain job to setup a database with the database tables using sqlalchemy 
-# I feel like database should be in here for now
-# We also want this to happen before the fuzzing-manager  
----
-kind: Deployment
+# We need the grpc server as well; this is the only thing
+# that will talk to the database
+--- 
 apiVersion: apps/v1
+kind: Deployment
 metadata: 
-  name: setup-db
+  name: grpc-server
   labels:
-    app: setup-db
+    app: grpc-server
 spec:
-  selector: 
-    matchLabels: 
-      app: setup-db
+  selector:
+    matchLabels:
+      app: grpc-server
   template:
     metadata:
       labels:
-        app: setup-db
+        app: grpc-server
+    spec:
+      containers:
+        - name: grpc-server
+          image: hpreslier/knowledge-base:v1
+          imagePullPolicy: Always 
+
+# This is the service for the grpc server; this is what each of the 
+# grpc clients need to communicate through to the server 
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grpc-server-service
+spec:
+  selector:
+    app: grpc-server
+  ports: 
+    - port: 61111 
+
+
+# Basically, every job that the fuzzing-manager can potentially deploy 
+# needs to be outlined as a job below with the docker image 
+
+
+# This is the grpc client for panda/taint that the Cron Job can dispatch
+---
+apiVersion: batch/v1
+kind: Job
+metadata: 
+  name: taint-panda
+spec:
+  template:
+    metadata:
+      name: taint-panda
+    spec:
+      containers:
+        - name: taint-panda
+          image: hpreslier/knowledge-base-test:v1
+          imagePullPolicy: Always 
+      restartPolicy: OnFailure
+
+# This just needs to be a plain job to setup a database with the database tables using sqlalchemy 
+# I feel like database should be in here for now
+# We also want this to happen before the fuzzing-manager  
+---
+kind: Job 
+apiVersion: batch/v1
+metadata: 
+  name: init-db
+  #labels:
+    #app: init-db
+spec:
+  #selector: 
+    #matchLabels: 
+      #app: init-db
+  template:
+    metadata:
+      name: init-db
+      #labels:
+        #app: init-db
     spec: 
       containers:
-        - name: setup-db
+        - name: init-db
           image: hpreslier/setup-db:v1
           imagePullPolicy: Always
- 
+      restartPolicy: OnFailure
