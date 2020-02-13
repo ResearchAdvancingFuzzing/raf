@@ -23,9 +23,11 @@ import os
 
 from os.path import join,basename
 
+import subprocess as sp
+
 import grpc
 import hydra
-import subprocess as sp
+import docker
 
 # walk up the path to find 'spitfire' and add that to python path
 # at most 10 levels up?
@@ -68,6 +70,9 @@ def run(cfg):
 
     # channel to talk to kb server
     with grpc.insecure_channel("%s:%s" % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
+
+        log.info("Connected to knowledge_base")
+
         kbs = kbpg.KnowledgeBaseStub(channel)
 
         # get canonical representations for all of these things
@@ -90,7 +95,7 @@ def run(cfg):
                                           input=taint_input.uuid)
         taint_analysis = kbs.AddAnalysis(taint_analysis_msg)
 
-        msg_end = "\ntool:\n%s\ntarget:\n%s\ninput:\n%s\n" \
+        msg_end = "tool:\n%starget:\n%sinput:\n%s" \
                   % (text_format.MessageToString(panda), \
                      text_format.MessageToString(target), \
                      text_format.MessageToString(taint_input))
@@ -108,93 +113,40 @@ def run(cfg):
                                             cfg.target.source_hash)), "run.sh")
         retv = sp.check_call([run_sh, taint_input.filepath])
         replay_dir = os.getcwd()
-        replay_pfx = join(os.getcwd(), basename(taint_input.filepath))
+        replay_name = basename(taint_input.filepath)
+#        replay_pfx = join(os.getcwd(), replay_name)
 
         if retv == 0:
-            log.info("Recording created: pfx=%s" % replay_pfx)
+            log.info("Recording created: %s" % replay_name)
         else:
             raise PandaTaintFailed("Couldn't create recording")
 
-        
+# tleek@ubuntu:~/git/raf/spitfire/tools/taint/panda$ ~/git/panda/build/x86_64-softmmu/panda-system-x86_64 -m 1G -replay ./outputs/2020-02-12/09-21-21/slashdot.xml-panda  -os linux-64-ubuntu:4.15.0-72-generic -panda file_taint:filename=slashdot.xml,pos=1^C
+
+        # now do the taint analysis
         client = docker.from_env()
         
         transfer_dir = os.getcwd()
-        volume_dict[transfer_dir] = {'bind': "/transfer"}
-        cmd = "panda/build/x
-        client.containsers.run(cfg.taint.panda_container,  
-        
-        # create recording
-        (prog_dir, progname) = os.path.split(program.filepath)
-        (input_dir, dc) = os.path.split(taint_input.filepath)
-        transfer_dir = cfg.panda_container_transfer_dir
         volume_dict = {}
-        volume_dict[prog_dir] = {'bind': prog_dir, 'mode': 'rw'}
-        volume_dict[input_dir] = {'bind': input_dir, 'mode': 'rw'}
-        volume_dict[transfer_dir] = {'bind': transfer_dir, 'mode': 'rw'}
-        
-        
-        envdict = "\"{'LD_LIBRARY_PATH':'%s/.libs'}\"" % transfer_dir
+        volume_dict[transfer_dir] = {'bind': "/transfer"}
 
-        cmd = "panda/panda/scripts/run_debian.py -env " + envdict + " --replaybase=" + progname + " " + program.filepath + " " + taint_input.filepath
-        client.containers.run(cfg.panda_container_name, cmd, volumes=volume_dict)
-        
-        # move the recording
-        pshort = program.shortname
-        # path to replay we just created
-        this_replay_pfx = os.path.join("replays", os.path.join(pshort, pshort))
-        # and this is where we will save it for later
-        knowledge_base_replays_dir = os.path.join(fcp.fs.replays_dir, pshort)
-        cmd = "mv %s* %s" % (replay_pfx, knowledge_base_replays_dir)
-        # pfx of saved replay
-        replay_pfx = os.path.join(knowledge_base_replays_dir, pshort)
+        input_basename = os.path.basename(cfg.taint.input_file)
 
-"""
-    # replay using taint
-    pandalog_filename = os.path.join(fcp.fs.pandalogdir, pshort + ".plog")
-    cmd = fcp.panda.binary \
-          + " -replay " + replay_pfx \
-          + " -pandalog " + pandalog_filename \
-          + " -os " + fcp.panda.os_string \
-          + " -panda file_taint:filename=" + taint_input.name \
-          + " -panda asidstory,                                    
+        pandalog = join("/transfer", "taint.plog")
 
-    testsmall.bin,pos=1 -panda tainted_branch 
+        cmd = "/panda/build/x86_64-softmmu/panda-system-x86_64 -m 1G -replay " + (join("/transfer", replay_name + "-panda"))
+        cmd += " -pandalog " + pandalog
+        cmd += " -os linux-64-ubuntu:4.15.0-72-generic -panda file_taint:filename=" + input_basename 
+        cmd += ",pos=1 -panda tainted_instr -panda tainted_branch"
 
-    replays/file-32-1.45/file-32-1.45 " \
-          + "-os linux-32-debian:3.2.0-4-686-pae -pandalog " "/fs/prgrams/file/replays/
+        print("cmd = [%s]\n" % cmd)
 
-    "/transfer/toy.plog -panda file_taint:filename=testsmall.bin,pos=1 -panda tainted_branch && panda/panda/scripts/plog_reader.py /transfer/toy.plog > /transfer/toy.plog.txt
+        client.containers.run(cfg.taint.panda_container, cmd, volumes=volume_dict)
 
-    client.containers.run(panda_container_name, "panda/panda/scripts/run_debian.py /transfer/toy /transfer/testsmall.bin && panda/build/i386-softmmu/panda-system-i386 -replay replays/toy/toy -os linux-32-debian:3.2.0-4-686-pae -pandalog /transfer/toy.plog -panda file_taint:filename=testsmall.bin,pos=1 -panda tainted_branch && panda/panda/scripts/plog_reader.py /transfer/toy.plog > /transfer/toy.plog.txt
-
-
-
-    # connect to the knowledge base for remainder
-
-    with grpc.insecure_channel('localhost:50059') as kb_channel:
-
-        kb_stub = knowledge_base_pb2_gprc.SpitfireStub(kb_channel)
-
-        # get msg for taint engine
-        te = knowledge_base_pb2.TaintEngine(install_string = panda_install_string)
-
-
-
-    # input should be a filename
-    # let's get its uuid in canonical spitfire way (md5sum of contents)
-    input_uuid = spitfire.get_input_uuid(input_filename)
-
-        # get canonical input msg from kb
-        im = knowledge_base_pb2.Input(uuid = input_uuid)
-        input_msg = kb_stub.Getaint_input(im)
-
-
-
-
-    # japan 
-"""
-
+        log.info("Replay with taint completed")
 
 
 if __name__ == "__main__":
+    log.info("panda_taint.py started")
     run()
+    log.info("panda_taint.py finished")
