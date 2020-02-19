@@ -11,7 +11,7 @@ Takes one argument, the param file
 
 # Get campaign parameters 
 yf = yaml.load(open(campaign_param_file)
-ct = yf.campagin_type
+ct = yf.campaign_type
 
 # Check on state of fuzzing campaign
 fm.assess_fuzzing_campaign()

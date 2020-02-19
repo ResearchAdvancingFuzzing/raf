@@ -23,7 +23,7 @@ assert (command is "start" or "stop")
 
 # Get campaign parameters 
 yf = yaml.load(open(campaign_param_file)
-ct = yf.campagin_type
+ct = yf.campaign_type
 
 progress("fuzzing manager type is [%s]" % ct)
 
