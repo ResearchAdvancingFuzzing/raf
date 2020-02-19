@@ -129,3 +129,6 @@ spec:
           image: hpreslier/setup-db:v1
           imagePullPolicy: Always
       restartPolicy: OnFailure
+
+---
+

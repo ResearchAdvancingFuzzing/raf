@@ -68,14 +68,12 @@ RUN python /script.py
 
 RUN apt-get install -y curl
 WORKDIR /
-#COPY cov2api.py ./
 COPY drcov.py.patch ./
 RUN curl https://raw.githubusercontent.com/gaasedelen/lighthouse/master/plugin/lighthouse/parsers/drcov.py > drcov.py 
 RUN patch drcov.py < drcov.py.patch  
 
 # We need to the grpc client part; we need to copy in the entire spitfire directory
 FROM python:3.6
-
 
 RUN python3.6 -m pip install grpcio grpcio-tools hydra-core
  
@@ -84,8 +82,3 @@ COPY --from=1 /coverage ./coverage
 COPY ./spitfire/ ./spitfire
 
 CMD python3.6 spitfire/tools/mutfuzz/cov2api.py
-#__init__.py
-#/tools/mutfuzz/cov2api.c
-
-
-#ENTRYPOINT ["bash"]
