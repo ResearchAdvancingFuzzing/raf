@@ -100,7 +100,7 @@ spec:
     spec:
       containers:
         - name: taint-panda
-          image: hpreslier/knowledge-base-test:v1
+          image: hpreslier/fuzzer:v1 #knowledge-base-test:v1 
           imagePullPolicy: Always 
       restartPolicy: OnFailure
 

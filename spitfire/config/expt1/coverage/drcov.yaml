@@ -1,4 +1,4 @@
 #
 coverage:
-        coverage_directory: "../../../../../../test_files/drcov/"
+        coverage_directory: "./coverage" #"../../../../../../test_files/drcov/"
         number_of_addresses: 3
