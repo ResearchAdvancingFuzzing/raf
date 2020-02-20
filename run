@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# Make sure you have enough memory on  your virutal box
+minikube start --disk-size=20g--vm-driver=virutalbox
+
+eval $(minikube docker-env)
+
+docker build -t init:v1 -f fuzzing-manager/init/Dockerfile .
+docker build -t gtfo-source:v1 -f fuzzing-manager/gtfo-source/Dockerfile .
+docker build -t seed-corpus:v1 -f fuzzing-manager/seed-corpus/Dockerfile .
+docker build -t coverage:v1 -f fuzzing-manager/coverage/Dockerfile .
+docker build -t target:v1 -f fuzzing-manager/target/Dockerfile .
+docker build -t spitfire:v1 .
+docker build -t fuzz:v1 -f spitfire/tools/mutfuzz/Dockerfile .
+docker build -t init:v1 -f fuzzing-manager/init/Dockerfile .
+docker build -t knowledge-base:v1 -f spitfire/knowledge-base/Dockerfile .
+
+kubectl apply -f config.yaml

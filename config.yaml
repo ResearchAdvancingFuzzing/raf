@@ -70,7 +70,7 @@ spec:
           imagePullPolicy: Always
           ports: 
             - name: server-port
-              containerPort: 61111 
+              containerPort: 61111 # this shouldnt matter because we are going by name 
 
 # This is the service for the grpc server; this is what each of the 
 # grpc clients need to communicate through to the server 
@@ -80,6 +80,7 @@ kind: Service
 metadata:
   name: grpc-server-service
 spec:
+  clusterIP: "10.105.43.27" # for now
   selector:
     app: grpc-server
   ports: 
@@ -92,47 +93,47 @@ spec:
 
 
 # This is the grpc client for panda/taint that the Cron Job can dispatch
----
-apiVersion: batch/v1
-kind: Job
-metadata: 
-  name: taint-panda
-spec:
-  template:
-    metadata:
-      name: taint-panda
-    spec:
-      containers:
-        - name: taint-panda
-          image: hpreslier/fuzzer:v1 #knowledge-base-test:v1 
-          imagePullPolicy: Always 
-      restartPolicy: OnFailure
+#---
+#apiVersion: batch/v1
+#kind: Job
+#metadata: 
+  #name: taint-panda
+#spec:
+  #template:
+    #metadata:
+      #name: taint-panda
+    #spec:
+      #containers:
+        #- name: taint-panda
+        #image: hpreslier/fuzzer:v1 #knowledge-base-test:v1 
+        #imagePullPolicy: Always 
+      #restartPolicy: OnFailure
 
 # This just needs to be a plain job to setup a database with the database tables using sqlalchemy 
 # I feel like database should be in here for now
 # We also want this to happen before the fuzzing-manager  
----
-kind: Job 
-apiVersion: batch/v1
-metadata: 
-  name: init-db
+#---
+#kind: Job 
+#apiVersion: batch/v1
+#metadata: 
+  #name: init-db
   #labels:
     #app: init-db
-spec:
+#spec:
   #selector: 
     #matchLabels: 
       #app: init-db
-  template:
-    metadata:
-      name: init-db
+  #template:
+    #metadata:
+      #name: init-db
       #labels:
         #app: init-db
-    spec: 
-      containers:
-        - name: init-db
-          image: hpreslier/setup-db:v1
-          imagePullPolicy: Always
-      restartPolicy: OnFailure
+    #spec: 
+      #containers:
+        #- name: init-db
+        # image: hpreslier/setup-db:v1
+        # imagePullPolicy: Always
+      #restartPolicy: OnFailure
 
 ---
 apiVersion: v1
@@ -223,8 +224,7 @@ spec:
     spec: 
       containers:
         - name: init
-          image: hpreslier/init:v1
-          imagePullPolicy: Always
+          image: init:v1
           volumeMounts:
             - name: target-pv-storage
               mountPath: "/target"
@@ -238,28 +238,27 @@ spec:
               mountPath: "/coverage" 
       initContainers: 
         - name: get-target
-          image: hpreslier/target:v1 #hpreslier/target:v1
+          image: target:v1 #hpreslier/target:v1
           volumeMounts:
             - name: target-pv-storage
               mountPath: "/target"
         - name: get-gtfo-source
-          image: hpreslier/gtfo-source:v1
+          image: gtfo-source:v1
           volumeMounts: 
             - name: gtfo-pv-storage
               mountPath: "/gtfo-source"
         - name: get-seed-corpus
-          image: hpreslier/seed-corpus:v1
+          image: seed-corpus:v1
           volumeMounts:
             - name: seed-corpus-pv-storage
               mountPath: "/seed-corpus"
         - name: get-spitfire
-          image: hpreslier/spitfire:v1
-          imagePullPolicy: Always 
+          image: spitfire:v1
           volumeMounts:
             - name: spitfire-pv-storage
               mountPath: "/spitfire"
         - name: get-coverage
-          image: hpreslier/coverage:v1
+          image: coverage:v1
           volumeMounts:
             - name: coverage-pv-storage
               mountPath: "/coverage" 
@@ -284,16 +283,15 @@ spec:
 kind: Job 
 apiVersion: batch/v1
 metadata: 
-  name: new-fuzzer
+  name: fuzz
 spec:
   template:
     metadata:
-      name: new-fuzzer
+      name: fuzz
     spec: 
       containers:
-        - name: new-fuzzer
-          image: hpreslier/new-fuzzer:v1
-          imagePullPolicy: Always
+        - name: fuzz
+          image: fuzz:v1
           volumeMounts:
             - name: target-pv-storage
               mountPath: "/target"
