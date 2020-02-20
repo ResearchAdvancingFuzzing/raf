@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Requirements: 
-# (1) Virutalbox needs to be installed 
-# (2) Minikube needs to be installed: 
+# (1) Virutalbox needs to be installed (make sure you have at least 20gb of disk space) 
+# (2) Minikube needs to be installed (brew install minikube) 
 
 minikube start --disk-size=20g--vm-driver=virtualbox
 
@@ -21,4 +21,5 @@ docker build -t init:v1 -f fuzzing-manager/init/Dockerfile .
 docker build -t knowledge-base:v1 -f spitfire/knowledge-base/Dockerfile .
 
 # This job needs to be created "after" but for now this will do
-kubectl apply -f config.yaml 
+kubectl apply -f config-init.yaml 
+kubectl apply -f config-jobs.yaml #config.yaml 

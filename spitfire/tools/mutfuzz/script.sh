@@ -4,12 +4,6 @@
 
 # This needs to be environment variables in the container not in here
 
-export WORK_DIR="/gtfo-source" #"/home/he27553" #"/gtfo-source"
-export TARGET_DIR="/target" #"/usr/local/bin" #"/target"
-export CORPUS_DIR="/seed-corpus"
-export COVERAGE_DIR="/coverage" #"/home/he27553" #"/coverage"
-export SPITFIRE="/spitfire" #"/spitfire"
-
 run_drcov() {
     directory=$1
     cd $directory
@@ -27,17 +21,18 @@ run_drcov() {
     done
 }
 
-mkdir /python
-cd /python
-LD_LIBRARY_PATH=$WORK_DIR/gtfo/lib/ ANALYSIS_SIZE=65536 JIG_MAP_SIZE=65536 JIG_TARGET=$TARGET_DIR/tiff2rgba  JIG_TARGET_ARGV="-c jpeg fuzzfile /dev/null" $WORK_DIR/gtfo/bin/the_fuzz -S $WORK_DIR/gtfo/gtfo/analysis/afl_bitmap_analysis.so -O $WORK_DIR/gtfo/gtfo/ooze/afl_havoc.so -J $WORK_DIR/gtfo/gtfo/the_fuzz/afl_jig.so -i $CORPUS_DIR/not_kitty.tiff -n 1000 -x 1024 -c bitmap -s `head -c 10 /dev/urandom | xxd -p`
+mkdir $WORK_DIR 
+cd $WORK_DIR 
+
+LD_LIBRARY_PATH=$GTFO_DIR/gtfo/lib/ ANALYSIS_SIZE=65536 JIG_MAP_SIZE=65536 JIG_TARGET=$TARGET_DIR/tiff2rgba  JIG_TARGET_ARGV="-c jpeg fuzzfile /dev/null" $GTFO_DIR/gtfo/bin/the_fuzz -S $GTFO_DIR/gtfo/gtfo/analysis/afl_bitmap_analysis.so -O $GTFO_DIR/gtfo/gtfo/ooze/afl_havoc.so -J $GTFO_DIR/gtfo/gtfo/the_fuzz/afl_jig.so -i $CORPUS_DIR/not_kitty.tiff -n 1000 -x 1024 -c bitmap -s `head -c 10 /dev/urandom | xxd -p`
 
 # For now lets just put it all into the inputs directory 
 # We can separate later 
-cp /python/interesting/crash/* /inputs
-cp /python/coverage/* /inputs
+cp $WORK_DIR/interesting/crash/* /inputs
+cp $WORK_DIR/coverage/* /inputs
 
-run_drcov "/python/interesting/crash"
-run_drcov "/python/coverage"
+run_drcov "$WORK_DIR/interesting/crash"
+run_drcov "$WORK_DIR/coverage"
 
 #while : 
 #do 

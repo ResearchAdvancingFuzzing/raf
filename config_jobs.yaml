@@ -1,0 +1,73 @@
+kind: Job 
+apiVersion: batch/v1
+metadata: 
+  name: fuzz
+spec:
+  template:
+    metadata:
+      name: fuzz
+    spec: 
+      containers:
+        - name: fuzz
+          image: fuzz:v1
+          volumeMounts:
+            - name: target-pv-storage
+              mountPath: "/target"
+            - name: gtfo-pv-storage
+              mountPath: "/gtfo-source"
+            - name: seed-corpus-pv-storage
+              mountPath: "/seed-corpus"
+            - name: spitfire-pv-storage
+              mountPath: "/spitfire"
+            - name: coverage-pv-storage
+              mountPath: "/coverage"
+            - name: inputs-pv-storage
+              mountPath: "/inputs"
+          env: 
+            - name: WORK_DIR
+              value: /data
+          envFrom: 
+            - configMapRef: 
+                name: dir-config 
+      volumes: # Pods access storage by using the claim as a volume. `
+        - name: target-pv-storage
+          persistentVolumeClaim:
+            claimName: target-pv-claim 
+        - name: gtfo-pv-storage
+          persistentVolumeClaim: 
+            claimName: gtfo-pv-claim
+        - name: seed-corpus-pv-storage
+          persistentVolumeClaim:
+            claimName: seed-corpus-pv-claim 
+        - name: spitfire-pv-storage
+          persistentVolumeClaim:
+            claimName: spitfire-pv-claim
+        - name: coverage-pv-storage
+          persistentVolumeClaim:
+            claimName: coverage-pv-claim
+        - name: inputs-pv-storage
+          persistentVolumeClaim:
+            claimName: inputs-pv-claim
+      restartPolicy: OnFailure
+
+#kind: Job # needs to be a cron job
+#apiVersion: batch/v1 
+#metadata: 
+  #name: fuzzing-manager
+  #spec:
+    #template:
+      #metadata:
+        #name: fuzzing-manager
+      #spec:
+        #containers:
+          #- name: fuzzing-manager
+          #  image: fuzzing-manager:v1 
+          #  volumeMounts:
+            #- name: inputs-pv-storage
+            #   mountPath: "/inputs" 
+        #volumes:
+          #- name: inputs-pv-storage
+          #  persistentVolumeClaim:
+            #claimName: inputs-pv-claim
+
+# Job for Panda

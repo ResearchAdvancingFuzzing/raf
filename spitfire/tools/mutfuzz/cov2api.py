@@ -23,10 +23,14 @@ import google.protobuf.json_format
 
 @hydra.main(config_path="../../config/expt1/config.yaml")
 def run(cfg):    
-    with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
+    with grpc.insecure_channel('%s:%d' % ("10.105.43.27", 61111)) as channel:
+        print("here: connected");
         stub = rpc.KnowledgeBaseStub(channel)
-        os.chdir("/python") # for now
+        os.chdir(os.environ["WORK_DIR"])
+        print(os.listdir())
+        print(os.getcwd())
         for cov_file in os.scandir(cfg.coverage.coverage_directory):
+            #print("file")
             if not cov_file.is_file() or not cov_file.name.endswith('.coverage'):
                 continue
             
