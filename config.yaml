@@ -211,7 +211,17 @@ spec:
   resources:
     requests:
       storage: 1Gi
-
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: inputs-pv-claim
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 2Gi
 ---
 kind: Job 
 apiVersion: batch/v1
@@ -303,6 +313,8 @@ spec:
               mountPath: "/spitfire"
             - name: coverage-pv-storage
               mountPath: "/coverage"
+            - name: inputs-pv-storage
+              mountPath: "/inputs"
       volumes: # Pods access storage by using the claim as a volume. `
         - name: target-pv-storage
           persistentVolumeClaim:
@@ -319,4 +331,7 @@ spec:
         - name: coverage-pv-storage
           persistentVolumeClaim:
             claimName: coverage-pv-claim
+        - name: inputs-pv-storage
+          persistentVolumeClaim:
+            claimName: inputs-pv-claim
       restartPolicy: OnFailure

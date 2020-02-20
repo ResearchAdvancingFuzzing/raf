@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Make sure you have enough memory on  your virutal box
-minikube start --disk-size=20g--vm-driver=virutalbox
+minikube start --disk-size=20g--vm-driver=virtualbox
 
 eval $(minikube docker-env)
 
