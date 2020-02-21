@@ -21,8 +21,4 @@ RUN CFLAGS="-static -fno-PIE -fno-PIC" CC=/fuzzing/libtiff_working/afl-2.52b/afl
 RUN make install
 
 CMD cp /usr/local/bin/tiff2rgba /target
-#/shared/target 
-#${TARGET_DIR}
-#/target
-#$TARGET_DIR
-#/target  && echo "COMPLETE!!!"
+#CMD mkdir /shared/target && cp /usr/local/bin/tiff2rgba /shared/target

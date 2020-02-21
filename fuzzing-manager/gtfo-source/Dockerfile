@@ -20,7 +20,4 @@ RUN make install
 WORKDIR /fuzzing/
 
 CMD cp -r /fuzzing/gtfo/  /gtfo-source
-#/shared/gtfo
-#${GTFO_DIR}
-#/gtfo-source
-# target needs to be replaced with an env variable and a config map
+#CMD mkdir /shared/gtfo && cp -r /fuzzing/gtfo /shared/gtfo

@@ -3,3 +3,4 @@
 *_pb2_grpc.py
 *.pyc
 *.pb
+*.swp

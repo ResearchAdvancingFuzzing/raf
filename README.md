@@ -1,17 +1,8 @@
 # RAF: Research Advancing Fuzzing
 
-# Need to build all the images first 
-docker build -t hpreslier/knowledge-base:v1 -f spitfire/knowledge_base/ .
-docker build -t hpreslier/knowledge-base-test:v1 -f spitfire/knowledge_base_test/ . 
-docker push
-
-minikube start 
 
 helm install stable/postgresql 
-
-kubectl apply -f config.yaml
-
-
+- New inputs should probably be put into some sort of "database" with some sort of service  
 
 Ok to use google rpc you have to
 

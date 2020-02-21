@@ -50,24 +50,24 @@ spec:
             claimName: inputs-pv-claim
       restartPolicy: OnFailure
 
-#kind: Job # needs to be a cron job
-#apiVersion: batch/v1 
-#metadata: 
-  #name: fuzzing-manager
-  #spec:
-    #template:
-      #metadata:
-        #name: fuzzing-manager
-      #spec:
-        #containers:
-          #- name: fuzzing-manager
-          #  image: fuzzing-manager:v1 
-          #  volumeMounts:
-            #- name: inputs-pv-storage
-            #   mountPath: "/inputs" 
-        #volumes:
-          #- name: inputs-pv-storage
-          #  persistentVolumeClaim:
-            #claimName: inputs-pv-claim
+kind: Job # needs to be a cron job
+apiVersion: batch/v1 
+metadata: 
+  name: fuzzing-manager
+  spec:
+    template:
+      metadata:
+        name: fuzzing-manager
+      spec:
+        containers:
+          - name: fuzzing-manager
+            image: fuzzing-manager:v1 
+            volumeMounts:
+              - name: inputs-pv-storage
+                mountPath: "/inputs" 
+        volumes:
+          - name: inputs-pv-storage
+            persistentVolumeClaim:
+            claimName: inputs-pv-claim
 
 # Job for Panda
