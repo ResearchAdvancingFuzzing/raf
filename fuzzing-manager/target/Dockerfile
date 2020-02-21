@@ -3,6 +3,7 @@ RUN apt-get update -y
 RUN apt-get upgrade -y
 RUN apt-get install -y clang wget xxd build-essential python cmake python-pip pkg-config python-yaml libyaml-0-2 libyaml-dev systemd --fix-missing
 
+
 WORKDIR /fuzzing
 RUN mkdir libtiff_working
 WORKDIR /fuzzing/libtiff_working
@@ -19,4 +20,9 @@ RUN CFLAGS="-static -fno-PIE -fno-PIC" CC=/fuzzing/libtiff_working/afl-2.52b/afl
 RUN CFLAGS="-static -fno-PIE -fno-PIC" CC=/fuzzing/libtiff_working/afl-2.52b/afl-clang make
 RUN make install
 
-CMD cp /usr/local/bin/tiff2rgba /target  && echo "COMPLETE!!!"
+CMD cp /usr/local/bin/tiff2rgba /target
+#/shared/target 
+#${TARGET_DIR}
+#/target
+#$TARGET_DIR
+#/target  && echo "COMPLETE!!!"

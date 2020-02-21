@@ -7,6 +7,8 @@ COPY spitfire/tools/mutfuzz/drcov.py.patch ./
 RUN curl https://raw.githubusercontent.com/gaasedelen/lighthouse/master/plugin/lighthouse/parsers/drcov.py > drcov.py 
 RUN patch drcov.py < drcov.py.patch  
 
+#RUN cp drcov.py $SPITFIRE/tools/mutfuzz/
+
 RUN pip3 install grpcio grpcio-tools hydra-core
 
 COPY spitfire/tools/mutfuzz/script.sh ./

@@ -10,3 +10,6 @@ RUN cmake ..
 RUN make -j
 
 CMD cp -r /dynamorio /coverage
+#mkdir /shared/coverage && cp -r /dynamorio /shared/coverage
+#$COVERAGE_DIR
+#/coverage
