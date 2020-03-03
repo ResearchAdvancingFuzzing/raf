@@ -27,7 +27,7 @@ import subprocess as sp
 
 import grpc
 import hydra
-import docker
+#import docker
 
 # walk up the path to find 'spitfire' and add that to python path
 # at most 10 levels up?
@@ -69,7 +69,9 @@ def run(cfg):
 #    print(cfg.pretty())
 
     # channel to talk to kb server
-    with grpc.insecure_channel("%s:%s" % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
+    #with grpc.insecure_channel("%s:%s" % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
+    with grpc.insecure_channel('%s:%d' % ("10.105.43.27", 61111)) as channel:
+    #with grpc.insecure_channel('%s:%d' % ("localhost", 61113)) as channel:
 
         log.info("Connected to knowledge_base")
 
@@ -124,7 +126,7 @@ def run(cfg):
 # tleek@ubuntu:~/git/raf/spitfire/tools/taint/panda$ ~/git/panda/build/x86_64-softmmu/panda-system-x86_64 -m 1G -replay ./outputs/2020-02-12/09-21-21/slashdot.xml-panda  -os linux-64-ubuntu:4.15.0-72-generic -panda file_taint:filename=slashdot.xml,pos=1^C
 
         # now do the taint analysis
-        client = docker.from_env()
+        #client = docker.from_env()
         
         transfer_dir = os.getcwd()
         volume_dict = {}
@@ -132,18 +134,19 @@ def run(cfg):
 
         input_basename = os.path.basename(cfg.taint.input_file)
 
-        pandalog = join("/transfer", "taint.plog")
+        pandalog = join("/replay", "taint.plog")
 
-        cmd = "/panda/build/x86_64-softmmu/panda-system-x86_64 -m 1G -replay " + (join("/transfer", replay_name + "-panda"))
+        cmd = "/panda-source/panda/build/x86_64-softmmu/panda-system-x86_64 -m 1G -replay " + (join("/replay", replay_name + "-panda"))
         cmd += " -pandalog " + pandalog
         cmd += " -os linux-64-ubuntu:4.15.0-72-generic -panda file_taint:filename=" + input_basename 
         cmd += ",pos=1 -panda tainted_instr -panda tainted_branch"
+        cmd += "-L /usr/local/lib/python3.6/dist-packages/panda/data/pc-bios/" # need this because i renamed the directory 
 
         print("cmd = [%s]\n" % cmd)
 
-        client.containers.run(cfg.taint.panda_container, cmd, volumes=volume_dict)
+        #client.containers.run(cfg.taint.panda_container, cmd, volumes=volume_dict)
 
-        log.info("Replay with taint completed")
+        #log.info("Replay with taint completed")
 
 
 if __name__ == "__main__":

@@ -94,19 +94,21 @@ max_pcs_for_an_fbs     If too many SfTaintedInstructions are associated
 
 """
 
-
+import grpc
 import time
 import sys
 import itertools
 import os
 import struct
 from os.path import dirname
+from panda import plog 
+from panda import * 
 
 from google.protobuf.json_format import MessageToJson
 
 sys.path.append("../../../protos")
-import knowledge_base_pb2
-import knowledge_base_pb2_grpc
+import knowledge_base_pb2 as pb
+import knowledge_base_pb2_grpc as kbpg
 
 
 last_time = None
@@ -193,24 +195,26 @@ last_instr = None
 
 print ("Ingesting pandalog")
 # process the pandalog protobuf messages
-with open(panda_protobuf_in, "rb") as pbf:
-
-    while True:
-
-        if ntq > 1 and (0 == (ntq % 100000)):
-            print (ntq)
-
-        if ntq > 200000:
-            break
-        
-        try:
+#with open(panda_protobuf_in, "rb") as pbf:
+with plog.PLogReader("taint.plog") as plr:
+    try:
+        for i, log_entry in enumerate(plr):
+            if i > 1 and (0 == (i % 100000)):
+                print(i)
+            if (i > 200000): 
+                break
+                #if m.HasField('tainted_branch'): 
+                     #print(m.pc, m.instr)
+#             if i > 0: print(',')
+#             print(MessageToJson(m), end='')
+ 
 
             # size of pb msg
-            msg_size, = struct.unpack("I", pbf.read(4))
+            #msg_size, = struct.unpack("I", pbf.read(4))
             
-            log_entry = plog_pb2.LogEntry()
-            log_entry.ParseFromString(pbf.read(msg_size))
-            last_instr = log_entry.instr
+            #log_entry = plog_pb2.LogEntry()
+            #log_entry.ParseFromString(pbf.read(msg_size))
+                last_instr = log_entry.instr
 
             if log_entry.HasField("asid_info"):
                 ai = log_entry.asid_info
@@ -223,21 +227,21 @@ with open(panda_protobuf_in, "rb") as pbf:
                             first_instr_for_program = ai.start_instr
                         last_instr_for_program = ai.end_instr
 
-            if log_entry.HasField("basic_block"):
-                bb = log_entry.basic_block
-                if not (bb.asid in basic_blocks):
-                    basic_blocks[bb.asid] = {}
-                if not (log_entry.pc in basic_blocks[bb.asid]):
-                    basic_blocks[bb.asid][log_entry.pc] = set([])
-                block = (bb.size, bb.code)
-                basic_blocks[bb.asid][log_entry.pc].add(block)
+                #if log_entry.HasField("basic_block"):
+                #    bb = log_entry.basic_block
+                #    if not (bb.asid in basic_blocks):
+                #        basic_blocks[bb.asid] = {}
+                #    if not (log_entry.pc in basic_blocks[bb.asid]):
+                #        basic_blocks[bb.asid][log_entry.pc] = set([])
+                #    block = (bb.size, bb.code)
+                #    basic_blocks[bb.asid][log_entry.pc].add(block)
                 
             if log_entry.HasField("tainted_instr"):
                 ti = log_entry.tainted_instr
                 tq = ti.taint_query
                 num_bytes = len(tq)
                 tiv = TaintedInstrValue(log_entry)
-                # discard if label set too big
+                    # discard if label set too big
                 if len(tiv.labels) > max_label_set_size:
                     continue
                 # as long as at least one byte in this tainted instr val
@@ -247,14 +251,14 @@ with open(panda_protobuf_in, "rb") as pbf:
                     if not (tiv.labels in tainting_fbs):
                         tainting_fbs[tiv.labels] = set([])
                     tainting_fbs[tiv.labels].add(tiv)
-                ntq += 1
+                #ntq += 1
 
-        except Exception as e: 
-            print (str(e))
-            break
+    except Exception as e: 
+        print (str(e))
+        #break
 
 
-print (str(tock())) + " seconds"
+#print (str(tock())) + " seconds"
 
 print ("Found %d tainting fuzzable byte sets (fbs)" % (len(tainting_fbs)))
 
@@ -309,7 +313,12 @@ for fbs in tainting_fbs.keys():
             continue
         f = FuzzableByteSet(fbs)
         i = TaintedInstruction(tiv.pc, "Unk", None)
-        tm = TaintMapping(f, i, 42, tiv.len, (float(tiv.instr - first_instr_for_program) / (last_instr_for_program - first_instr_for_program)), tiv.tcn_min, tiv.tcn_max)
+        print(float(tiv.instr))
+        print(first_instr_for_program) 
+        print(last_instr_for_program)
+        tm = TaintMapping(f, i, 42, tiv.len, 0,  
+                #(float(tiv.instr - first_instr_for_program) / (last_instr_for_program - first_instr_for_program)), 
+                tiv.tcn_min, tiv.tcn_max)
         ta.add_taint_mapping(tm)
 
 print ("------------------------")
@@ -318,9 +327,72 @@ print (ta)
 
 # send the entire taint analysis over to the knowledge base
 # as a sequence of messages
-with grpc.insecure_channel('localhost:50051') as kb_channel:
-    kb_stub = spitire_pb2_grpc.SpitfireStub(kb_channel)
-    ta.send(kb_stub)
+#with grpc.insecure_channel('localhost:50051') as kb_channel:
+with grpc.insecure_channel('%s:%d' % ("10.105.43.27", 61111)) as channel:
+    stub = kbpg.KnowledgeBaseStub(channel) #spitire_pb2_grpc.SpitfireStub(kb_channel)
+    #taint_analysis = kb_stub.AddTaintMappings(
+    #ta.send(kb_stub)
+    taint_mappings = []
+    fuzzable_byte_sets = [] 
+    tainted_instructions = []
+    addresses = []
+    modules = []
+    for tm in ta.tma:
+        ti = tm.ti
+        modules.append(pb.Module(name=ti.module)) # what about uuid or base or end or filepath? 
+    
+    i = 0 
+    for r in stub.AddModules(iter(modules)):
+        modules[i] = r
+        i += 1
+    
+    i = 0
+    for tm in ta.tma: 
+        addresses.append(pb.Address(module=modules[i]))
+        i += 1 
+
+    i = 0
+    for r in stub.AddAddresses(iter(addresses)):
+        addresses[i] = r 
+        i += 1 
+        # What about uuid or offset?
+   
+    i = 0
+    for tm in ta.tma: 
+        ti = tm.ti
+        fbs = tm.fbs
+        tainted_instructions.append(pb.TaintedInstruction(uuid=bytes(bytearray((ti.uuid).digest())), address=addresses[i], type=ti.type))
+        fuzzable_byte_sets.append(pb.FuzzableByteSet(uuid=bytes(fbs.uuid, 'utf-8'), label=fbs.labels))
+        i += 1
+
+    i = 0
+    print(type(tainted_instructions))
+    result = stub.AddTaintedInstructions(iter(tainted_instructions))
+    print(result.success)
+    #tainted_instructions[i] = r 
+        #i += 1 # What about instruction bytes?
+
+    #i = 0 
+    result = stub.AddFuzzableByteSets(iter(fuzzable_byte_sets))
+    print(result.success)
+    #    fuzzable_byte_sets[i] = r 
+    #    i += 1
+   
+    # needs to be fixed
+    i = 0
+    for tm in ta.tma:
+        taint_mappings.append(pb.TaintMapping(fuzzable_byte_set=fuzzable_byte_sets[i], tainted_instruction=tainted_instructions[i], value=tm.value, value_length=tm.value_length, min_compute_distance=tm.min_compute_distance, max_compute_distance=tm.max_compute_distance))
+        i += 1
+
+    #i = 0
+    result =  stub.AddTaintMappings(iter(taint_mappings))
+    print(result.success)
+        #print(r.value)
+    #for tm in ta.tma: 
+    #    fuzzable_byte_sets.append(pb.FuzzableByteSet(label = tm.fbs))
+    #for taint_mapping in stub.AddTaintMappings(iter(ta.tma)):
+    #        taint_mappings[i] = taint_mapping
+    #        i += 1
 
 
 
