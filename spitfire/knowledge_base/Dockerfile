@@ -8,8 +8,8 @@ RUN python3.6 -m pip install grpcio grpcio-tools hydra-core
 WORKDIR python
 #RUN python setup.py install
 
-COPY ./spitfire/ ./spitfire
+#COPY ./spitfire/ ./spitfire
 #COPY knowledge_base_test.py ./
 
 #CMD ls 
-CMD python3.6 spitfire/knowledge_base/knowledge_base.py
+CMD python3.6 /spitfire/knowledge_base/knowledge_base.py

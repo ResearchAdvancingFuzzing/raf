@@ -26,46 +26,6 @@ roleRef: # what role they are getting
   name: pods-list
   apiGroup: rbac.authorization.k8s.io
 
-# We need the grpc server as well; this is the only thing
-# that will talk to the database
---- 
-apiVersion: apps/v1
-kind: Deployment
-metadata: 
-  name: grpc-server
-  labels:
-    app: grpc-server
-spec:
-  selector:
-    matchLabels:
-      app: grpc-server
-  template:
-    metadata:
-      labels:
-        app: grpc-server
-    spec:
-      containers:
-        - name: grpc-server
-          image: hpreslier/knowledge-base:v1
-          imagePullPolicy: Always
-          ports: 
-            - name: server-port
-              containerPort: 61111 # this shouldnt matter because we are going by name 
-
-# This is the service for the grpc server; this is what each of the 
-# grpc clients need to communicate through to the server 
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: grpc-server-service
-spec:
-  clusterIP: "10.105.43.27" # for now
-  selector:
-    app: grpc-server
-  ports: 
-    - port: 61111
-      targetPort: server-port  
 ---
 kind: ConfigMap
 apiVersion: v1
@@ -234,3 +194,52 @@ spec:
           persistentVolumeClaim:
             claimName: coverage-pv-claim 
       restartPolicy: OnFailure
+
+# We need the grpc server as well; this is the only thing
+# that will talk to the database
+--- 
+apiVersion: apps/v1
+kind: Deployment
+metadata: 
+  name: grpc-server
+  labels:
+    app: grpc-server
+spec:
+  selector:
+    matchLabels:
+      app: grpc-server
+  template:
+    metadata:
+      labels:
+        app: grpc-server
+    spec:
+      containers:
+        - name: grpc-server
+          image: knowledge-base:v1
+          imagePullPolicy: Never 
+          volumeMounts: 
+            - name: spitfire-pv-storage
+              mountPath: "/spitfire"
+          ports: 
+            - name: server-port
+              containerPort: 61111 # this shouldnt matter because we are going by name 
+      volumes:
+        - name: spitfire-pv-storage
+          persistentVolumeClaim:
+            claimName: spitfire-pv-claim
+
+# This is the service for the grpc server; this is what each of the 
+# grpc clients need to communicate through to the server 
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grpc-server-service
+spec:
+  clusterIP: "10.105.43.27" # for now
+  selector:
+    app: grpc-server
+  ports: 
+    - port: 61111
+      targetPort: server-port  
+---

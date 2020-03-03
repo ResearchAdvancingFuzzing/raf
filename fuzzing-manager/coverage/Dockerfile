@@ -7,7 +7,8 @@ WORKDIR dynamorio
 RUN mkdir build 
 WORKDIR build
 RUN cmake .. 
-RUN make -j
+RUN make 
+#-j
 
 CMD cp -r /dynamorio /coverage
 #mkdir /shared/coverage && cp -r /dynamorio /shared/coverage
