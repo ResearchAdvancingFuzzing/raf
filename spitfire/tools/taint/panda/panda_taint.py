@@ -1,5 +1,3 @@
-#!/usr/bin/python3.6
-
 """
 
 Create recording.  Run replay with taint analysis.  Ingest results to knowledge base
@@ -25,32 +23,36 @@ from os.path import join,basename
 
 import subprocess as sp
 
+
 import grpc
 import hydra
-#import docker
+from panda import Panda, blocking
+from panda import * 
 
-# walk up the path to find 'spitfire' and add that to python path
-# at most 10 levels up?
-p = os.path.abspath(__file__)
-spitfire_dir = None
-for i in range(10):
-    (hd, tl) = os.path.split(p)
-    if tl == "spitfire":
-        print ("p = %s" % p)
-        sys.path.append(p)
-        spitfire_dir = p
-        sys.path.append(hd)
-        sys.path.append(p + "/protos")
-        break
-    p = hd
+# Spitfire Directory
+spitfire_dir="/spitfire"
+sys.path.append("/")
+sys.path.append(spitfire_dir) # this will be an env at some point 
+sys.path.append(spitfire_dir + "/protos")
 
 assert (not (spitfire_dir is None))
 
-import spitfire.protos.knowledge_base_pb2 as kbp
+import spitfire.protos.knowledge_base_pb2 as kbp 
 import spitfire.protos.knowledge_base_pb2_grpc as kbpg
+import knowledge_base
+from google.protobuf import text_format 
 
-import knowledge_base 
-from google.protobuf import text_format
+# Qcow file
+qcow = "http://panda-re.mit.edu/qcows/linux/ubuntu/1804/bionic-server-cloudimg-amd64.qcow2" # Config 
+qcowfile = basename(qcow) 
+qcf = "/panda-replays/targets/qcows/" + qcowfile 
+assert(os.path.isfile(qcf))
+
+# Target binary directory
+installdir = "/install"
+assert(os.path.isdir(installdir))
+
+import shutil
 
 log = logging.getLogger(__name__)
 
@@ -58,16 +60,14 @@ log = logging.getLogger(__name__)
 # this should really be argv[1]
 fuzzing_config_dir = "%s/config/expt1" % spitfire_dir
 
-# and this should be argv[2]
-
-
-
-
 
 @hydra.main(config_path=fuzzing_config_dir + "/config.yaml")
 def run(cfg):
-#    print(cfg.pretty())
-
+    # print(cfg.pretty())
+    
+    # Get the input file 
+    inputfile = cfg.taint.input_file
+    
     # channel to talk to kb server
     #with grpc.insecure_channel("%s:%s" % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
     with grpc.insecure_channel('%s:%d' % ("10.105.43.27", 61111)) as channel:
@@ -110,44 +110,44 @@ def run(cfg):
         
         log.info("Creating recording")
         
-        run_sh = join(join(join(cfg.taint.harness_dir, "targets"), \
-                           "%s-%s-64bit" % (cfg.target.name, \
-                                            cfg.target.source_hash)), "run.sh")
-        retv = sp.check_call([run_sh, taint_input.filepath])
-        replay_dir = os.getcwd()
-        replay_name = basename(taint_input.filepath)
-#        replay_pfx = join(os.getcwd(), replay_name)
+        # Copy directory needed to insert into panda recording
+        # We need the inputfile and we need the target binary install directory
+        copydir = "./copydir"
+        if os.path.exists(copydir):
+            shutfil.rmtree(copydir)
+        os.makedirs(copydir) 
+        shutil.copy(inputfile, copydir)
+        shutil.copytree(installdir, copydir + "/install") 
 
-        if retv == 0:
-            log.info("Recording created: %s" % replay_name)
-        else:
-            raise PandaTaintFailed("Couldn't create recording")
 
-# tleek@ubuntu:~/git/raf/spitfire/tools/taint/panda$ ~/git/panda/build/x86_64-softmmu/panda-system-x86_64 -m 1G -replay ./outputs/2020-02-12/09-21-21/slashdot.xml-panda  -os linux-64-ubuntu:4.15.0-72-generic -panda file_taint:filename=slashdot.xml,pos=1^C
+        # Create panda recording
+        replaydir = "/replay"
+        replayname = replaydir + basename(inputfile) + "-panda"
+        print("replay name = [%s]" % replayname)
 
-        # now do the taint analysis
-        #client = docker.from_env()
+        cmd = "cd copydir/install/libxml2/.libs && ./xmllint ~/copydir/"+basename(inputfile)
+        panda = Panda(arch="x86_64", expect_prompt=rb"root@ubuntu:.*#", qcow=qcf, mem="1G", extra_args="-display none -nographic") # -pandalog taint.plog")
+
+        @blocking
+        def take_recording():
+            panda.record_cmd(cmd, copydir, recording_name=replayname)
+            panda.stop_run()
+ 
+
+        panda.queue_async(take_recording)
+        panda.set_os_name("linux-64-ubuntu:4.15.0-72-generic")
+        panda.run()
+
+        panda.set_pandalog("taint.plog")
+        panda.load_plugin("osi")
+        panda.load_plugin("osi_linux")
+        panda.load_plugin("tainted_instr")
+        panda.load_plugin("tainted_branch")
+        panda.load_plugin("file_taint", args={"filename": "/root/copydir/"+basename(inputfile)})
+
+        panda.run_replay(replayname) 
+
         
-        transfer_dir = os.getcwd()
-        volume_dict = {}
-        volume_dict[transfer_dir] = {'bind': "/transfer"}
-
-        input_basename = os.path.basename(cfg.taint.input_file)
-
-        pandalog = join("/replay", "taint.plog")
-
-        cmd = "/panda-source/panda/build/x86_64-softmmu/panda-system-x86_64 -m 1G -replay " + (join("/replay", replay_name + "-panda"))
-        cmd += " -pandalog " + pandalog
-        cmd += " -os linux-64-ubuntu:4.15.0-72-generic -panda file_taint:filename=" + input_basename 
-        cmd += ",pos=1 -panda tainted_instr -panda tainted_branch"
-        cmd += "-L /usr/local/lib/python3.6/dist-packages/panda/data/pc-bios/" # need this because i renamed the directory 
-
-        print("cmd = [%s]\n" % cmd)
-
-        #client.containers.run(cfg.taint.panda_container, cmd, volumes=volume_dict)
-
-        #log.info("Replay with taint completed")
-
 
 if __name__ == "__main__":
     run()

@@ -9,24 +9,17 @@ spec:
     spec: 
       containers:
         - name: taint #panda #init
-          image: taint_new:latest #taint:v1 #panda:v1 #taint:v1 #panda:v1 #init:v1
+          image: taint:v1 #latest #taint:v1 #panda:v1 #taint:v1 #panda:v1 #init:v1
           imagePullPolicy: Never
           volumeMounts:
             - name: install-storage
               mountPath: "/install"
-            - name: panda-storage
-              mountPath: "/panda-source" #-source"
             - name: spitfire-pv-storage
               mountPath: "/spitfire"
           envFrom: 
             - configMapRef: 
                 name: dir-config 
       initContainers: 
-        - name: get-panda
-          image: panda:v1 #panda:v1 #hpreslier/target:v1
-          volumeMounts:
-            - name: panda-storage 
-              mountPath: "/panda-source" #-source"
         - name: get-target
           image: panda-xmllint:v1 #gtfo-source:v1
           volumeMounts: 
@@ -34,8 +27,6 @@ spec:
               mountPath: "/install"
       volumes: # Pods access storage by using the claim as a volume. `
         - name: install-storage
-          emptyDir: {}
-        - name: panda-storage
           emptyDir: {}
         - name: spitfire-pv-storage
           persistentVolumeClaim: 

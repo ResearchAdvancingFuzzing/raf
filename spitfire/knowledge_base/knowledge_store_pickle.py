@@ -341,7 +341,7 @@ class KnowledgeStorePickle(KnowledgeStore):
            tm = self.get_taint_mapping(taintm)
         else:
             # keep track of set of inputs that we've taint analyzed
-            tm = self.taint_inputs.add(tm.inp_uuid)
+            tm = self.taint_inputs.add(taintm.inp_uuid)
             # keep track, by instruction, of what inputs taint it
             if not (tm.ti_uuid in self.instr2tainted_inputs):
                 self.instr2tainted_inputs[tm.ti_uuid] = set([])
