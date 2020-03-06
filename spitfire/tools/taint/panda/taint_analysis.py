@@ -103,7 +103,7 @@ class TaintedInstruction:
         self.pc = pc
         self.module = module
         self.type = typ
-        self.uuid = hashlib.md5((str(pc) + str(module) + str(typ)).encode("utf-8"))
+        self.uuid = hashlib.md5((str(pc) + str(module) + str(typ)).encode("utf-8")).hexdigest()
 
     # marshal TaintedInstr object to f
     # f must be file-like
