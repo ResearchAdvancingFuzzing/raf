@@ -4,6 +4,8 @@
 
 # This needs to be environment variables in the container not in here
 
+extension="input"
+
 run_drcov() {
     directory=$1
     cd $directory
@@ -13,7 +15,7 @@ run_drcov() {
             $TARGET_DIR/tiff2rgba -c jpeg $fullfile /dev/null #> /dev/null 2>&1
         # rename the log file to input .coverage file 
         filename=$(basename -- "$fullfile") 
-        extension="coverage" #"${filename##*.}"
+        #extension="coverage" #"${filename##*.}"
         filename="${filename%.*}"
         new_filename="$filename.$extension"
         logfile=$(ls *.log)
@@ -21,6 +23,7 @@ run_drcov() {
     done
 }
 
+cp ./drcov.py $SPITFIRE/tools/mutfuzz
 mkdir $WORK_DIR 
 cd $WORK_DIR 
 
@@ -28,8 +31,8 @@ LD_LIBRARY_PATH=$GTFO_DIR/gtfo/lib/ ANALYSIS_SIZE=65536 JIG_MAP_SIZE=65536 JIG_T
 
 # For now lets just put it all into the inputs directory 
 # We can separate later 
-cp $WORK_DIR/interesting/crash/* /inputs
-cp $WORK_DIR/coverage/* /inputs
+cp $WORK_DIR/interesting/crash/*.$extension /inputs
+cp $WORK_DIR/coverage/*.$extension /inputs
 
 run_drcov "$WORK_DIR/interesting/crash"
 run_drcov "$WORK_DIR/coverage"

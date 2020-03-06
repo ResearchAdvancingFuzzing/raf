@@ -116,6 +116,7 @@ last_time = None
 def tick():
     global last_time
     last_time = time.time()
+    print(last_time)
 
 def tock():
     return time.time() - last_time
@@ -163,7 +164,7 @@ class TaintedInstrValue:
 
             
 
-the_program = "file-32"
+the_program = "xmllint"
 
 panda_protobuf_in = sys.argv[1]
 
@@ -192,29 +193,14 @@ first_instr_for_program = None
 last_instr_for_program = None
 
 last_instr = None
-
+plog_file = sys.argv[1]
 print ("Ingesting pandalog")
 # process the pandalog protobuf messages
 #with open(panda_protobuf_in, "rb") as pbf:
-with plog.PLogReader("taint.plog") as plr:
+with plog.PLogReader(plog_file) as plr:
     try:
         for i, log_entry in enumerate(plr):
-            if i > 1 and (0 == (i % 100000)):
-                print(i)
-            if (i > 200000): 
-                break
-                #if m.HasField('tainted_branch'): 
-                     #print(m.pc, m.instr)
-#             if i > 0: print(',')
-#             print(MessageToJson(m), end='')
- 
-
-            # size of pb msg
-            #msg_size, = struct.unpack("I", pbf.read(4))
-            
-            #log_entry = plog_pb2.LogEntry()
-            #log_entry.ParseFromString(pbf.read(msg_size))
-                last_instr = log_entry.instr
+            last_instr = log_entry.instr
 
             if log_entry.HasField("asid_info"):
                 ai = log_entry.asid_info
@@ -222,19 +208,19 @@ with plog.PLogReader("taint.plog") as plr:
                     asids.add(ai.asid)
                     instr_interval = [ai.start_instr, ai.end_instr]
                     instr_intervals.append(instr_interval)
-                    if ai.name == the_program:
-                        if first_instr_for_program is None:
-                            first_instr_for_program = ai.start_instr
-                        last_instr_for_program = ai.end_instr
+                    #if ai.name == the_program:
+                    if first_instr_for_program is None:
+                        first_instr_for_program = ai.start_instr
+                    last_instr_for_program = ai.end_instr
 
-                #if log_entry.HasField("basic_block"):
-                #    bb = log_entry.basic_block
-                #    if not (bb.asid in basic_blocks):
-                #        basic_blocks[bb.asid] = {}
-                #    if not (log_entry.pc in basic_blocks[bb.asid]):
-                #        basic_blocks[bb.asid][log_entry.pc] = set([])
-                #    block = (bb.size, bb.code)
-                #    basic_blocks[bb.asid][log_entry.pc].add(block)
+            if log_entry.HasField("basic_block"):
+                bb = log_entry.basic_block
+                if not (bb.asid in basic_blocks):
+                    basic_blocks[bb.asid] = {}
+                if not (log_entry.pc in basic_blocks[bb.asid]):
+                    basic_blocks[bb.asid][log_entry.pc] = set([])
+                block = (bb.size, bb.code)
+                basic_blocks[bb.asid][log_entry.pc].add(block)
                 
             if log_entry.HasField("tainted_instr"):
                 ti = log_entry.tainted_instr
@@ -243,12 +229,15 @@ with plog.PLogReader("taint.plog") as plr:
                 tiv = TaintedInstrValue(log_entry)
                     # discard if label set too big
                 if len(tiv.labels) > max_label_set_size:
+                    #print("here")
                     continue
                 # as long as at least one byte in this tainted instr val
                 # has tcn less than max then there is something 
                 # we may be able to control
                 if tiv.tcn_min < max_label_set_compute_distance:
+                    #print(tiv.labels)
                     if not (tiv.labels in tainting_fbs):
+                        #print("here")
                         tainting_fbs[tiv.labels] = set([])
                     tainting_fbs[tiv.labels].add(tiv)
                 #ntq += 1
@@ -258,7 +247,7 @@ with plog.PLogReader("taint.plog") as plr:
         #break
 
 
-#print (str(tock())) + " seconds"
+print("%d seconds" % tock()) 
 
 print ("Found %d tainting fuzzable byte sets (fbs)" % (len(tainting_fbs)))
 
@@ -398,15 +387,13 @@ with grpc.insecure_channel('%s:%d' % ("10.105.43.27", 61111)) as channel:
 
 
     
-with open(spitfire_protobuf_out, "w") as s:
-    ta.marshal(s)
-
-with open(spitfire_protobuf_out, "r") as s:
-    ta2 = unmarshal_taint_analysis(s)
-    print ("------------------------")
-    print (ta2)
+#with open(spitfire_protobuf_out, "w") as s:
+#    ta.marshal(s)
+#
+#with open(spitfire_protobuf_out, "r") as s:
+#    ta2 = unmarshal_taint_analysis(s)
+#    print ("------------------------")
+#    print (ta2)
     
 print ("done")
-
-
 

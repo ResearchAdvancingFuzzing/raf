@@ -31,11 +31,12 @@ def run(cfg):
         print(os.getcwd())
         for cov_file in os.scandir(cfg.coverage.coverage_directory):
             #print("file")
-            if not cov_file.is_file() or not cov_file.name.endswith('.coverage'):
+            if not cov_file.is_file() or not cov_file.name.endswith('.input'):
                 continue
             
             cov = drcov.DrcovData(cov_file.path)
-            cov_input = pb.Input(filepath=cov_file.path.replace('.coverage', '.input'))
+            filepath = "%s/%s" % (os.environ["INPUTS_DIR"], os.path.basename(cov_file.path)) #.replace('.coverage', '.input')))
+            cov_input = pb.Input(filepath=filepath)
             stub.AddInput(cov_input)
             modules = []
             for m in cov.modules:

@@ -13,7 +13,7 @@ spec:
           volumeMounts:
             - name: target-pv-storage
               mountPath: "/target"
-            - name: gtfo-pv-storage
+            - name: gtfo-storage
               mountPath: "/gtfo-source"
             - name: seed-corpus-pv-storage
               mountPath: "/seed-corpus"
@@ -25,17 +25,24 @@ spec:
               mountPath: "/inputs"
           env: 
             - name: WORK_DIR
-              value: /data
+              value: /fuzz_data
+            - name: GTFO_DIR
+              value: /gtfo-source
           envFrom: 
             - configMapRef: 
-                name: dir-config 
+                name: dir-config
+      initContainers: 
+        - name: get-gtfo-source
+          image: gtfo-source:v1
+          volumeMounts: 
+            - name: gtfo-storage
+              mountPath: "/gtfo-source"
       volumes: # Pods access storage by using the claim as a volume. `
         - name: target-pv-storage
           persistentVolumeClaim:
             claimName: target-pv-claim 
-        - name: gtfo-pv-storage
-          persistentVolumeClaim: 
-            claimName: gtfo-pv-claim
+        - name: gtfo-storage
+          emptyDir: {}
         - name: seed-corpus-pv-storage
           persistentVolumeClaim:
             claimName: seed-corpus-pv-claim 

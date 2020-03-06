@@ -16,6 +16,8 @@ spec:
               mountPath: "/install"
             - name: spitfire-pv-storage
               mountPath: "/spitfire"
+            - name: inputs-pv-storage
+              mountPath: "/inputs"
           envFrom: 
             - configMapRef: 
                 name: dir-config 
@@ -31,4 +33,7 @@ spec:
         - name: spitfire-pv-storage
           persistentVolumeClaim: 
             claimName: spitfire-pv-claim
+        - name: inputs-pv-storage
+          persistentVolumeClaim: 
+            claimName: inputs-pv-claim
       restartPolicy: OnFailure

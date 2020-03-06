@@ -12,6 +12,11 @@ RUN patch drcov.py < drcov.py.patch
 RUN pip3 install grpcio grpcio-tools hydra-core
 
 COPY spitfire/tools/mutfuzz/script.sh ./
+COPY infinite ./
 
-CMD ["./script.sh"]
+#CMD ./script.sh
+CMD ./infinite 
+#./script.sh
+#./infinite 
+#["./script.sh"]
 

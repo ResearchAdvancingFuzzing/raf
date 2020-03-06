@@ -30,12 +30,12 @@ from panda import Panda, blocking
 from panda import * 
 
 # Spitfire Directory
-spitfire_dir="/spitfire"
+spitfire_dir="/spitfire" # Env variable
 sys.path.append("/")
 sys.path.append(spitfire_dir) # this will be an env at some point 
 sys.path.append(spitfire_dir + "/protos")
 
-assert (not (spitfire_dir is None))
+assert (not (spitfire_dir is None)) 
 
 import spitfire.protos.knowledge_base_pb2 as kbp 
 import spitfire.protos.knowledge_base_pb2_grpc as kbpg
@@ -49,16 +49,19 @@ qcf = "/panda-replays/targets/qcows/" + qcowfile
 assert(os.path.isfile(qcf))
 
 # Target binary directory
-installdir = "/install"
+installdir = "/install" # Env variable  
 assert(os.path.isdir(installdir))
 
 import shutil
 
 log = logging.getLogger(__name__)
 
+inputfile = os.environ.get('INPUT_FILE')
+assert(os.path.exists(inputfile))
+assert(os.path.isfile(inputfile))
 
 # this should really be argv[1]
-fuzzing_config_dir = "%s/config/expt1" % spitfire_dir
+fuzzing_config_dir = "%s/config/expt1" % spitfire_dir  # Can you send this in as an argument? 
 
 
 @hydra.main(config_path=fuzzing_config_dir + "/config.yaml")
@@ -66,7 +69,7 @@ def run(cfg):
     # print(cfg.pretty())
     
     # Get the input file 
-    inputfile = cfg.taint.input_file
+    #inputfile = cfg.taint.input_file
     
     # channel to talk to kb server
     #with grpc.insecure_channel("%s:%s" % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
@@ -87,8 +90,8 @@ def run(cfg):
                                    type=kbp.AnalysisTool.AnalysisType.TAINT)
         panda = kbs.AddAnalysisTool(panda_msg)
 
-        print("input file is [%s]" % cfg.taint.input_file)
-        input_msg = kbp.Input(filepath=cfg.taint.input_file)
+        print("input file is [%s]" % inputfile) #cfg.taint.input_file)
+        input_msg = kbp.Input(filepath=inputfile) #cfg.taint.input_file)
         taint_input = kbs.AddInput(input_msg)
 
         # if we have already performed this taint analysis, bail
@@ -143,7 +146,7 @@ def run(cfg):
         panda.load_plugin("osi_linux")
         panda.load_plugin("tainted_instr")
         panda.load_plugin("tainted_branch")
-        panda.load_plugin("file_taint", args={"filename": "/root/copydir/"+basename(inputfile)})
+        panda.load_plugin("file_taint", args={"filename": "/root/copydir/"+basename(inputfile), "pos": "1"})
 
         panda.run_replay(replayname) 
 

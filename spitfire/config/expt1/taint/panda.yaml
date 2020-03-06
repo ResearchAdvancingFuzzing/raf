@@ -3,7 +3,7 @@
 # So, all config necessary to run panda taint analysis
 taint:
     source_string: "git clone -b spitfire_0 https://github.com/panda-re/panda.git"
-    harness_dir: "/home/tleek/git/panda-replays"
-    input_file: "/some/file"
+    #harness_dir: "/home/tleek/git/panda-replays"
+    #input_file: "/some/file"
     panda_container: panda
     

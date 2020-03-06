@@ -52,7 +52,7 @@ class FuzzableByteSet:
     def __init__(self, label_set):
         # this is so that we can hash on it
         self.labels = tuple(label_set)
-        self.uuid = hashlib.md5(str(self.labels)).hexdigest()
+        self.uuid = hashlib.md5(str(self.labels).encode("utf-8")).hexdigest()
 
     # marshal FuzzableByteSet object to knowledge base
     def marshal(self, f):
@@ -103,7 +103,7 @@ class TaintedInstruction:
         self.pc = pc
         self.module = module
         self.type = typ
-        self.uuid = hashlib.md5(str(pc) + str(module) + str(typ))
+        self.uuid = hashlib.md5((str(pc) + str(module) + str(typ)).encode("utf-8"))
 
     # marshal TaintedInstr object to f
     # f must be file-like
@@ -178,7 +178,7 @@ def unmarshal_taint_mapping(f, fbsi, tii):
 
 class TaintAnalysis:
 
-    def __init__(self, kb_stub):
+    def __init__(self): # , kb_stub):
         # array of fuzzable byte sets
         self.fbsa = []
         # map from labels in fuzzable byte set to index into fbsa

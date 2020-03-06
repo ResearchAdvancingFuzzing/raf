@@ -28,7 +28,10 @@ import hashlib
 def md5(strToMd5):
     encrptedMd5 = ""
     md5Instance = hashlib.md5()
-    bytesToMd5 = bytes(strToMd5, "UTF-8")
+    if isinstance(strToMd5, str):
+        bytesToMd5 = bytes(strToMd5, "UTF-8")
+    else: # bytes
+        bytesToMd5 = strToMd5
     md5Instance.update(bytesToMd5)
     encrptedMd5 = md5Instance.hexdigest()
     return bytes(encrptedMd5, "UTF-8")
@@ -131,7 +134,7 @@ class InputPickle(ThingPickle):
         assert(hasattr(inp,"filepath"))
 
     def hash(self, inp):
-        with open(inp.filepath) as inp:
+        with open(inp.filepath, 'rb') as inp:
             return md5(inp.read())
 
 
@@ -341,17 +344,21 @@ class KnowledgeStorePickle(KnowledgeStore):
            tm = self.get_taint_mapping(taintm)
         else:
             # keep track of set of inputs that we've taint analyzed
-            tm = self.taint_inputs.add(taintm.inp_uuid)
+            #taint_uuid = # something 
+            input_uuid = taintm.input.uuid # nothing else set right now
+            instr_uuid = taintm.tainted_instruction.uuid
+            fbs_uuid = taintm.fuzzable_byte_set.uuid 
+            tm = self.taint_inputs.add(input_uuid)#i.ti.uuid)
             # keep track, by instruction, of what inputs taint it
-            if not (tm.ti_uuid in self.instr2tainted_inputs):
-                self.instr2tainted_inputs[tm.ti_uuid] = set([])
-            self.instr2tainted_inputs[tm.ti_uuid].add(tm.inp_uuid)
-            if not (tm.inp_uuid in self.inp2fuzzable_byte_sets):
-                self.inp2fuzzable_byte_sets[tm.inp_uuid] = set([])
-            self.inp2fuzzable_byte_sets[tm.inp_uuid].add(tm.fbs_uuid)
-            if not (tm.inp_uuid in self.inp2tainted_instructions):
-                self.inp2tainted_instructions[tm.inp_uuid] = set([])
-            self.inp2tainted_instructions.add(tm.ti.uuid)
+            if not (input_uuid in self.instr2tainted_inputs):
+                self.instr2tainted_inputs[instr_uuid] = set([])
+            self.instr2tainted_inputs[instr_uuid].add(input_uuid)
+            if not (input_uuid in self.inp2fuzzable_byte_sets):
+                self.inp2fuzzable_byte_sets[input_uuid] = set([])
+            self.inp2fuzzable_byte_sets[input_uuid].add(fbs_uuid)
+            if not (input_uuid in self.inp2tainted_instructions):
+                self.inp2tainted_instructions[input_uuid] = set([])
+            self.inp2tainted_instructions[input_uuid].add(instr_uuid)
         return tm
     
     def get_taint_mapping(self, taintm):
