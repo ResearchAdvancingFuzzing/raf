@@ -1,0 +1,56 @@
+# We need the grpc server as well; this is the only thing
+# that will talk to the database
+apiVersion: apps/v1
+kind: Deployment
+metadata: 
+  name: grpc-server
+  labels:
+    app: grpc-server
+spec:
+  selector:
+    matchLabels:
+      app: grpc-server
+  template:
+    metadata:
+      labels:
+        app: grpc-server
+    spec:
+      containers:
+        - name: grpc-server
+          image: knowledge-base:v1
+          imagePullPolicy: Never 
+          volumeMounts: 
+            - name: spitfire-pv-storage
+              mountPath: "/spitfire"
+            - name: inputs-pv-storage
+              mountPath: "/inputs"
+            - name: seed-corpus-pv-storage
+              mountPath: "/seed-corpus" 
+          ports: 
+            - name: server-port
+              containerPort: 61111 # this shouldnt matter because we are going by name 
+      volumes:
+        - name: spitfire-pv-storage
+          persistentVolumeClaim:
+            claimName: spitfire-pv-claim
+        - name: inputs-pv-storage
+          persistentVolumeClaim:
+            claimName: inputs-pv-claim
+        - name: seed-corpus-pv-storage
+          persistentVolumeClaim:
+            claimName: seed-corpus-pv-claim
+
+# This is the service for the grpc server; this is what each of the 
+# grpc clients need to communicate through to the server 
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grpc-server-service
+spec:
+  clusterIP: "10.105.43.27" # for now
+  selector:
+    app: grpc-server
+  ports: 
+    - port: 61111
+      targetPort: server-port  
