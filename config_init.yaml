@@ -37,6 +37,7 @@ data:
   COVERAGE_DIR: /coverage
   SPITFIRE: /spitfire
   INPUTS_DIR: /inputs
+  REPLAY_DIR: /replay
 ---
 apiVersion: v1
 kind: PersistentVolume
@@ -75,6 +76,18 @@ spec:
   resources:
     requests:
       storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: 
+  name: replay-pv-claim
+spec:
+  #storageClassName: manual
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 2Gi
 
 ---
 apiVersion: v1
@@ -173,56 +186,4 @@ spec:
             claimName: coverage-pv-claim 
       restartPolicy: OnFailure
 
-# We need the grpc server as well; this is the only thing
-# that will talk to the database
---- 
-apiVersion: apps/v1
-kind: Deployment
-metadata: 
-  name: grpc-server
-  labels:
-    app: grpc-server
-spec:
-  selector:
-    matchLabels:
-      app: grpc-server
-  template:
-    metadata:
-      labels:
-        app: grpc-server
-    spec:
-      containers:
-        - name: grpc-server
-          image: knowledge-base:v1
-          imagePullPolicy: Never 
-          volumeMounts: 
-            - name: spitfire-pv-storage
-              mountPath: "/spitfire"
-            - name: inputs-pv-storage
-              mountPath: "/inputs"
-          ports: 
-            - name: server-port
-              containerPort: 61111 # this shouldnt matter because we are going by name 
-      volumes:
-        - name: spitfire-pv-storage
-          persistentVolumeClaim:
-            claimName: spitfire-pv-claim
-        - name: inputs-pv-storage
-          persistentVolumeClaim:
-            claimName: inputs-pv-claim
 
-# This is the service for the grpc server; this is what each of the 
-# grpc clients need to communicate through to the server 
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: grpc-server-service
-spec:
-  clusterIP: "10.105.43.27" # for now
-  selector:
-    app: grpc-server
-  ports: 
-    - port: 61111
-      targetPort: server-port  
----

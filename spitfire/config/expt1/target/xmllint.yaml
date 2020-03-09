@@ -3,4 +3,5 @@
 #
 target: 
     name: "xmllint"
+    path: "libxml2/.libs"
     source_hash: "3e7e75bed2cf2853b0d42d635d36676b3330d475"

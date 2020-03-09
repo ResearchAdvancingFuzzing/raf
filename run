@@ -23,12 +23,11 @@ docker build -t target:v1 -f fuzzing-manager/target/Dockerfile .
 docker build -t spitfire:v1 .
 docker build -t fuzz:v1 -f spitfire/tools/mutfuzz/Dockerfile .
 docker build -t knowledge-base:v1 -f spitfire/knowledge_base/Dockerfile .
-
 docker pull pandare/panda 
-# right now 
 docker build -t taint:v1 -f spitfire/tools/taint/panda/Dockerfile_taint .
  
 # This job needs to be created "after" but for now this will do
-kubectl apply -f config-init.yaml 
-kubectl apply -f config-jobs.yaml #config.yaml 
-kubectl taint nodes --all node-role.kubernetes.io/master-
+kubectl apply -f config-init.yaml
+kubectl apply -f config-server.yaml
+kubectl apply -f config-panda.yaml 
+kubectl apply -f config-jobs.yaml
