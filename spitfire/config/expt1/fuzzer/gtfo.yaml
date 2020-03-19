@@ -1,0 +1,15 @@
+gtfo:
+  analysis:
+    name: afl_bitmap_analysis.so
+  jig:
+    name: afl_jig.so
+    target_arg: "fuzzfile"
+  ooze:
+    name: afl_havoc.so
+  extra_args: "JIG_MAP_SIZE=65536 ANALYSIS_SIZE=65536" 
+  input_file: "/seed-corpus/slashdot.xml"
+  iteration_count: 5000
+  ooze_seed: "`head -c 10 /dev/urandom | xxd -p`"
+  max_input_size: 8192 
+  analysis_load_file: "bitmap"
+

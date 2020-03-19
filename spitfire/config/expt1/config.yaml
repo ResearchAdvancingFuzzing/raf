@@ -3,3 +3,4 @@ defaults:
     - target: xmllint
     - knowledge_base: pickle
     - coverage: drcov
+    - fuzzer: gtfo
