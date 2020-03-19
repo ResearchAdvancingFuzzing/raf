@@ -433,6 +433,43 @@ def send_to_database(ta, module_list, channel):
     print(len(ta.tma))
  
 
+def check_analysis_complete(cfg, channel, inputfile):
+
+    kbs = kbpg.KnowledgeBaseStub(channel)
+
+    # get canonical representations for all of these things
+    target_msg = kbp.Target(name=cfg.target.name, \
+                            source_hash=cfg.target.source_hash)
+    target = kbs.AddTarget(target_msg)
+    
+    panda_msg = kbp.AnalysisTool(name=cfg.taint.panda_container, \
+                               source_string=cfg.taint.source_string,
+                               type=kbp.AnalysisTool.AnalysisType.TAINT)
+    panda = kbs.AddAnalysisTool(panda_msg)
+
+    print("input file is [%s]" % inputfile) 
+    input_msg = kbp.Input(filepath=inputfile) 
+    taint_input = kbs.AddInput(input_msg)
+
+    # if we have already performed this taint analysis, bail
+    taint_analysis_msg = kbp.Analysis(tool=panda.uuid, \
+                                      target=target.uuid, \
+                                      input=taint_input.uuid)
+    taint_analysis = kbs.AddAnalysis(taint_analysis_msg)
+
+
+    msg_end =  "\ntool[%s]\ntarget[%s]\ninput[%s]" \
+          % (text_format.MessageToString(panda), \
+             text_format.MessageToString(target), \
+             text_format.MessageToString(taint_input))
+    
+    if taint_analysis.complete:
+        log.info("Taint analysis already performed for %s" % msg_end)
+        return True
+    
+    log.info("Taint analysis proceeding for %s" % msg_end)
+    return False
+
 
 @hydra.main(config_path=fuzzing_config_dir + "/config.yaml")
 def run(cfg):
@@ -449,39 +486,8 @@ def run(cfg):
         
         log.info("Connected to knowledge_base")
 
-        kbs = kbpg.KnowledgeBaseStub(channel)
-
-        # get canonical representations for all of these things
-        target_msg = kbp.Target(name=cfg.target.name, \
-                                source_hash=cfg.target.source_hash)
-        target = kbs.AddTarget(target_msg)
-        
-        panda_msg = kbp.AnalysisTool(name=cfg.taint.panda_container, \
-                                   source_string=cfg.taint.source_string,
-                                   type=kbp.AnalysisTool.AnalysisType.TAINT)
-        panda = kbs.AddAnalysisTool(panda_msg)
-
-        print("input file is [%s]" % inputfile) 
-        input_msg = kbp.Input(filepath=inputfile) 
-        taint_input = kbs.AddInput(input_msg)
-
-        # if we have already performed this taint analysis, bail
-        taint_analysis_msg = kbp.Analysis(tool=panda.uuid, \
-                                          target=target.uuid, \
-                                          input=taint_input.uuid)
-        taint_analysis = kbs.AddAnalysis(taint_analysis_msg)
-
-    
-        msg_end =  "\ntool[%s]\ntarget[%s]\ninput[%s]" \
-              % (text_format.MessageToString(panda), \
-                 text_format.MessageToString(target), \
-                 text_format.MessageToString(taint_input))
-
-        if taint_analysis.complete:
-            log.info("Taint analysis already performed for %s" % msg_end)
+        if check_analysis_complete(cfg, channel, inputfile):
             return
-        
-        log.info("Taint analysis proceeding for %s" % msg_end)
     
     # Get the plog filename 
     plog_filename = cfg.taint.plog_filename
