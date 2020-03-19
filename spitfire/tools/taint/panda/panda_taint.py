@@ -6,12 +6,7 @@ Note: knowledge base server must be up and running and initialized.
 
 Usage:
 
-panda_taint.py fuzz_config input_filename
-
-
-
-panda_taint.py /home/tleek/git/raf/spitfire/config/expt1 /home/tleek/transfer/libxml2/test/slashdot.xml
-
+panda_taint.py 
 
 """
 
@@ -38,6 +33,11 @@ import knowledge_base
 import plog_pb2
 from taint_analysis import * 
 from google.protobuf import text_format 
+
+# Get the environment
+
+replaydir = os.environ.get('REPLAY_DIR') # make this env variable 
+targetdir = os.environ.get('TARGET_DIR') # "/install" # Env variable  
 
 # Functions
 
@@ -89,9 +89,6 @@ class Module:
         self.end = mod.base_addr + mod.size
         self.filepath = mod.file
 
-# Target binary directory
-targetdir = os.environ.get('TARGET_DIR') # "/install" # Env variable  
-assert(os.path.isdir(targetdir))
 
 import shutil
 
@@ -121,12 +118,11 @@ def create_and_run_recording(cfg, inputfile, plog_filename):
     assert(os.path.isfile(qcf))
 
     # Create panda recording
-    replaydir = os.environ.get('REPLAY_DIR') # make this env variable 
     replayname = "%s/%s" % (replaydir, basename(inputfile) + "-panda") 
     print("replay name = [%s]" % replayname)
 
     # This needs to be changed
-    cmd = "cd copydir/install/%s && ./%s ~/copydir/%s" % (cfg.target.path, cfg.target.name, basename(inputfile))
+    cmd = "cd copydir/install/ && ./%s ~/copydir/%s" % (cfg.target.name, basename(inputfile))
     #print(cmd) 
     #cmd = "cd copydir/install/libxml2/.libs && ./xmllint ~/copydir/"+basename(inputfile)
     #print(cmd) 
@@ -157,7 +153,6 @@ def create_and_run_recording(cfg, inputfile, plog_filename):
     panda.load_plugin("edge_coverage")
     panda.load_plugin("loaded_libs")
     panda.run_replay(replayname) 
-
 
 
 
@@ -290,8 +285,8 @@ def ingest_log_to_taint_obj(cfg, plog_filename):
     program = cfg.target.name # the name of the program 
     plog_file = "%s/%s" % (os.getcwd(), plog_filename) 
     print(plog_file)
-    #plog_file = "/spitfire/tools/taint/panda/outputs/2020-03-06/15-11-47/taint.plog"
     #plog_file = "/spitfire/tools/taint/panda/outputs/2020-03-16/16-20-10/taint.plog" 
+    
     # Information to track 
     asids = set([])  #used to collect asids for the_program
     instr_intervals = [] # used to collect instr intervals for the_program
@@ -305,6 +300,7 @@ def ingest_log_to_taint_obj(cfg, plog_filename):
     num_asid = 0
     num_bb = 0
     num_ti = 0
+    
     # Ingest Pandalog 
     print ("Ingesting pandalog")
     with plog.PLogReader(plog_file) as plr:
@@ -319,11 +315,12 @@ def ingest_log_to_taint_obj(cfg, plog_filename):
                     analyze_asid(log_entry, program, asids, instr_intervals, 
                             first_instr_for_program, last_instr_for_program)
                 
-                    # Collect basic block information for program counters and asids
+                # Collect basic block information for program counters and asids
                 if log_entry.HasField("basic_block"):
                     num_bb += 1
                     collect_code(log_entry, basic_blocks) #, basic_blocks) 
                 
+                # Collect taint information 
                 if log_entry.HasField("tainted_instr"):
                     num_ti += 1
                     collect_taint(cfg, log_entry, tainting_fbs)
@@ -439,13 +436,16 @@ def send_to_database(ta, module_list, channel):
 
 @hydra.main(config_path=fuzzing_config_dir + "/config.yaml")
 def run(cfg):
-    tick() 
-    # print(cfg.pretty())
+    tick()
+
+    # Make sure the target directory is a directory
+    assert(os.path.isdir(targetdir))
+
+    # Get the input file
     inputfile = cfg.taint.input_file 
-    # channel to talk to kb server
-    #with grpc.insecure_channel("%s:%s" % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
+    
+    # Send over some preliminary data to check if we have done this taint before 
     with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
-    #with grpc.insecure_channel('%s:%d' % ("localhost", 61113)) as channel:
         
         log.info("Connected to knowledge_base")
 
@@ -483,13 +483,16 @@ def run(cfg):
         
         log.info("Taint analysis proceeding for %s" % msg_end)
     
-    plog_filename = cfg.taint.plog_filename # "taint.plog"
+    # Get the plog filename 
+    plog_filename = cfg.taint.plog_filename
+    
+    # Run the panda recording 
     create_and_run_recording(cfg, inputfile, plog_filename) 
 
-
-    # Now marshall this infromatin over to the database 
+    # Ingest the plog  
     fm, modules = ingest_log_to_taint_obj(cfg, plog_filename)
     
+    # Send the information over to the database 
     with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
         send_to_database(fm, modules, channel) 
     

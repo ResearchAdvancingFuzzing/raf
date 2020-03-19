@@ -38,9 +38,11 @@ RUN CFLAGS="-static -fno-PIE -fno-PIC" CC=/fuzzing/working/afl-2.52b/afl-clang .
 RUN CFLAGS="-static -fno-PIE -fno-PIC" CC=/fuzzing/working/afl-2.52b/afl-clang make
 
 #RUN make install
+WORKDIR /
+RUN mv /fuzzing/working/libxml2_instrumented/ /instrumented/
 
 #CMD cp /usr/local/bin/tiff2rgba /target
-CMD cp -r /libxml2/ /target && cp -r /fuzzing/working/libxml2_instrumented /target
-
+#CMD cp -r /libxml2/.libs/* /target && cp -r /fuzzing/working/libxml2_instrumented/* /target
+CMD cp -r /libxml2/.libs/xmllint /target/xmllint && cp -r /instrumented/* /target-instr 
 
 #CMD mkdir /shared/target && cp /usr/local/bin/tiff2rgba /shared/target

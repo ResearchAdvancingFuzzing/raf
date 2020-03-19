@@ -9,9 +9,9 @@
 #       (c) docker
 #       (d) hydra-core
 
-minikube start --disk-size=20g --vm-driver=virtualbox
+#minikube start --disk-size=20g --vm-driver=virtualbox
 
-eval $(minikube docker-env)
+#eval $(minikube docker-env)
 
 git clone https://github.com/ResearchAdvancingFuzzing/gtfo.git fuzzing-manager/gtfo-source/gtfo
 cd spitfire/protos && make && cd ../..
@@ -29,5 +29,6 @@ docker build -t taint:v1 -f spitfire/tools/taint/panda/Dockerfile_taint .
 # This job needs to be created "after" but for now this will do
 kubectl apply -f config-init.yaml
 kubectl apply -f config-server.yaml
-kubectl apply -f config-panda.yaml 
-kubectl apply -f config-jobs.yaml
+kubectl apply -f config-taint.yaml 
+kubectl apply -f config-fuzzer.yaml
+kubectl apply -f config-coverage.yaml

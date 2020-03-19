@@ -11,7 +11,7 @@ spec:
         - name: fuzz
           image: fuzz:v1
           volumeMounts:
-            - name: target-pv-storage
+            - name: target-instr-pv-storage
               mountPath: "/target"
             - name: gtfo-storage
               mountPath: "/gtfo-source"
@@ -19,8 +19,6 @@ spec:
               mountPath: "/seed-corpus"
             - name: spitfire-pv-storage
               mountPath: "/spitfire"
-            - name: coverage-pv-storage
-              mountPath: "/coverage"
             - name: inputs-pv-storage
               mountPath: "/inputs"
           env: 
@@ -38,9 +36,9 @@ spec:
             - name: gtfo-storage
               mountPath: "/gtfo-source"
       volumes: # Pods access storage by using the claim as a volume. `
-        - name: target-pv-storage
+        - name: target-instr-pv-storage
           persistentVolumeClaim:
-            claimName: target-pv-claim 
+            claimName: target-instr-pv-claim 
         - name: gtfo-storage
           emptyDir: {}
         - name: seed-corpus-pv-storage
@@ -49,9 +47,6 @@ spec:
         - name: spitfire-pv-storage
           persistentVolumeClaim:
             claimName: spitfire-pv-claim
-        - name: coverage-pv-storage
-          persistentVolumeClaim:
-            claimName: coverage-pv-claim
         - name: inputs-pv-storage
           persistentVolumeClaim:
             claimName: inputs-pv-claim

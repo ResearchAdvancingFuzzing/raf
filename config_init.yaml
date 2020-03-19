@@ -34,7 +34,6 @@ metadata:
 data:
   TARGET_DIR: /target
   CORPUS_DIR: /seed-corpus
-  COVERAGE_DIR: /coverage
   SPITFIRE: /spitfire
   INPUTS_DIR: /inputs
   REPLAY_DIR: /replay
@@ -64,18 +63,7 @@ spec:
   resources:
     requests:
       storage: 1Gi
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata: 
-  name: coverage-pv-claim
-spec:
-  #storageClassName: manual
-  accessModes:
-    - ReadWriteMany
-  resources:
-    requests:
-      storage: 1Gi
+
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -126,6 +114,19 @@ spec:
     requests:
       storage: 2Gi
 ---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: 
+  name: target-instr-pv-claim
+spec:
+  #storageClassName: manual
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+
+---
 kind: Job 
 apiVersion: batch/v1
 metadata: 
@@ -145,8 +146,8 @@ spec:
               mountPath: "/seed-corpus"
             - name: spitfire-pv-storage
               mountPath: "/spitfire"
-            - name: coverage-pv-storage
-              mountPath: "/coverage"
+            - name: target-instr-pv-storage
+              mountPath: "/target-instr"
           envFrom: 
             - configMapRef: 
                 name: dir-config 
@@ -156,6 +157,8 @@ spec:
           volumeMounts:
             - name: target-pv-storage
               mountPath: "/target"
+            - name: target-instr-pv-storage
+              mountPath: "/target-instr"
         - name: get-seed-corpus
           image: seed-corpus:v1
           volumeMounts:
@@ -166,24 +169,19 @@ spec:
           volumeMounts:
             - name: spitfire-pv-storage
               mountPath: "/spitfire"
-        - name: get-coverage
-          image: coverage:v1
-          volumeMounts:
-            - name: coverage-pv-storage
-              mountPath: "/coverage" 
       volumes: # Pods access storage by using the claim as a volume. `
         - name: target-pv-storage
           persistentVolumeClaim:
             claimName: target-pv-claim 
+        - name: target-instr-pv-storage
+          persistentVolumeClaim:
+            claimName: target-instr-pv-claim
         - name: seed-corpus-pv-storage
           persistentVolumeClaim:
             claimName: seed-corpus-pv-claim 
         - name: spitfire-pv-storage
           persistentVolumeClaim:
             claimName: spitfire-pv-claim
-        - name: coverage-pv-storage
-          persistentVolumeClaim:
-            claimName: coverage-pv-claim 
       restartPolicy: OnFailure
 
 
