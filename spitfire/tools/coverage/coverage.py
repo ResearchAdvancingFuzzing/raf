@@ -3,6 +3,7 @@ import logging
 import grpc
 import hydra
 import os
+from os.path import basename
 import os.path
 import sys
 from collections import Counter
@@ -16,6 +17,8 @@ import spitfire.protos.knowledge_base_pb2_grpc as kbpg
 import google.protobuf.json_format
 import subprocess
 import shutil
+from panda import Panda, blocking
+from panda import * 
 
 # Get the environment
 input_dir = os.environ.get("INPUTS_DIR")
@@ -43,7 +46,7 @@ class Edge:
 
 def create_and_run_recording(cfg, inputfile, plog_filename): 
     
-    log.info("Creating recording")
+    #log.info("Creating recording")
 
     # Copy directory needed to insert into panda recording
     # We need the inputfile and we need the target binary install directory
@@ -52,7 +55,7 @@ def create_and_run_recording(cfg, inputfile, plog_filename):
         shutfil.rmtree(copydir)
     os.makedirs(copydir) 
     shutil.copy(inputfile, copydir)
-    shutil.copytree(targetdir, copydir + "/install") 
+    shutil.copytree(target_dir, copydir + "/install") 
 
     # Get the qcow file 
     qcow = cfg.taint.qcow;
@@ -61,17 +64,17 @@ def create_and_run_recording(cfg, inputfile, plog_filename):
     assert(os.path.isfile(qcf))
 
     # Create panda recording
-    replayname = "%s/%s" % (replaydir, basename(inputfile) + "-panda") 
+    replayname = "%s/%s" % (replay_dir, basename(inputfile) + "-panda") 
     print("replay name = [%s]" % replayname)
 
     # This needs to be changed
     cmd = "cd copydir/install/ && ./%s ~/copydir/%s" % (cfg.target.name, basename(inputfile))
-    #print(cmd) 
+    print(cmd) 
     #cmd = "cd copydir/install/libxml2/.libs && ./xmllint ~/copydir/"+basename(inputfile)
     #print(cmd) 
     #return
     panda = Panda(arch="x86_64", expect_prompt=rb"root@ubuntu:.*#", 
-            qcow=qcf, mem="1G", extra_args="-display none -nographic") 
+            qcow=qcf, mem="1G", extra_args="-display none -nographic -panda general:n=3") 
 
     @blocking
     def take_recording():
@@ -79,8 +82,8 @@ def create_and_run_recording(cfg, inputfile, plog_filename):
         panda.stop_run()
 
 
-    panda.queue_async(take_recording)
     panda.set_os_name("linux-64-ubuntu:4.15.0-72-generic")
+    panda.queue_async(take_recording)
     panda.run()
 
     # Now insert the plugins and run the replay
@@ -111,6 +114,7 @@ def ingest_log(cfg, plog_file_name):
     instr_intervals = []
     first_instr_for_program = None
     last_instr_for_program = None
+    program = cfg.target.name 
 
     print("Ingesting pandalog") 
     with plog.PLogReader(plog_file) as plr:
@@ -130,7 +134,7 @@ def ingest_log(cfg, plog_file_name):
             for i, log_entry in enumerate(plr): 
                 if not log_entry.asid in asids: 
                     continue 
-                if log_entry.HasField("edge_coverage"): 
+                if log_entry.HasField("edge_coverage"):
                     for edge in log_entry.edge_coverage.edges: 
                         edges.append(edge)
                 if log_entry.HasField("asid_libraries"): 
@@ -150,53 +154,77 @@ def ingest_log(cfg, plog_file_name):
             print (str(e))
     
     resolved_edges = []
+    #i = 0
     for edge in edges:
+        #if i == 10:
+        #    return
         addresses = []
-        for pc in edge.pc: 
-            for key in module:
+        #print("Edge %d:" % i)
+        for pc in edge.pc:
+            #print("PC: %d" % pc) 
+            for key in modules:
+                #print("Range for module %s is [%d, %d]" % (key, modules[key].base, modules[key].end))
                 if pc in range(modules[key].base, modules[key].end):
+                    #print("in Module: %s", key) 
                     module = modules[key]
-                    offset = edge.pc - modules[key].base
+                    offset = pc - modules[key].base
+                    #print("at Offset: %d", offset)
                     addresses.append(Address(module, offset))
                     break
-        resolved_edges.append(Edge(addresses, edge.hit_count)
+        resolved_edges.append(Edge(addresses, edge.hit_count))
+        #i+= 1
 
-    return resolved_edges
+    return [resolved_edges, modules]
 
 
 def send_to_database(edges, input_file, modules, channel): 
     kbs = kbpg.KnowledgeBaseStub(channel) 
 
     kbp_modules = []
-    for module in modules: 
+    for key in modules: 
+        module = modules[key]
         kbp_modules.append(kbp.Module(name=module.name, base=module.base, end=module.end, filepath=module.filepath)) 
-    result = kbs.AddModules(kbp_modules)
-    print(result) 
+    for r in kbs.AddModules(iter(kbp_modules)):
+        pass
+    #print(result) 
 
+    kb_input = kbp.Input(filepath=input_file)
+    input_msg = kbs.AddInput(kb_input)
+    kb_edges = []
     for edge in edges:
         addresses = []
         for address in edge.addresses:
             module = address.module
             module = kbp.Module(name=module.name, base=module.base, end=module.end, filepath=module.filepath)
             addresses.append(kbp.Address(module=module, offset=address.offset)) 
-        edge_coverage = kbp.EdgeCoverage(hit_count=edge.hit_count, address=addresses, input=input_file)
-        result = kbs.AddEdgeCoverage(edge_coverage)
-        print(result)
+        edge_coverage = kbp.EdgeCoverage(hit_count=edge.hit_count, address=addresses, input=kb_input)
+        kb_edges.append(edge_coverage) 
+        #print(edge_coverage)
+        #i+=1
+    print(len(kb_edges))
+    for r in kbs.AddEdgeCoverage(iter(kb_edges)): 
+        pass
+
+    #result = kbs.AddEdgeCoverage(iter(kb_edges))
+    #for r in result:
+    #    print(r)
+    #print(result)
 
 
-@hydra.main(config_path="../../config/expt1/config.yaml")
+@hydra.main(config_path=f"{spitfire_dir}/config/expt1/config.yaml")
 def run(cfg):    
     
     input_file = cfg.coverage.input_file 
     plog_file_name = cfg.coverage.plog_file_name
     create_and_run_recording(cfg, input_file, plog_file_name) 
 
-    edges = ingest_log(cfg, plog_file_name) 
-
+    [edges, modules] = ingest_log(cfg, plog_file_name) 
+    #print(edges)
+    #return
 
     with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
         print("here: connected");
-        send_to_database(edges, channel) 
+        send_to_database(edges, input_file, modules, channel) 
 
             
 if __name__ == '__main__':

@@ -18,7 +18,7 @@ cd spitfire/protos && make && cd ../..
 docker build -t init:v1 -f fuzzing-manager/init/Dockerfile .
 docker build -t gtfo-source:v1 -f fuzzing-manager/gtfo-source/Dockerfile .
 docker build -t seed-corpus:v1 -f fuzzing-manager/seed-corpus/Dockerfile .
-docker build -t coverage:v1 -f fuzzing-manager/coverage/Dockerfile .
+docker build -t coverage:v1 -f spitfire/tools/coverage/Dockerfile .
 docker build -t target:v1 -f fuzzing-manager/target/Dockerfile_target .
 docker build -t spitfire:v1 .
 docker build -t fuzz:v1 -f spitfire/tools/mutfuzz/Dockerfile .

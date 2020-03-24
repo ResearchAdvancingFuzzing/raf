@@ -278,7 +278,7 @@ message Address {
 
 // The coverage of an edge for an input. NOTE: this supports n-edge coverage
 message EdgeCoverage {
-    bytes uuid = 1;
+    bytes uuid = 1; // This is a hash of the uuids of all the addresses 
     uint64 hit_count = 2;					// how many 
     repeated Address address = 3;				// the edge represented as a series of addresses
     Input input = 4;					// (shallow)

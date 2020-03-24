@@ -419,14 +419,24 @@ def send_to_database(ta, module_list, channel):
         modules.append(module)
        
     #return 
-    result = stub.AddModules(iter(modules))
-    result = stub.AddAddresses(iter(addresses))
-    result = stub.AddTaintedInstructions(iter(tainted_instructions))
-    print(result)
-    result = stub.AddFuzzableByteSets(iter(fuzzable_byte_sets))
-    print(result)
-    result = stub.AddTaintMappings(iter(taint_mappings))
-    print(result) 
+    #result = stub.AddModules(iter(modules))
+    for r in stub.AddModules(iter(modules)): 
+        pass
+    #result = stub.AddAddresses(iter(addresses))
+    for r in stub.AddAddresses(iter(addresses)):
+        pass
+    #result = stub.AddTaintedInstructions(iter(tainted_instructions))
+    for r in stub.AddTaintedInstructions(iter(tainted_instructions)): 
+        pass
+    for r in stub.AddFuzzableByteSets(iter(fuzzable_byte_sets)):
+        pass
+    for r in stub.AddTaintMappings(iter(taint_mappings)):
+        pass
+    #print(result)
+    #result = stub.AddFuzzableByteSets(iter(fuzzable_byte_sets))
+    #print(result)
+    #result = stub.AddTaintMappings(iter(taint_mappings))
+    #print(result) 
     #modules.append(kbp.Module(name=ti.module)) 
         #addresses.append(kbp.Address(module=modules[i]))
         # what about uuid or base or end or filepath?

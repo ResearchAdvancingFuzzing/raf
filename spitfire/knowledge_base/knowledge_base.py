@@ -8,7 +8,6 @@ import hydra
 
 from concurrent import futures
 
-
 # walk up the path to find 'spitfire' and add that to python path 
 # at most 10 levels up?  
 p = os.path.abspath(__file__)
@@ -26,10 +25,14 @@ for i in range(10):
 
 
 import knowledge_store_pickle as ks
-import protos.knowledge_base_pb2 as kbp
-import protos.knowledge_base_pb2_grpc as kbpg
+#import protos.knowledge_base_pb2 as kbp
+#import protos.knowledge_base_pb2_grpc as kbpg
+import knowledge_base_pb2 as kbp
+import knowledge_base_pb2_grpc as kbpg 
 
-fuzzing_config_dir = "../config/expt1"
+spitfire_dir = os.environ.get("SPITFIRE")
+print(spitfire_dir, flush=True)
+fuzzing_config_dir = f"{spitfire_dir}/config/expt1"
 
 class KnowledgeBase(kbpg.KnowledgeBaseServicer):
     
@@ -111,7 +114,7 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
     def AddEdgeCoverage(self, coverage_itr, context):
         for edge in coverage_itr:
             (was_new, e) = self.ks.add_edge_coverage(edge)
-            print("new edge: " + str(e.uuid))
+            print("new edge: " + str(e.uuid), flush=True)
             yield e
     
     def AddExecution(self, execution, context): 
@@ -231,7 +234,7 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
 
 @hydra.main(config_path=fuzzing_config_dir + "/config.yaml")
 def serve(cfg):
-    print(cfg.pretty())
+    print(cfg.pretty(), flush=True)
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=1))
     kbpg.add_KnowledgeBaseServicer_to_server(KnowledgeBase(cfg), server)
     server.add_insecure_port("[::]:%d" % cfg.knowledge_base.port)

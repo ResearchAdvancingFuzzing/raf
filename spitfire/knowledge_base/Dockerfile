@@ -12,4 +12,9 @@ WORKDIR python
 #COPY knowledge_base_test.py ./
 
 #CMD ls 
-CMD python3.6 /spitfire/knowledge_base/knowledge_base.py
+RUN mkdir knowledge_base
+COPY spitfire/protos/* ./
+COPY spitfire/knowledge_base/* ./
+#RUN python3.6 knowledge_base.py
+CMD python3.6 knowledge_base.py
+#CMD python3.6 /spitfire/knowledge_base/knowledge_base.py

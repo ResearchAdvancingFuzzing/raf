@@ -2,5 +2,5 @@ defaults:
     - taint: panda
     - target: xmllint
     - knowledge_base: pickle
-    - coverage: drcov
+    - coverage: panda 
     - fuzzer: gtfo

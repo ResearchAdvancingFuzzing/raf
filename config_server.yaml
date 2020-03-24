@@ -29,6 +29,9 @@ spec:
           ports: 
             - name: server-port
               containerPort: 61111 # this shouldnt matter because we are going by name 
+          envFrom: 
+            - configMapRef: 
+                name: dir-config
       volumes:
         - name: spitfire-pv-storage
           persistentVolumeClaim:
