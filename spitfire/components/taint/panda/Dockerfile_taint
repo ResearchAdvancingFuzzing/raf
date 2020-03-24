@@ -60,8 +60,11 @@ RUN wget http://panda-re.mit.edu/qcows/linux/ubuntu/1804/x86_64/bionic-server-cl
 #RUN ls 
 #python3.6 setup.py install 
 
-COPY ./infinite ./infinite 
+RUN mkdir working 
+WORKDIR working 
+COPY ./infinite ./infinite
 COPY ./spitfire/components/taint/panda/panda_taint.py ./
+COPY ./spitfire/components/taint/panda/taint_analysis.py ./
 CMD ./infinite
 
 #WORKDIR /spitfire/tools/taint/panda/

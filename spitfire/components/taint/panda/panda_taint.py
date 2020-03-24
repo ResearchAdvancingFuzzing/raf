@@ -100,7 +100,6 @@ fuzzing_config_dir = "%s/config/expt1" % spitfire_dir  # Can you send this in as
 
 def create_and_run_recording(cfg, inputfile, plog_filename): 
     
-    log.info("Creating recording")
 
     # Copy directory needed to insert into panda recording
     # We need the inputfile and we need the target binary install directory
@@ -127,19 +126,29 @@ def create_and_run_recording(cfg, inputfile, plog_filename):
     #cmd = "cd copydir/install/libxml2/.libs && ./xmllint ~/copydir/"+basename(inputfile)
     #print(cmd) 
     #return
+    exists_replay_name = ("%s%s" % (replayname, "-rr-snp"))
+    extra_args = "-display none -nographic" 
+    if (os.path.exists(exists_replay_name)):
+        extra_args = extra_args + " -loadvm root" 
+    
+    print(replayname)
     panda = Panda(arch="x86_64", expect_prompt=rb"root@ubuntu:.*#", 
-            qcow=qcf, mem="1G", extra_args="-display none -nographic") 
+            qcow=qcf, mem="1G", extra_args=extra_args) 
 
     @blocking
     def take_recording():
         panda.record_cmd(cmd, copydir, recording_name=replayname)
         panda.stop_run()
 
-
-    panda.queue_async(take_recording)
     panda.set_os_name("linux-64-ubuntu:4.15.0-72-generic")
-    panda.run()
+    
+    if not os.path.exists(exists_replay_name): 
+        log.info("Creating recording")
+        panda.queue_async(take_recording)
+        panda.run()
 
+    log.info("Running replay") 
+    
     # Now insert the plugins and run the replay
     panda.set_pandalog(plog_filename)
     panda.load_plugin("osi")
@@ -425,18 +434,26 @@ def send_to_database(ta, module_list, channel):
     #result = stub.AddAddresses(iter(addresses))
     for r in stub.AddAddresses(iter(addresses)):
         pass
-    #result = stub.AddTaintedInstructions(iter(tainted_instructions))
-    for r in tainted_instructions:
-        stub.AddTaintedInstructions(iter(tainted_instructions))
+    for r in tainted_instructions: 
+        result = stub.AddTaintedInstructions(iter(tainted_instructions))
     for r in fuzzable_byte_sets:
-        stub.AddFuzzableByteSets(iter(fuzzable_byte_sets))
+        result = stub.AddFuzzableByteSets(iter(fuzzable_byte_sets))
     for r in taint_mappings:
-        stub.AddTaintMappings(iter(taint_mappings))
+        result = stub.AddTaintMappings(iter(taint_mappings)) 
+
+    #result = stub.AddTaintedInstructions(tainted_instructions)
     #print(result)
-    #result = stub.AddFuzzableByteSets(iter(fuzzable_byte_sets))
+    #for r in stub.AddTaintedInstructions(iter(tainted_instructions)): 
+    #    pass
+    #for r in stub.AddFuzzableByteSets(iter(fuzzable_byte_sets)):
+    #    pass
+    #for r in stub.AddTaintMappings(iter(taint_mappings)):
+    #    pass
     #print(result)
-    #result = stub.AddTaintMappings(iter(taint_mappings))
-    #print(result) 
+    result = stub.AddFuzzableByteSets((fuzzable_byte_sets))
+    print(result)
+    result = stub.AddTaintMappings((taint_mappings))
+    print(result) 
     #modules.append(kbp.Module(name=ti.module)) 
         #addresses.append(kbp.Address(module=modules[i]))
         # what about uuid or base or end or filepath?
