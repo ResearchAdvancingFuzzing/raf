@@ -72,7 +72,7 @@ service KnowledgeBase {
     // Add a bunch of fuzzable byte sets to the knowledge base  
     // If any were already there, we dont add twice
     // return value indicates success / error
-    rpc AddFuzzableBytSets (stream FuzzableByteSet) returns (KnowledgeBaseResult) {}
+    rpc AddFuzzableByteSets (stream FuzzableByteSet) returns (KnowledgeBaseResult) {}
 
     // Add a bunch of tainted instructions to the knowledge base
     // If any were already there, we dont add twice
