@@ -426,12 +426,12 @@ def send_to_database(ta, module_list, channel):
     for r in stub.AddAddresses(iter(addresses)):
         pass
     #result = stub.AddTaintedInstructions(iter(tainted_instructions))
-    for r in stub.AddTaintedInstructions(iter(tainted_instructions)): 
-        pass
-    for r in stub.AddFuzzableByteSets(iter(fuzzable_byte_sets)):
-        pass
-    for r in stub.AddTaintMappings(iter(taint_mappings)):
-        pass
+    for r in tainted_instructions:
+        stub.AddTaintedInstructions(iter(tainted_instructions))
+    for r in fuzzable_byte_sets:
+        stub.AddFuzzableByteSets(iter(fuzzable_byte_sets))
+    for r in taint_mappings:
+        stub.AddTaintMappings(iter(taint_mappings))
     #print(result)
     #result = stub.AddFuzzableByteSets(iter(fuzzable_byte_sets))
     #print(result)

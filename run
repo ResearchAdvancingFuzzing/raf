@@ -5,7 +5,7 @@
 # (2) Minikube needs to be installed (brew install minikube)
 # (3) Python 3.6 needs to be installed as well as the following libraries: 
 #       (a) grpcio (python3.6 -m pip install <libname>) 
-#       (b) grpcio-tools
+#       (b) grpcio-components
 #       (c) docker
 #       (d) hydra-core
 
@@ -13,20 +13,20 @@
 
 #eval $(minikube docker-env)
 
-git clone https://github.com/ResearchAdvancingFuzzing/gtfo.git fuzzing-manager/gtfo-source/gtfo
+git clone https://github.com/ResearchAdvancingFuzzing/gtfo.git spitfire/tools/gtfo-source/gtfo
 cd spitfire/protos && make && cd ../..
-docker build -t init:v1 -f fuzzing-manager/init/Dockerfile .
-docker build -t gtfo-source:v1 -f fuzzing-manager/gtfo-source/Dockerfile .
-docker build -t seed-corpus:v1 -f fuzzing-manager/seed-corpus/Dockerfile .
-docker build -t coverage:v1 -f spitfire/tools/coverage/Dockerfile .
-docker build -t target:v1 -f fuzzing-manager/target/Dockerfile_target .
+docker build -t init:v1 -f init/init/Dockerfile .
+docker build -t gtfo-source:v1 -f spitfire/tools/gtfo-source/Dockerfile .
+docker build -t seed-corpus:v1 -f init/seed-corpus/Dockerfile .
+docker build -t target:v1 -f init/target/Dockerfile_target .
 docker build -t spitfire:v1 .
-docker build -t fuzz:v1 -f spitfire/tools/mutfuzz/Dockerfile .
+docker build -t fuzz:v1 -f spitfire/components/mutfuzz/Dockerfile .
 docker build -t knowledge-base:v1 -f spitfire/knowledge_base/Dockerfile .
 docker pull pandare/panda 
-docker build -t taint:v1 -f spitfire/tools/taint/panda/Dockerfile_taint .
- 
-# This job needs to be created "after" but for now this will do
+docker build -t taint:v1 -f spitfire/components/taint/panda/Dockerfile_taint .
+docker build -t coverage:v1 -f spitfire/components/coverage/Dockerfile .
+
+#This job needs to be created "after" but for now this will do
 kubectl apply -f config-init.yaml
 kubectl apply -f config-server.yaml
 kubectl apply -f config-taint.yaml 

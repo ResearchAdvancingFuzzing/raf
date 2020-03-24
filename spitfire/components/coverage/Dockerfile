@@ -61,7 +61,7 @@ RUN wget http://panda-re.mit.edu/qcows/linux/ubuntu/1804/x86_64/bionic-server-cl
 #python3.6 setup.py install 
 
 COPY ./infinite ./infinite 
-COPY ./spitfire/tools/coverage/coverage.py ./
+COPY ./spitfire/components/coverage/coverage.py ./
 CMD ./infinite
 
 #WORKDIR /spitfire/tools/taint/panda/

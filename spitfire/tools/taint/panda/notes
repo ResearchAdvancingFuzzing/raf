@@ -1,9 +1,0 @@
-# assumes ~/transfer exists
-# and qcow is in there as well as 32-bit file
-
-# this will create a recording that lives on after we've exited the docker image
-docker run -v ~/transfer:/transfer panda /bin/bash -c "/panda/panda/scripts/run_debian.py --qcow /transfer/wheezy.qcow2 /transfer/file-32 guest:/bin/ls ; cp -r replays /transfer"
-
-# this will replay that 
-docker run -v ~/transfer:/transfer panda /bin/bash -c "/panda/build/i386-softmmu/panda-system-i386 -replay /transfer/replays/file-32/file-32 "
-

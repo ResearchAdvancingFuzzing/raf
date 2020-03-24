@@ -7,7 +7,7 @@ RUN apt-get install -y git
 WORKDIR /fuzzing/
 # this will need to be a git clone at some point
 #RUN git clone https://github.com/ResearchAdvancingFuzzing/gtfo.git /fuzzing/
-COPY fuzzing-manager/gtfo-source/gtfo/ /fuzzing/ 
+COPY spitfire/tools/gtfo-source/gtfo/ /fuzzing/ 
 RUN mkdir -p build/ooze build/the_fuzz gtfo
 WORKDIR /fuzzing/build/ooze
 RUN CC=clang cmake -DCMAKE_INSTALL_PREFIX=/fuzzing/gtfo ../../ooze/

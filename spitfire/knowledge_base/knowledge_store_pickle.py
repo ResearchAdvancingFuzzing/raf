@@ -348,7 +348,7 @@ class KnowledgeStorePickle(KnowledgeStore):
         return self.executions.exists(execution)
 
     def add_execution(self, execution): 
-        if not self.execution_exists(execution): 
+        if self.execution_exists(execution): 
             was_new = 0
             ex = self.get_execution(execution)
         else: 
