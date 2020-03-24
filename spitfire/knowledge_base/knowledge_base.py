@@ -64,6 +64,12 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
         return kbp.KnowledgeBaseResult(success=self.ks.analysis_exists(analysis), \
                                        message="None")
 
+    def ExecutionExists(self, execution, context):
+        return kbp.KnowledgeBaseResult(success=self.ks.execution_exists(execution), \
+                                       message="None")
+
+
+
 
     # Add item to the ks (or not if already there)
     # Return canonical message for each of these, with
@@ -107,7 +113,11 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
             (was_new, e) = self.ks.add_edge_coverage(edge)
             print("new edge: " + str(e.uuid))
             yield e
-            
+    
+    def AddExecution(self, execution, context): 
+        (was_new, te) = self.ks.add_execution(execution) 
+        return te 
+
     # obtains canonical protobuf repr for each if its in the kb
     # exception if its not there
     def GetTarget(self, program, context):        
@@ -128,6 +138,8 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
     def GetAnalysis(self, analysis, context):
         return self.ks.get_analysis(taint_analysis)
 
+    def GetExecution(self, execution, context):
+        return self.ks.get_execution(execution) 
 
     # Returns KnowledgeBaseResult
     # note, these fbs should be unique (no dups) but shouldt have uuids
@@ -161,9 +173,13 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
     # Returns KnowledgeBaseResult
     def AddTaintMappings(self, tm_iterator, context):
         try:
+            num_new = 0
             for tm in tm_iterator:
-                self.ks.add_taint_mapping(tm)
-            return(kbp.KnowledgeBaseResult(success=True, message="All taint mappings added"))
+                print("Adding tm [%s]" % (str(tm)))
+                (was_new, tm) = self.ks.add_taint_mapping(tm)
+                if was_new:
+                    num_new += 1 
+            return(kbp.KnowledgeBaseResult(success=True, message="%d taint mappings added" % num_new) )
         except Exception as e:
             return(kbp.KnowledgeBaseResult(success=False, message=str(e)))        
 
@@ -196,7 +212,22 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
     def GetTaintMappings(self, tmk, context):
         for tm in self.ks.get_taint_mappings(tmk):
             yield tm
+    
+    def GetEdgeCoverageForInput(self, inp, context): 
+        for ec in self.ks.get_edge_coverage_for_input(inp):
+            yield ec
+    
+    def GetExecutionInputs(self, emp, context):
+        for inp in self.ks.get_execution_inputs():
+            yield inp
 
+    def GetInputsWithCoverage(self, emp, context):
+        for inp in self.ks.get_inputs_with_coverage():
+            yield inp
+
+    def GetInputsWithoutCoverage(self, emp, context):
+        for inp in self.ks.get_inputs_without_coverage():
+            yield inp 
 
 @hydra.main(config_path=fuzzing_config_dir + "/config.yaml")
 def serve(cfg):

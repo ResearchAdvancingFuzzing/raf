@@ -24,27 +24,51 @@ gtfo_dir = os.environ.get("GTFO_DIR")
 target_dir = os.environ.get("TARGET_DIR") 
 spitfire_dir = os.environ.get("SPITFIRE")
 corpus_dir = os.environ.get("CORPUS_DIR")
+interesting_dir = "%s/interesting/crash/" % work_dir 
+coverage_dir = "%s/coverage" % work_dir
 
-def copy_files(src, dest): 
+def copy_file(file_name, **arg):
+    shutil.copy(file_name, arg["dest"])
+
+def send_file(file_name, **arg):
+    base_name = os.path.basename(file_name)
+    file_name = "%s/%s" % (input_dir, base_name) 
+    input_msg = kbp.Input(filepath=file_name, type=arg["kb_type"])
+    input_kb = arg["kbs"].AddInput(input_msg) 
+
+def perform_files(src, func, **arg): 
     src_files = os.listdir(src) 
     for file_name in src_files:
         full_file_name = os.path.join(src, file_name) 
-        if os.path.isfile(full_file_name) and full_file_name.endswith(".input"): 
-            shutil.copy(full_file_name, dest)
+        if os.path.isfile(full_file_name) and full_file_name.endswith(".input"):
+            for a in arg.keys():
+                print(a)
+            func(full_file_name, **arg)
+            #shutil.copy(full_file_name, dest)
 
 
 @hydra.main(config_path=f"{spitfire_dir}/config/expt1/config.yaml")
 def run(cfg):    
     
     target = "%s/%s" % (target_dir, cfg.target.name)
-    
+    fcfg = cfg.gtfo 
+
     with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
         
         print("here: connected")
 
         # Add the target, input, seed corpus, and experiment to the KB 
         kbs = kbpg.KnowledgeBaseStub(channel)
-
+        input_msg = kbp.Input(filepath=fcfg.input_file)
+        input_kb = kbs.AddInput(input_msg)
+        #input_kb = kbs.GetInput(input_msg)
+        target_msg = kbp.Target(name=cfg.target.name, source_hash=cfg.target.source_hash)
+        #target_kb = kbs.GetTarget(target_msg)
+        target_kb = kbs.AddTarget(target_msg)
+        execution_msg = kbp.Execution(input=input_kb, target=target_kb)
+        execution_kb = kbs.AddExecution(execution_msg)
+        
+        '''
         target_msg = kbp.Target(name=cfg.target.name, source_hash=cfg.target.source_hash)
         target_kb = kbs.AddTarget(target_msg) 
         
@@ -60,11 +84,12 @@ def run(cfg):
         print(uuid)
 
         corpus_msg = kbp.Corpus(uuid=uuid, input=fuzz_inputs)
-        #corpus = kbs.AddCorpus(corpus_msg)
+        corpus = kbs.AddCorpus(corpus_msg)
 
         # experiment also needs a seed and a hash of the fuzzing manager 
-        #experiment_msg = kbp.Experiment(target=target, seed_corpus=corpus)
-        #experiment = kbs.AddExperiment(experiment_msg) 
+        experiment_msg = kbp.Experiment(target=target, seed_corpus=corpus)
+        experiment = kbs.AddExperiment(experiment_msg) 
+        '''
     # Now let's fuzz
 
     # Move to the working directory  
@@ -72,7 +97,6 @@ def run(cfg):
     os.chdir(work_dir)
    
     # Get Config Information 
-    fcfg = cfg.gtfo
     env = os.environ.copy()
     env["LD_LIBRARY_PATH"] = f"{gtfo_dir}/gtfo/lib"
     env["JIG_TARGET"] = f"{target}"
@@ -95,14 +119,21 @@ def run(cfg):
     subprocess.run(args=cmd, env=env)
 
     # Move new input to /inputs directory 
-    interesting_dir = "%s/interesting/crash/" % work_dir 
-    coverage_dir = "%s/coverage" % work_dir
-    
+   
     if (os.path.isdir(interesting_dir)):
-        copy_files(interesting_dir, input_dir)
+        perform_files(interesting_dir, copy_file, dest=input_dir)
     if (os.path.isdir(coverage_dir)):
-        copy_files(coverage_dir, input_dir) 
-
+        perform_files(coverage_dir, copy_file, dest=input_dir) 
+    
+    # Send new files over 
+    with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
+        kbs = kbpg.KnowledgeBaseStub(channel)
+        kbp_covg_type = kbp.Input.InputType.COVG_INCREASED;
+        kbp_interesting_type = kbp.Input.InputType.CRASH;
+        if (os.path.isdir(interesting_dir)):
+            perform_files(interesting_dir, send_file, kb_type=kbp_interesting_type, kbs=kbs)
+        if (os.path.isdir(coverage_dir)):
+            perform_files(coverage_dir, send_file, kb_type=kbp_covg_type, kbs=kbs)
 
 if __name__ == '__main__':
     logging.basicConfig()

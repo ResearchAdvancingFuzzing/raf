@@ -1,0 +1,44 @@
+kind: Job 
+apiVersion: batch/v1
+metadata: 
+  name: coverage 
+spec:
+  template:
+    metadata:
+      name: coverage
+    spec: 
+      containers:
+        - name: coverage
+          image: coverage:v1 #latest #taint:v1 #panda:v1 #taint:v1 #panda:v1 #init:v1
+          imagePullPolicy: Never
+          volumeMounts:
+            - name: spitfire-pv-storage
+              mountPath: "/spitfire"
+            - name: inputs-pv-storage
+              mountPath: "/inputs"
+            - name: target-pv-storage
+              mountPath: "/target"
+            - name: replay-pv-storage
+              mountPath: "/replay"
+            - name: seed-corpus-pv-storage
+              mountPath: "/seed-corpus"
+          envFrom: 
+            - configMapRef: 
+                name: dir-config 
+      volumes: # Pods access storage by using the claim as a volume. `
+        - name: replay-pv-storage
+          persistentVolumeClaim: 
+            claimName: replay-pv-claim #{} # will make this persistent 
+        - name: spitfire-pv-storage
+          persistentVolumeClaim: 
+            claimName: spitfire-pv-claim
+        - name: inputs-pv-storage
+          persistentVolumeClaim: 
+            claimName: inputs-pv-claim
+        - name: target-pv-storage
+          persistentVolumeClaim:
+            claimName: target-pv-claim
+        - name: seed-corpus-pv-storage
+          persistentVolumeClaim:
+            claimName: seed-corpus-pv-claim
+      restartPolicy: OnFailure

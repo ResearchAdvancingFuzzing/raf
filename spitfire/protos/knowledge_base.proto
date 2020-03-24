@@ -1,7 +1,7 @@
 
 /*
-  proto buf spec for Spitfire taint analysis tool output
-*/
+   proto buf spec for Spitfire taint analysis tool output
+ */
 
 syntax = "proto3";
 
@@ -12,94 +12,110 @@ package spitfire;
 
 service KnowledgeBase {
 
-  // NOTE: Many of the message types contain uuids. When using RPC calls such
-  // as GetTarget, GetInput, leave this field empty (don't specify uuid).
-  // The knowledge base will compute or generate it and return a message of 
-  // the same type containing the correct uuid and duplicating all other fields.
+    // NOTE: Many of the message types contain uuids. When using RPC calls such
+    // as GetTarget, GetInput, leave this field empty (don't specify uuid).
+    // The knowledge base will compute or generate it and return a message of 
+    // the same type containing the correct uuid and duplicating all other fields.
 
-  // returns true iff exists in knowledge base
-  // note: don't fill in uuid
-  rpc TargetExists(Target) returns (KnowledgeBaseResult) {}
-  rpc InputExists(Input) returns (KnowledgeBaseResult) {}
-  rpc CorpusExists(Corpus) returns (KnowledgeBaseResult) {}
-  rpc ExperimentExists(Experiment) returns (KnowledgeBaseResult) {}
-  rpc AnalysisToolExists(AnalysisTool) returns (KnowledgeBaseResult) {}
-  rpc AnalysisExists(Analysis) returns (KnowledgeBaseResult) {}
+    // returns true iff exists in knowledge base
+    // note: don't fill in uuid
+    rpc TargetExists(Target) returns (KnowledgeBaseResult) {}
+    rpc InputExists(Input) returns (KnowledgeBaseResult) {}
+    rpc CorpusExists(Corpus) returns (KnowledgeBaseResult) {}
+    rpc ExperimentExists(Experiment) returns (KnowledgeBaseResult) {}
+    rpc AnalysisToolExists(AnalysisTool) returns (KnowledgeBaseResult) {}
+    rpc AnalysisExists(Analysis) returns (KnowledgeBaseResult) {}
+    rpc ExecutionExists(Execution) returns (KnowledgeBaseResult) {}
 
-  // Add this item to kb
-  // note UUID should not be filled in
-  // if its already there, we dont create new but just return
-  // the one that is there
-  // returns the correct canonical protobuf representation
-  rpc AddTarget(Target) returns (Target) {}
-  rpc AddInput(Input) returns (Input) {}
-  rpc AddCorpus(Corpus) returns (Corpus) {}
-  rpc AddExperiment(Experiment) returns (Experiment) {}
-  rpc AddAnalysisTool(AnalysisTool) returns (AnalysisTool) {}
-  rpc AddAnalysis(Analysis) returns (Analysis) {}
-  
-  // Obtain canonical protobuf message for each from the knowledge base,
-  // raise an exception if its not there.
-  rpc GetTarget(Target) returns (Target) {}
-  rpc GetInput(Input) returns (Input) {}
-  rpc GetCorpus(Corpus) returns (Corpus) {}
-  rpc GetExperiment(Experiment) returns (Experiment) {}
-  rpc GetAnalysisTool(AnalysisTool) returns (AnalysisTool) {}
-  rpc GetAnalysis(Analysis) returns (Analysis) {}
+    // Add this item to kb
+    // note UUID should not be filled in
+    // if its already there, we dont create new but just return
+    // the one that is there
+    // returns the correct canonical protobuf representation
+    rpc AddTarget(Target) returns (Target) {}
+    rpc AddInput(Input) returns (Input) {}
+    rpc AddCorpus(Corpus) returns (Corpus) {}
+    rpc AddExperiment(Experiment) returns (Experiment) {}
+    rpc AddAnalysisTool(AnalysisTool) returns (AnalysisTool) {}
+    rpc AddAnalysis(Analysis) returns (Analysis) {}
+    rpc AddExecution (Execution) returns (Execution) {}
+    // Obtain canonical protobuf message for each from the knowledge base,
+    // raise an exception if its not there.
+    rpc GetTarget(Target) returns (Target) {}
+    rpc GetInput(Input) returns (Input) {}
+    rpc GetCorpus(Corpus) returns (Corpus) {}
+    rpc GetExperiment(Experiment) returns (Experiment) {}
+    rpc GetAnalysisTool(AnalysisTool) returns (AnalysisTool) {}
+    rpc GetAnalysis(Analysis) returns (Analysis) {}
+    rpc GetExecution (Execution) returns (Execution) {}
 
 
+    // Memory APIs - all tools should store references to the target's memory as
+    // a module + an offset which is represented in the address message
+    rpc AddModules (stream Module) returns (stream Module);
+    rpc AddAddresses (stream Address) returns (stream Address);
 
-  // Memory APIs - all tools should store references to the target's memory as
-  // a module + an offset which is represented in the address message
-  rpc AddModules (stream Module) returns (stream Module);
-  rpc AddAddresses (stream Address) returns (stream Address);
 
-  // coverage API fns
-  rpc AddEdgeCoverage (stream EdgeCoverage) returns (stream EdgeCoverage);
-
-  // Add a bunch of fuzzable byte sets to the knowledge base  
-  // If any were already there, we dont add twice
-  // return value indicates success / error
-  rpc AddFuzzableByteSets (stream FuzzableByteSet) returns (KnowledgeBaseResult) {}
-
-  // Add a bunch of tainted instructions to the knowledge base
-  // If any were already there, we dont add twice
-  rpc AddTaintedInstructions (stream TaintedInstruction) returns (KnowledgeBaseResult) {}
- 
-  // Add a bunch of taint mappings to the knowledge base.
-  // note that a TaintMapping refers to a FuzzableByteSet and a 
-  // TaintedInstruction, but by uuid only.  So you have to have called 
-  // AddFuzzableByteSet and AddTaintedInstruction on the corresponding 
-  // items beforehand.
-  rpc AddTaintMappings (stream TaintMapping) returns (KnowledgeBaseResult) {}
-
-  // Returns set of TaintedInstructions discovered thus far by 
-  // all taint analyses that have run.
-  rpc GetTaintedInstructions(Empty) returns (stream TaintedInstruction) {}
-
-  // Returns set of Inputs that have been used to perform taint analysis 
-  // thus far.
-  rpc GetTaintInputs(Empty) returns (stream Input) {}
-
-  // Returns set of Inputs that taint this instruction
-  rpc GetTaintInputsForTantedInstruction(TaintedInstruction) returns (stream Input) {}
-
-  // Returns set of FuzzableByteSets for this input
-  rpc GetFuzzableBytesSetsForTaintInput(Input) returns (stream FuzzableByteSet) {}
-
-  // Returns set of instructions seen to be tainted when we analyzed this input
-  rpc GetTaintedInstructionsForTaintInput(Input) returns (stream TaintedInstruction) {}
-
-  // Returns set of TaintMappings from this Input+FuzzableByteSet to this TaintedInstruction
-  rpc GetTaintMappings(TaintMappingKey) returns (stream TaintMapping) {}    
+    // coverage API fns
+    rpc AddEdgeCoverage (stream EdgeCoverage) returns (stream EdgeCoverage);
     
+    // Get the set of inputs that we have done mutational fuzzing on so far
+    rpc GetExecutionInputs (Empty) returns (stream Input);
+    
+    // Get the set of inputs with which coverage has been done
+    rpc GetInputsWithCoverage (Empty) returns (stream Input);  
+    
+    // Get the set of inputs with which coverage has not been done 
+    rpc GetInputsWithoutCoverage (Empty) returns (stream Input);  
+
+    rpc GetEdgeCoverageForInput (Input) returns (stream EdgeCoverage);  
+    // Add a bunch of fuzzable byte sets to the knowledge base  
+    // If any were already there, we dont add twice
+    // return value indicates success / error
+    rpc AddFuzzableBytSets (stream FuzzableByteSet) returns (KnowledgeBaseResult) {}
+
+    // Add a bunch of tainted instructions to the knowledge base
+    // If any were already there, we dont add twice
+    rpc AddTaintedInstructions (stream TaintedInstruction) returns (KnowledgeBaseResult) {}
+
+    // Add a bunch of taint mappings to the knowledge base.
+    // note that a TaintMapping refers to a FuzzableByteSet and a 
+    // TaintedInstruction, but by uuid only.  So you have to have called 
+    // AddFuzzableByteSet and AddTaintedInstruction on the corresponding 
+    // items beforehand.
+    rpc AddTaintMappings (stream TaintMapping) returns (KnowledgeBaseResult) {}
+
+    rpc GetInputById (id) returns (Input) {} 
+    // Returns set of TaintedInstructions discovered thus far by 
+    // all taint analyses that have run.
+    rpc GetTaintedInstructions(Empty) returns (stream TaintedInstruction) {}
+
+    // Returns set of Inputs that have been used to perform taint analysis 
+    // thus far.
+    rpc GetTaintInputs(Empty) returns (stream Input) {}
+
+    // Returns set of Inputs that taint this instruction
+    rpc GetTaintInputsForTantedInstruction(TaintedInstruction) returns (stream Input) {}
+
+    // Returns set of FuzzableByteSets for this input
+    rpc GetFuzzableBytesSetsForTaintInput(Input) returns (stream FuzzableByteSet) {}
+
+    // Returns set of instructions seen to be tainted when we analyzed this input
+    rpc GetTaintedInstructionsForTaintInput(Input) returns (stream TaintedInstruction) {}
+
+    // Returns set of TaintMappings from this Input+FuzzableByteSet to this TaintedInstruction
+    rpc GetTaintMappings(TaintMappingKey) returns (stream TaintMapping) {}    
+
 }
 
 /*
-	In the below, when a type is commented (shallow) only the uuid field is populated
-*/
+   In the below, when a type is commented (shallow) only the uuid field is populated
+ */
 
 
+message id {
+        bytes uuid = 1;
+} 
 
 message Empty {
 }
@@ -107,81 +123,87 @@ message Empty {
 
 // a program to be fuzzed
 message Target {
-  bytes uuid = 1;                   // compute this as md5sum of rest of this message
-  string name = 2;                  // program name, like "awk" or "node" or "mount"
-  string source_hash = 4;              // source hash string for version
-  map<string, string> additional_infomation = 16;
+    bytes uuid = 1;                   // compute this as md5sum of rest of this message
+    string name = 2;                  // program name, like "awk" or "node" or "mount"
+    string source_hash = 4;              // source hash string for version
+    map<string, string> additional_infomation = 16;
 }
 
 
 // an input to a program being fuzzed
 message Input {
-  bytes uuid = 1;                   // compute this as md5sum of input (file?) contents
-  string filepath = 2;              // path to file on the spitfire shared file system
-  uint64 size = 3;  		    // size of the input
-  string source = 4;		    // where this input came from
-  map<string, string> additional_infomation = 16;
+    bytes uuid = 1;                   // compute this as md5sum of input (file?) contents
+    string filepath = 2;              // path to file on the spitfire shared file system
+    uint64 size = 3;  		    // size of the input
+    string source = 4;		    // where this input came from
+    enum InputType {		  // what type of analysis this tool runs
+        COVG_INCREASED = 0;
+        CRASH = 1;
+        SEED = 2;
+    }
+    InputType type = 5;
+    map<string, string> additional_infomation = 16;
 }
 
 // a set of inputs
 message Corpus {
-  bytes uuid = 1;                   // compute this as md5sum of all Input uuids
-  string name = 2;                  // name for this corpus
-  repeated Input input = 3;         // Inputs (shallow) in this corpus
+    bytes uuid = 1;                   // compute this as md5sum of all Input uuids
+    string name = 2;                  // name for this corpus
+    repeated Input input = 3;         // Inputs (shallow) in this corpus
 }
 
 
 // A fuzzing experiment 
 message Experiment {
-  bytes uuid = 1;                       // Note: knowledge base assigned
-  google.protobuf.Timestamp start = 2;  // start time of experiment (Note: knowledge base assigned)
-  google.protobuf.Timestamp end = 3;    // end time of experiment (Note: knowledge base assigned)
-  string description = 4;               // description of this experiment
-  Target target = 5;                    // the program fuzzed (shallow)
-  Corpus seed_corpus = 6;                // seed corpus used (shallow)
-  bytes prng_seed = 7;                 // seed of all randomness in this experiment
-  bytes manager_hash = 17;	       // hash of the fuzzing manager
+    bytes uuid = 1;                       // Note: knowledge base assigned
+    google.protobuf.Timestamp start = 2;  // start time of experiment (Note: knowledge base assigned)
+    google.protobuf.Timestamp end = 3;    // end time of experiment (Note: knowledge base assigned)
+    string description = 4;               // description of this experiment
+    Target target = 5;                    // the program fuzzed (shallow)
+    Corpus seed_corpus = 6;                // seed corpus used (shallow)
+    bytes prng_seed = 7;                 // seed of all randomness in this experiment
+    bytes manager_hash = 17;	       // hash of the fuzzing manager
 }
 
 
 // generic response when no return value, to indicate success/fail
 message KnowledgeBaseResult {
-  bool success = 1;                 // true iff no error
-  string message = 2;               // message, if necessary
+    bool success = 1;                 // true iff no error
+    string message = 2;               // message, if necessary
 }
 
 
 message AnalysisTool {
-  bytes uuid = 1;                 //
-  string name = 2;                // panda, e.g.
-  string source_string = 3;        // string to use to obtain correct version of taint engine,
-                                  // this should uniquely identify version
-                                  // for example, the following suffices 
-                                  // for panda:
-            		              // 'git clone -b spitfire_0 https://github.com/panda-re/panda.git
-  enum AnalysisType {		  // what type of analysis this tool runs
-       MUTATION_FUZZER = 0;
-       TAINT = 1;
-       SYMBOLIC_EXECUTION = 2;
-  }
-  AnalysisType type = 4;
+    bytes uuid = 1;                 //
+    string name = 2;                // panda, e.g.
+    string source_string = 3;        // string to use to obtain correct version of taint engine,
+    // this should uniquely identify version
+    // for example, the following suffices 
+    // for panda:
+    // 'git clone -b spitfire_0 https://github.com/panda-re/panda.git
+    enum AnalysisType {		  // what type of analysis this tool runs
+        MUTATION_FUZZER = 0;
+        TAINT = 1;
+        SYMBOLIC_EXECUTION = 2;
+    }
+    AnalysisType type = 4;
 }
 
 
 message Analysis {
-  bytes uuid = 1;
-  // these three are uuids by the way
-//  AnalysisTool tool = 2;       // the analysis tool (shallow)
-  bytes tool = 2;              // the analysis tool (shallow)
-//  Target target = 3;           // the target program (shallow)
-  bytes target = 3;           // the target program (shallow)
-//  Input input = 4;             // the input to that program (shallow)
-  bytes input = 4;             // the input to that program (shallow)
-  bool complete = 5;           // this will be false until analysis is truly 
-                               // complete and all results successfully handed 
-                               // off to the kb
+    bytes uuid = 1;
+    // these three are uuids by the way
+    //  AnalysisTool tool = 2;       // the analysis tool (shallow)
+    bytes tool = 2;              // the analysis tool (shallow)
+    //  Target target = 3;           // the target program (shallow)
+    bytes target = 3;           // the target program (shallow)
+    //  Input input = 4;             // the input to that program (shallow)
+    bytes input = 4;             // the input to that program (shallow)
+    bool complete = 5;           // this will be false until analysis is truly 
+    // complete and all results successfully handed 
+    // off to the kb
 }
-  
+
 
 // A FuzzableByteSet is a set of input bytes that a taint analysis has 
 // identified as influencing some program value at some point in execution.
@@ -189,72 +211,77 @@ message Analysis {
 // integers (positional labels).
 //
 message FuzzableByteSet {
-  bytes uuid = 1;                   // compute this as md5sum of label set 
-  repeated uint32 label = 2;        // set of taint labels, i.e. input bytes
-  map<string, string> additional_infomation = 16;
+    bytes uuid = 1;                   // compute this as md5sum of label set 
+    repeated uint32 label = 2;        // set of taint labels, i.e. input bytes
+    map<string, string> additional_infomation = 16;
 }
 
- 
+
 //  An instruction that is tainted by a fuzzable byte set.  
 //
 message TaintedInstruction {
-  bytes uuid = 1;                   // compute this as md5sum of rest of contents 
-  Address address = 2;
-  string type = 3;                  // type of instruction 
-  bytes instruction_bytes = 4;      // the bytes for this instruction
-  map<string, string> additional_infomation = 16;
+    bytes uuid = 1;                   // compute this as md5sum of rest of contents 
+    Address address = 2;
+    string type = 3;                  // type of instruction 
+    bytes instruction_bytes = 4;      // the bytes for this instruction
+    map<string, string> additional_infomation = 16;
 }
- 
+
 
 // Mapping from FuzzableByteSet to TaintedInstruction
 //
 message TaintMapping {
-  bytes uuid = 1;
-  Input input = 2;               // input (shallow)
-  FuzzableByteSet fuzzable_byte_set = 3;               // fuzzable byte set (shallow)
-  TaintedInstruction tainted_instruction = 4;                // tainted instruction (shallow)
-  uint64 value = 5;                 // actual internal program value that was tainted 
-  uint32 value_length = 6;          // number of bytes in the tainted value 
-  uint64 instruction_count = 7;            // instruction count in target
-  uint32 min_compute_distance = 8;  // min compute distance for tainted byte in value 
-  uint32 max_compute_distance = 9;  // max compute distance for tainted byte in value
-  map<string, string> additional_infomation = 16;
+    bytes uuid = 1;
+    Input input = 2;               // input (shallow)
+    FuzzableByteSet fuzzable_byte_set = 3;               // fuzzable byte set (shallow)
+    TaintedInstruction tainted_instruction = 4;                // tainted instruction (shallow)
+    uint64 value = 5;                 // actual internal program value that was tainted 
+    uint32 value_length = 6;          // number of bytes in the tainted value 
+    uint64 instruction_count = 7;            // instruction count in target
+    uint32 min_compute_distance = 8;  // min compute distance for tainted byte in value 
+    uint32 max_compute_distance = 9;  // max compute distance for tainted byte in value
+    map<string, string> additional_infomation = 16;
 } 
 
-
+message Execution {
+    bytes uuid = 1;
+    Input input = 2;
+    Target target = 3;
+}  
 
 // Used to identify a taint mapping in the knowledge base
 //
 message TaintMappingKey {
-  Input input = 1;					// The input for the taint analysis
-  FuzzableByteSet fuzzable_byte_set = 2;          	// The set of bytes within that input
-  TaintedInstruction tainted_instruction = 3;        	// The instruction tainted by those bytes
-  map<string, string> additional_infomation = 16;
+    Input input = 1;					// The input for the taint analysis
+    FuzzableByteSet fuzzable_byte_set = 2;          	// The set of bytes within that input
+    TaintedInstruction tainted_instruction = 3;        	// The instruction tainted by those bytes
+    map<string, string> additional_infomation = 16;
 }
 
 // An module in the target program's memory (these can overlap)
 message Module {
-        bytes uuid = 1;
-        string name = 2;
-        fixed64 base = 3;
-        fixed64 end = 4;
-        map<string, string> additional_infomation = 16;
-        string filepath = 17;
+    bytes uuid = 1;
+    string name = 2;
+    fixed64 base = 3;
+    fixed64 end = 4;
+    map<string, string> additional_infomation = 16;
+    string filepath = 17;
 }
 
 // An address in the target program's memory represented as a module and an offset
 message Address {
-        bytes uuid = 1;
-        Module module = 2;
-        uint64 offset = 3;
-        map<string, string> additional_infomation = 16;
+    bytes uuid = 1;
+    Module module = 2;
+    uint64 offset = 3;
+    map<string, string> additional_infomation = 16;
 }
 
 // The coverage of an edge for an input. NOTE: this supports n-edge coverage
 message EdgeCoverage {
-        bytes uuid = 1;
-        uint64 hit_count = 2;					// how many 
-        repeated Address address = 3;				// the edge represented as a series of addresses
-	Input input = 4;					// (shallow)
-        map<string, string> additional_infomation = 16;
+    bytes uuid = 1;
+    uint64 hit_count = 2;					// how many 
+    repeated Address address = 3;				// the edge represented as a series of addresses
+    Input input = 4;					// (shallow)
+    //Execution exeuction = 4;
+    map<string, string> additional_infomation = 16;
 }

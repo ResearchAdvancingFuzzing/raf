@@ -7,7 +7,7 @@ A very simple in-memory and pickle-based knowledge store
 
 import os
 import sys
-
+import queue
 
 # walk up the path to find 'spitfire' and add that to python path
 # at most 10 levels up?
@@ -76,6 +76,11 @@ class ThingPickle:
 
     def hash(self, thing):
         raise NotImplementedError
+
+    def get_by_id (self, uuid): 
+        if uuid in self.things: 
+            return (self.things[uuid]) 
+        return None
 
     def find(self, thing):
         thing_uuid = self.hash(thing)
@@ -257,6 +262,43 @@ class EdgeCoveragePickle(ThingPickle):
         
         return md5(uuid_data)
 
+class CorpusPickle(ThingPickle): 
+    def __init__(self): 
+        super().__init__("corpus")
+
+    def check(self, corpus): 
+        assert hasattr(corpus, "name")
+        assert hasattr(corpus, "input") 
+        
+    def hash(self, corpus): 
+        uuid = []
+        for seed in corpus.input: 
+            uuid.append(seed.uuid) 
+        uuid = b"".join(uuid)
+        return md5(str(uuid))
+
+class ExperimentPickle(ThingPickle): 
+    def __init__(self):
+        super().__init__("experiment")
+
+    def check(self, experiment):
+        assert hasattr(experiment, "target")
+        assert hasattr(experiment, "seed_corpus")
+
+    def hash(self, experiment): 
+        return md5(str(experiment.seed_corpus.uuid) + experiment.target.souce_hash)
+
+class ExecutionPickle(ThingPickle):
+    def __init__(self):
+        super().__init__("execution")
+
+    def check(self, execution):
+        assert hasattr(execution, "target")
+        assert hasattr(execution, "input")
+
+    def hash(self, execution):
+        return md5(str(execution.input.uuid) + str(execution.target.uuid))
+
 class KnowledgeStorePickle(KnowledgeStore):
     
     # ksc is knowledge_store config
@@ -276,7 +318,29 @@ class KnowledgeStorePickle(KnowledgeStore):
         self.modules = ModulePickle()
         self.addresses = AddressPickle()
         self.edges = EdgeCoveragePickle()
-        
+        self.corpora = CorpusPickle() 
+        self.experiments = ExperimentPickle()
+        self.executions = ExecutionPickle() 
+        self.inp2edge_coverage = {}
+        self.inputs_without_coverage = set([]) 
+        self.execution_inputs = set([]) 
+
+    def execution_exists(self, execution): 
+        return self.executions.exists(execution)
+
+    def add_execution(self, execution): 
+        if not self.execution_exists(execution): 
+            was_new = 0
+            ex = self.get_execution(execution)
+        else: 
+            was_new = 1
+            ex = self.executions.add(execution) 
+            self.execution_inputs.add(ex.input.uuid) 
+        return (was_new, ex)
+
+    def get_execution(self, execution):
+        return self.executions.get(execution) 
+
     def target_exists(self, target):
         return self.target.exists(target)
 
@@ -291,8 +355,15 @@ class KnowledgeStorePickle(KnowledgeStore):
         return self.inputs.exists(input)
 
     def add_input(self, input):
-        return self.inputs.add(input)
-    
+        if self.input_exists(input): 
+            was_new = 0
+            kb_input = self.get_input(input) 
+        else:
+            was_new = 1
+            kb_input = self.inputs.add(input)
+            inputs_without_coverage.add(kb_input.uuid) 
+        return (was_new, kb_input) 
+
     def get_input(self, input):
         return self.inputs.get(input)
 
@@ -342,9 +413,11 @@ class KnowledgeStorePickle(KnowledgeStore):
     def add_taint_mapping(self, taintm):
         if self.taint_mapping_exists(taintm):
            tm = self.get_taint_mapping(taintm)
+           was_new = 0
         else:
             # keep track of set of inputs that we've taint analyzed
             #taint_uuid = # something 
+            was_new = 1
             input_uuid = taintm.input.uuid # nothing else set right now
             instr_uuid = taintm.tainted_instruction.uuid
             fbs_uuid = taintm.fuzzable_byte_set.uuid 
@@ -359,15 +432,21 @@ class KnowledgeStorePickle(KnowledgeStore):
             if not (input_uuid in self.inp2tainted_instructions):
                 self.inp2tainted_instructions[input_uuid] = set([])
             self.inp2tainted_instructions[input_uuid].add(instr_uuid)
-        return tm
+        return (was_new, tm)
     
     def get_taint_mapping(self, taintm):
         return self.taint_mappings.get(taintm)
 
     def add_address(self, address):
         return self.addresses.add(address)
-
+    
     def add_edge_coverage(self, edge):
+        inp = edge.input
+        if not inp.uuid in inp2edge_coverage:
+            inp2edge_coverage[inp.uuid] = []
+            inputs_without_coverage.remove(inp.uuid) 
+        inp2edge_coverage[inp.uuid].append(edge) 
+
         return self.edges.add(edge)
 
     def add_module(self, module):
@@ -377,23 +456,28 @@ class KnowledgeStorePickle(KnowledgeStore):
     # Corpus & Experiment not yet implemented 
 
     def corpus_exists(self, corp):
-        raise NotImplemented
+        return self.corpora.exists(corp)
+        #raise NotImplemented
 
     def get_corpus(self, corp):
-        raise NotImplemented
+        return self.corpora.get(corp)
+        #raise NotImplemented
 
     def add_corpus(self, corp):
-        raise NotImplemented
+        return self.corpora.add(corp)
+        #raise NotImplemented
 
     def experiment_exists(self, experiment):
-        raise NotImplemented
+        return self.experiments.exists(experiment)
+        #raise NotImplemented
 
     def get_experiment(self, experiment):
-        raise NotImplemented
+        return self.experiments.get(experiment)
+        #raise NotImplemented
 
     def add_experiment(self, experiment):
-        raise NotImplemented
-
+        return self.experiments.add(experiment)
+        #raise NotImplemented
 
     def get_tainted_instructions(self):
         return self.tainted_instructions
@@ -415,3 +499,18 @@ class KnowledgeStorePickle(KnowledgeStore):
         if not inp.uuid in self.inp2tainted_instructions:
             return None
         return self.inp2tainted_instructions[inp.uuid]
+
+    def get_edge_coverage_for_input(self, inp):
+        if not inp.uuid in self.inp2edge_coverage:
+            return None
+        return self.inp2edge_coverage[inp.uuid]
+
+    def get_execution_inputs(self):
+        return self.execution_inputs
+ 
+    def get_inputs_with_coverage(self):
+        return set(self.inp2edge_coverage.keys())  
+
+    def get_inputs_without_coverage(self):
+        return self.inputs_without_coverage 
+
