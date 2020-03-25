@@ -24,7 +24,7 @@ RUN pip3 install grpcio grpcio-tools hydra-core
 RUN pip3 install pyyaml cffi colorama google-api-python-client protobuf
 
 # Setup pypanda
-WORKDIR /panda/panda/pypanda/
+WORKDIR /panda/panda/python/core/
 RUN python3.6 setup.py install 
 
 # Get the qcow image; put it in the right place  
