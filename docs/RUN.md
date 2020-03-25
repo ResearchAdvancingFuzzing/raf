@@ -24,7 +24,7 @@ After all the docker images are built, we are ready to deploy objects into the c
 ```
 kubectl apply -f config_init.yaml
 ```
-This will create every Kubernetes yaml object defined in the `config_init` file. You should see the following output if done correctly. 
+This will create every Kubernetes yaml object defined in the `config_init.yaml` file. You should see the following output if done correctly. 
 ```
 clusterrole.rbac.authorization.k8s.io/pods-list created
 clusterrolebinding.rbac.authorization.k8s.io/pods-list created
@@ -64,13 +64,15 @@ Note: These commands can display information about any Kubernetes object. The ge
 kubectl get <object>
 kubectl describe <object> <object-name>
 ```
-See documentation at https://kubernetes.io/docs/reference/kubectl/overview/ for more information. 
+See documentation at https://kubernetes.io/docs/reference/kubectl/overview/ for more information on how to use kubectl. 
 
 #### Exec a Pod
 In order to get a shell to a **running** container (useful for debugging and testing), run the following:
 ```
 kubectl exec -it <pod-name> -- bash
 ```
+#### Notes
+- Right now a lot of the jobs are running an `./infinite` script so they stay up indefinitely and I can get a shell to the container and debug it. This can be easily changed in the respective Dockerfile for the image so that it runs the .py script it is supposed to run. 
 
 
 
