@@ -45,10 +45,7 @@ kubectl apply -f config_taint.yaml
 kubectl apply -f config_fuzzer.yaml
 kubectl apply -f config_coverage.yaml
 ```
-`config-server.yaml` contains the objects for the knowledge base grpc server. 
-`config-taint.yaml` contains the obejcts to run the taint job.
-`config-fuzzer.yaml` contains the objects to run the fuzzer job. 
-`config-coverage.yaml` contains the objects to run the coverage job. 
+`config-{x}.yaml` contains the objects to run the {x} part of the system. For instance, `config-server.yaml` contains the Kubernetes objects to run the Knowledge Base grpc server. 
 #### Monitoring Kubernetes Pods
 In order to debug / get status updates about the pods that are running, run any of the following:
 ```
