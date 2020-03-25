@@ -3,27 +3,29 @@
 # make sure we do a helm install stable/postgresql BEFORE any of this since
 # the setup requires that we have the postgres database already running 
 
-kind: ClusterRole
+kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: pods-list
+  name: job-create
+  namespace: default
 rules: 
-- apiGroups: [""]  
-  resources: ["nodes", "pods", "services", "secrets", "jobs", "cronjobs"] # what resources this Cluster Role applies to 
+- apiGroups: ["", "apps", "batch"]  
+  resources: ["nodes", "pods", "services", "secrets", "deployments", "jobs", "cronjobs"] # what resources this Cluster Role applies to 
   verbs: ["list", "get", "watch", "create", "update", "delete"] # what actions it can perform (right now just list things) 
 
 ---
-kind: ClusterRoleBinding
+kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: pods-list
+  name: create-jobs
 subjects:  # who this applies to: all serviceaccounts that are default (which is basically everything)
 - kind: ServiceAccount
   name: default # default:default
+  #apiGroup: rbac.authorization.k8s.io
   namespace: default
 roleRef: # what role they are getting  
-  kind: ClusterRole 
-  name: pods-list
+  kind: Role 
+  name: job-create
   apiGroup: rbac.authorization.k8s.io
 
 ---
