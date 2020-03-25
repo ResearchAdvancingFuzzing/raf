@@ -20,7 +20,7 @@ cd raf
 ./run
 ```
 ## Running RAF:
-After all the docker images are built, we are ready to deploy objects into the cluster. Start with the following to add the objects that will initialize the cluster environment.
+After all the docker images are built, we are ready to deploy objects into the cluster. Start with the following to add the objects that will _initialize the cluster environment_ and _start up the knowledge base grpc server_.
 ```
 kubectl apply -f config_init.yaml
 ```
@@ -38,14 +38,13 @@ persistentvolumeclaim/inputs-pv-claim created
 persistentvolumeclaim/target-instr-pv-claim created
 job.batch/init created
 ```
-After this init pod has completed (see Monitoring Kubernetes Objects below), you can create any of the other objects listed in the config files. 
+After this init pod has completed (see Monitoring Kubernetes Objects below), you can create any of the jobs (fuzzer job, taint job, coverage job) listed in these config files. 
 ```
-kubectl apply -f config_server.yaml
 kubectl apply -f config_taint.yaml
 kubectl apply -f config_fuzzer.yaml
 kubectl apply -f config_coverage.yaml
 ```
-`config-{x}.yaml` contains the objects to run the {x} part of the system. For instance, `config-server.yaml` contains the Kubernetes objects to run the Knowledge Base grpc server. 
+Note: `config-{x}.yaml` contains the objects to run the {x} part of the system. For instance, `config-server.yaml` contains the Kubernetes objects to run the Knowledge Base grpc server. 
 #### Monitoring Kubernetes Pods
 In order to debug / get status updates about the pods that are running, run any of the following:
 ```
@@ -73,7 +72,7 @@ kubectl exec -it <pod-name> -- bash
 ```
 #### Notes
 - Right now a lot of the jobs are running an `./infinite` script so they stay up indefinitely and I can get a shell to the container and debug it. This can be easily changed in the respective Dockerfile for the image so that it runs the .py script it is supposed to run. 
-- Also, as of now, the objects in the `config_{x}.yaml` files are created manually. After the init and fuzzing manager jobs are created, these objects will be created by one of these two jobs and the only thing that will need to be run is the following: 
+- Also, as of now, the jobs in the `config_{x}.yaml` files that would be created by the fuzzing manager (taint, fuzzer, coverage) are created manually. After the init and fuzzing manager jobs are completed, all of these objects will be created by the fuzzing manager job and the only thing that will need to be run is the following: 
 ```
 kubectl apply -f config_init.yaml
 ```
