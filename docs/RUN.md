@@ -26,8 +26,8 @@ kubectl apply -f config_init.yaml
 ```
 This will create every Kubernetes yaml object defined in the `config_init.yaml` file. You should see the following output if done correctly. 
 ```
-clusterrole.rbac.authorization.k8s.io/pods-list created
-clusterrolebinding.rbac.authorization.k8s.io/pods-list created
+clusterrole.rbac.authorization.k8s.io/job-create created
+clusterrolebinding.rbac.authorization.k8s.io/create-jobs created
 configmap/dir-config created
 persistentvolume/data-pv created
 persistentvolumeclaim/seed-corpus-pv-claim created
