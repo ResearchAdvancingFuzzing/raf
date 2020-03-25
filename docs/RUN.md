@@ -73,6 +73,10 @@ kubectl exec -it <pod-name> -- bash
 ```
 #### Notes
 - Right now a lot of the jobs are running an `./infinite` script so they stay up indefinitely and I can get a shell to the container and debug it. This can be easily changed in the respective Dockerfile for the image so that it runs the .py script it is supposed to run. 
+- Also, as of now, the objects in the `config_{x}.yaml` files are created manually. After the init and fuzzing manager jobs are created, these objects will be created by one of these two jobs and the only thing that will need to be run is the following: 
+```
+kubectl apply -f config_init.yaml
+```
 
 
 
