@@ -9,8 +9,8 @@ metadata:
   name: pods-list
 rules: 
 - apiGroups: [""]  
-  resources: ["nodes", "pods", "services", "secrets"] # what resources this Cluster Role applies to 
-  verbs: ["list"] # what actions it can perform (right now just list things) 
+  resources: ["nodes", "pods", "services", "secrets", "jobs", "cronjobs"] # what resources this Cluster Role applies to 
+  verbs: ["list", "get", "watch", "create", "update", "delete"] # what actions it can perform (right now just list things) 
 
 ---
 kind: ClusterRoleBinding
@@ -19,7 +19,7 @@ metadata:
   name: pods-list
 subjects:  # who this applies to: all serviceaccounts that are default (which is basically everything)
 - kind: ServiceAccount
-  name: default
+  name: default # default:default
   namespace: default
 roleRef: # what role they are getting  
   kind: ClusterRole 

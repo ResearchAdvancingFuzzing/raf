@@ -27,8 +27,8 @@ docker build -t taint:v1 -f spitfire/components/taint/panda/Dockerfile_taint .
 docker build -t coverage:v1 -f spitfire/components/coverage/Dockerfile .
 
 #This job needs to be created "after" but for now this will do
-kubectl apply -f config-init.yaml
-kubectl apply -f config-server.yaml
-kubectl apply -f config-taint.yaml 
-kubectl apply -f config-fuzzer.yaml
-kubectl apply -f config-coverage.yaml
+#kubectl apply -f config-init.yaml
+#kubectl apply -f config-server.yaml
+#kubectl apply -f config-taint.yaml 
+#kubectl apply -f config-fuzzer.yaml
+#kubectl apply -f config-coverage.yaml
