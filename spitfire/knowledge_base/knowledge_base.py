@@ -150,13 +150,13 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
         try:
             num_new = 0 
             for fbs in fbs_iterator:
-                print ("Adding fbs [%s]" % (str(fbs)))
+                #print ("Adding fbs [%s]" % (str(fbs)))
                 (was_new, fbs) = self.ks.add_fuzzable_byte_set(fbs)
                 if was_new:
                     num_new += 1
             return(kbp.KnowledgeBaseResult(success=True, message="%d fbs added" % num_new))
         except Exception as e:
-            print ("Exception: %s" % str(e))
+            #print ("Exception: %s" % str(e))
             return(kbp.KnowledgeBaseResult(success=False, message="AddFuzzableByteSets exception: " + str(e)))
 
     # Returns KnowledgeBaseResult
@@ -164,13 +164,13 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
         try:
             num_new = 0
             for ti in ti_iterator:
-                print ("Adding ti [%s]" % (str(ti)))
+                #print ("Adding ti [%s]" % (str(ti)))
                 (was_new, ti) = self.ks.add_tainted_instruction(ti)
                 if was_new:
                     num_new += 1
             return(kbp.KnowledgeBaseResult(success=True, message="%d ti added" % num_new))
         except Exception as e:
-            print ("Exception: %s" % str(e))
+            #print ("Exception: %s" % str(e))
             return(kbp.KnowledgeBaseResult(success=False, message="AddTaintedInstructions exception: " + str(e)))
 
     # Returns KnowledgeBaseResult
@@ -178,7 +178,7 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
         try:
             num_new = 0
             for tm in tm_iterator:
-                print("Adding tm [%s]" % (str(tm)))
+                #print("Adding tm [%s]" % (str(tm)))
                 (was_new, tm) = self.ks.add_taint_mapping(tm)
                 if was_new:
                     num_new += 1 
@@ -230,12 +230,18 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
 
     def GetInputsWithoutCoverage(self, emp, context):
         for inp in self.ks.get_inputs_without_coverage():
-            yield inp 
+            yield inp
 
+    def GetSeedInputs(self, emp, context):
+        for inp in self.get_seed_inputs():
+            yield inp
+
+    def GetInputById(self, uuid, context):
+        return self.get_input_by_id(uuid) 
 @hydra.main(config_path=fuzzing_config_dir + "/config.yaml")
 def serve(cfg):
     print(cfg.pretty(), flush=True)
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=1))
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=1000), maximum_concurrent_rpcs=16)
     kbpg.add_KnowledgeBaseServicer_to_server(KnowledgeBase(cfg), server)
     server.add_insecure_port("[::]:%d" % cfg.knowledge_base.port)
     server.start()

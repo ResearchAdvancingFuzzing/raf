@@ -27,25 +27,31 @@ corpus_dir = os.environ.get("CORPUS_DIR")
 interesting_dir = "%s/interesting/crash/" % work_dir 
 coverage_dir = "%s/coverage" % work_dir
 
-def copy_file(file_name, **arg):
-    shutil.copy(file_name, arg["dest"])
 
-def send_file(file_name, **arg):
-    base_name = os.path.basename(file_name)
-    file_name = "%s/%s" % (input_dir, base_name) 
-    input_msg = kbp.Input(filepath=file_name, type=arg["kb_type"])
-    input_kb = arg["kbs"].AddInput(input_msg) 
+inputs = {} 
 
-def perform_files(src, func, **arg): 
+# Copy files from src to dest
+# Add the attrb and value to that file 
+def process_files(src, dest, attrb, value): 
     src_files = os.listdir(src) 
     for file_name in src_files:
         full_file_name = os.path.join(src, file_name) 
         if os.path.isfile(full_file_name) and full_file_name.endswith(".input"):
-            for a in arg.keys():
-                print(a)
-            func(full_file_name, **arg)
-            #shutil.copy(full_file_name, dest)
+            kb_input = None
+            if not file_name in inputs: 
+                shutil.copy(full_file_name, dest) 
+                kb_input = kbp.Input(filepath = "%s/%s" % (dest, file_name))
+                inputs[file_name] = kb_input
+            else: 
+                kb_input = inputs[file_name] 
+            setattr(kb_input, attrb, value) 
 
+
+def send_to_database(kbs, inputs):
+    # Inputs is a dictionary of inputs to their kb_input 
+    kb_inputs = inputs.values()
+    for kb_input in kb_inputs:
+        kbs.AddInput(kb_input) 
 
 @hydra.main(config_path=f"{spitfire_dir}/config/expt1/config.yaml")
 def run(cfg):    
@@ -116,24 +122,27 @@ def run(cfg):
     print(cmd) 
 
     # Run fuzzer 
-    subprocess.run(args=cmd, env=env)
+    proc = subprocess.run(args=cmd, env=env)
+    exit_code = proc.returncode
 
     # Move new input to /inputs directory 
-   
     if (os.path.isdir(interesting_dir)):
-        perform_files(interesting_dir, copy_file, dest=input_dir)
+        process_flies(interesting_dir, input_dir, "increased_coverage", 1) 
+        #perform_files(interesting_dir, copy_file, dest=input_dir)
     if (os.path.isdir(coverage_dir)):
-        perform_files(coverage_dir, copy_file, dest=input_dir) 
+        process_files(coverage_dir, input_dir, "exit_code", exit_code) 
+        #perform_files(coverage_dir, copy_file, dest=input_dir) 
     
     # Send new files over 
     with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
         kbs = kbpg.KnowledgeBaseStub(channel)
-        kbp_covg_type = kbp.Input.InputType.COVG_INCREASED;
-        kbp_interesting_type = kbp.Input.InputType.CRASH;
-        if (os.path.isdir(interesting_dir)):
-            perform_files(interesting_dir, send_file, kb_type=kbp_interesting_type, kbs=kbs)
-        if (os.path.isdir(coverage_dir)):
-            perform_files(coverage_dir, send_file, kb_type=kbp_covg_type, kbs=kbs)
+        send_to_database(kbs, inputs) 
+        #kbp_covg_type = kbp.Input.InputType.COVG_INCREASED;
+        #kbp_interesting_type = kbp.Input.InputType.CRASH;
+        #if (os.path.isdir(interesting_dir)):
+        #    perform_files(interesting_dir, send_file, kbs=kbs)
+        #if (os.path.isdir(coverage_dir)):
+        #    perform_files(coverage_dir, send_file, kbs=kbs)
 
 if __name__ == '__main__':
     logging.basicConfig()

@@ -314,7 +314,8 @@ class EdgeCoveragePickle(ThingPickle):
         for address in ec.address:
             uuid.append(address.uuid) 
         uuid = b"".join(uuid)
-        return md5(str(uuid)) 
+        return md5(str(uuid))
+
 
 class KnowledgeStorePickle(KnowledgeStore):
     
@@ -340,9 +341,11 @@ class KnowledgeStorePickle(KnowledgeStore):
         self.executions = ExecutionPickle() 
         self.inp2edge_coverage = {}
         #self.edge_coverage = EdgeCoveragePickle() 
-        self.inputs_without_coverage = set([]) 
+        self.inputs_without_coverage = set([])  
         self.inputs_with_coverage = set([]) 
+        self.inputs
         self.execution_inputs = set([]) 
+        self.original_corpus = set([]) # don't implement yet 
 
     def execution_exists(self, execution): 
         return self.executions.exists(execution)
@@ -372,14 +375,23 @@ class KnowledgeStorePickle(KnowledgeStore):
     def input_exists(self, input):
         return self.inputs.exists(input)
 
+    def update_input(self, old, new):
+        attrs = [attr for attr in dir(old) if not (attr[0].startswith('__') and attr[0].endswith('__'))] 
+        for attr in attrs: 
+            if hasattr(new, attr) and not hasattr(old, attr): 
+                setattr(old, attr, getattr(new, attr)) 
+
     def add_input(self, input):
+        # We need to update the fields that aren't present if there are any 
         if self.input_exists(input): 
             was_new = 0
             kb_input = self.get_input(input) 
-        else:
-            (was_new, kb_input) = self.inputs.add(input)
-            self.inputs_without_coverage.add(kb_input.uuid) 
-        return (was_new, kb_input) 
+            self.update_input(kb_input, input) 
+        #else:
+        #    (was_new, kb_input) = self.inputs.add(input)
+        #    self.inputs_without_coverage.add(kb_input.uuid) 
+        #return (was_new, kb_input) 
+        return self.inputs.add(input) 
 
     def get_input(self, input):
         return self.inputs.get(input)
@@ -475,7 +487,7 @@ class KnowledgeStorePickle(KnowledgeStore):
 
     # XXX 
     # Corpus & Experiment not yet implemented 
-
+    
     def corpus_exists(self, corp):
         return self.corpora.exists(corp)
         #raise NotImplemented
@@ -503,9 +515,6 @@ class KnowledgeStorePickle(KnowledgeStore):
     def get_tainted_instructions(self):
         return self.tainted_instructions
         
-    def get_taint_inputs(self):
-        return self.taint_inputs
-
     def get_taint_inputs_for_tainted_instruction(self, instr):
         if not instr.uuid in self.instr2tainted_inputs:
             return None # is this how we have a generator with no elements?
@@ -526,12 +535,28 @@ class KnowledgeStorePickle(KnowledgeStore):
             return None
         return self.inp2edge_coverage[inp.uuid]
 
+    # All the functions that need to iterate through inputs to get their results 
+    def get_input_set(self, attrib, value): 
+        inp_set = set([]) 
+        for inp in self.inputs: 
+            if hasattr(inp, attrib) and getattr(inp, attrib) == value:
+               inp_set.add(inp.uuid) 
+        return inp_set
+
+    def get_taint_inputs(self):
+        return self.get_input_set("taint_analyzed", 1) 
+
     def get_execution_inputs(self):
-        return self.execution_inputs
- 
+        return self.get_input_set("fuzzed", 1) 
+
     def get_inputs_with_coverage(self):
-        return set(self.inp2edge_coverage.keys())  
+        return self.get_input_set("coverage_complete", 1) 
 
     def get_inputs_without_coverage(self):
-        return self.inputs_without_coverage 
+        return self.get_input_set("coverage_complete", 0) 
 
+    def get_seed_inputs(self): 
+        return self.get_input_set("seed", 1) 
+
+    def get_input_by_id(self, uuid): 
+        return self.inputs.get_by_id(uuid) 
