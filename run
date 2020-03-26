@@ -14,17 +14,19 @@
 #eval $(minikube docker-env)
 
 git clone https://github.com/ResearchAdvancingFuzzing/gtfo.git spitfire/tools/gtfo-source/gtfo
+git clone https://github.com/ResearchAdvancingFuzzing/panda-replays.git init/seed-corpus/panda-replays
+mv init/seed-corpus/panda-replays/targets/xmllint-3e7e75bed2cf2853b0d42d635d36676b3330d475-64bit/inputs init/seed-corpus/corpu
 cd spitfire/protos && make && cd ../..
-docker build -t init:v1 -f init/init/Dockerfile .
-docker build -t gtfo-source:v1 -f spitfire/tools/gtfo-source/Dockerfile .
-docker build -t seed-corpus:v1 -f init/seed-corpus/Dockerfile .
-docker build -t target:v1 -f init/target/Dockerfile_target .
-docker build -t spitfire:v1 .
-docker build -t fuzz:v1 -f spitfire/components/mutfuzz/Dockerfile .
-docker build -t knowledge-base:v1 -f spitfire/knowledge_base/Dockerfile .
-docker pull pandare/panda 
-docker build -t taint:v1 -f spitfire/components/taint/panda/Dockerfile_taint .
-docker build -t coverage:v1 -f spitfire/components/coverage/Dockerfile .
+sudo docker build -t init:v1 -f init/init/Dockerfile .
+sudo docker build -t gtfo-source:v1 -f spitfire/tools/gtfo-source/Dockerfile .
+sudo docker build -t seed-corpus:v1 -f init/seed-corpus/Dockerfile .
+sudo docker build -t target:v1 -f init/target/Dockerfile_target .
+sudo docker build -t spitfire:v1 .
+sudo docker build -t fuzz:v1 -f spitfire/components/mutfuzz/Dockerfile .
+sudo docker build -t knowledge-base:v1 -f spitfire/knowledge_base/Dockerfile .
+sudo docker pull pandare/panda 
+sudo docker build -t taint:v1 -f spitfire/components/taint/panda/Dockerfile_taint .
+sudo docker build -t coverage:v1 -f spitfire/components/coverage/Dockerfile .
 
 #This job needs to be created "after" but for now this will do
 #kubectl apply -f config-init.yaml
