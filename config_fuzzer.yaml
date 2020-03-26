@@ -52,4 +52,3 @@ spec:
             claimName: inputs-pv-claim
       restartPolicy: OnFailure
 
-

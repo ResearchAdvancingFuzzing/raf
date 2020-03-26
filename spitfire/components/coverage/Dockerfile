@@ -62,8 +62,8 @@ RUN python3.6 setup.py install
 #python3.6 setup.py install 
 
 COPY ./infinite ./infinite 
-COPY ./spitfire/components/coverage/coverage.py ./
-CMD ./infinite
+COPY ./spitfire/components/coverage/run.py ./
+#CMD ./infinite
 
 #WORKDIR /spitfire/tools/taint/panda/
 

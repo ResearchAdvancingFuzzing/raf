@@ -63,9 +63,9 @@ RUN wget http://panda-re.mit.edu/qcows/linux/ubuntu/1804/x86_64/bionic-server-cl
 RUN mkdir working 
 WORKDIR working 
 COPY ./infinite ./infinite
-COPY ./spitfire/components/taint/panda/panda_taint.py ./
+COPY ./spitfire/components/taint/panda/run.py ./
 COPY ./spitfire/components/taint/panda/taint_analysis.py ./
-CMD ./infinite
+#CMD ./infinite
 
 #WORKDIR /spitfire/tools/taint/panda/
 

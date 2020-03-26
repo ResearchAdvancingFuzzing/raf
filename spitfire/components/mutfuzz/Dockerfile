@@ -12,11 +12,11 @@ RUN pip3 install grpcio grpcio-tools hydra-core
 #RUN pip3 install hydra-corei
 RUN apt-get update -y
 RUN apt-get install -y vim
-COPY spitfire/components/mutfuzz/run_fuzzer.py ./
+COPY spitfire/components/mutfuzz/run.py ./
 COPY infinite ./
 
 #CMD ./script.sh
-CMD ./infinite 
+#CMD ./infinite 
 #./script.sh
 #./infinite 
 #["./script.sh"]

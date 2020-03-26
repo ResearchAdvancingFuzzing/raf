@@ -11,6 +11,7 @@ git clone https://github.com/ResearchAdvancingFuzzing/panda-replays.git init/see
 mv init/seed-corpus/panda-replays/targets/xmllint-3e7e75bed2cf2853b0d42d635d36676b3330d475-64bit/inputs init/seed-corpus/corpus
 cd spitfire/protos && make && cd ../..
 docker build -t init:v1 -f init/init/Dockerfile .
+docker build -t fm:v1 -f spitfire/fuzzing_manager/Dockerfile .
 docker build -t gtfo-source:v1 -f spitfire/tools/gtfo-source/Dockerfile .
 docker build -t seed-corpus:v1 -f init/seed-corpus/Dockerfile .
 docker build -t target:v1 -f init/target/Dockerfile_target .
