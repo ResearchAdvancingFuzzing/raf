@@ -1,6 +1,6 @@
 #
 # Tubby: A taint and coverage based fuzzing manager. 
-#
+
 #
 
 from kubernetes import client, utils, config
@@ -23,17 +23,18 @@ budget = 10
 def create_job_from_yaml(api_instance, num, commands, template_file): 
     with open( template_file ) as f:
         job=yaml.safe_load(f)
-        #print(job)
+        print(job)
         name ="%s-%s" % (job["metadata"]["name"], str(num)) 
         job["metadata"]["name"] = name
         job["spec"]["template"]["metadata"]["name"] = name
         job["spec"]["template"]["spec"]["containers"][0]["name"]=name
-        job["spec"]["template"]["spec"]["containers"][0]["command"]=commands
-	#job["spec"]["template"]["metadata"]["labels"]["app"]=name
+        #job["spec"]["template"]["spec"]["containers"][0]["command"]=commands
+	
+        #job["spec"]["template"]["metadata"]["labels"]["app"]=name
 	#job["spec"]["template"]["spec"]["containers"][0]["image"]=image
 	#job["spec"]["template"]["spec"]["containers"][0]["command"]=commands
 	#job["spec"]["template"]["spec"]["containers"][0]["env"]=envs
-    #print(job)
+    print(job)
     api_response = api_instance.create_namespaced_job(body=job, namespace="default")
     print("Job created. status='%s'" % str(api_response.status))
     return job
@@ -41,15 +42,15 @@ def create_job_from_yaml(api_instance, num, commands, template_file):
 # somehow Heather runs this fn in a kubernetes cron job every M minutes
 # M=5 ?
 # this cfg is the hydra thing, I hope
-cur_dir = "/home/hpreslier/raf/spitfire"
+cur_dir = os.environ.get("SPITFIRE")  
 @hydra.main(config_path=f"{cur_dir}/config/expt1/config.yaml")
 #@hydra.main(config_path=f"{spitfire_dir}/config/expt1/config.yaml")
 def run(cfg):
 
     #N = consult kubernetes to figure out how much many cores we are using currently
-    config.load_kube_config()
+    config.load_incluster_config()
     batch_v1 = client.BatchV1Api() 
-    create_job_from_yaml(batch_v1, 1, "python3.6 run.py", f"{cur_dir}/fuzzing_manager/jobs/config_coverage.yaml")  
+    create_job_from_yaml(batch_v1, 1, "python3.6 run.py", "/config_coverage.yaml")  
     return
     #if N >= budget:
         # we are using all the compute we have -- wait
