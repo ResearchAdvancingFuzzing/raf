@@ -475,7 +475,7 @@ def check_analysis_complete(cfg, channel, inputfile):
     panda = kbs.AddAnalysisTool(panda_msg)
 
     print("input file is [%s]" % inputfile) 
-    input_msg = kbp.Input(filepath=inputfile) 
+    input_msg = kbp.Input(filepath=inputfile, taint_analyzed=True) 
     taint_input = kbs.AddInput(input_msg)
 
     # if we have already performed this taint analysis, bail

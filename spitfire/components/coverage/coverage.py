@@ -188,7 +188,7 @@ def send_to_database(edges, input_file, modules, channel):
         pass
     #print(result) 
 
-    kb_input = kbp.Input(filepath=input_file)
+    kb_input = kbp.Input(filepath=input_file, coverage_complete=True)
     input_msg = kbs.AddInput(kb_input)
     kb_edges = []
     for edge in edges:

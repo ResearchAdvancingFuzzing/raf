@@ -43,7 +43,8 @@ service KnowledgeBase {
     // raise an exception if its not there.
     rpc GetTarget(Target) returns (Target) {}
     rpc GetInput(Input) returns (Input) {}
-    rpc GetCorpus(Corpus) returns (Corpus) {}
+    //rpc GetCorpus(Corpus) returns (Corpus) {}
+    
     rpc GetExperiment(Experiment) returns (Experiment) {}
     rpc GetAnalysisTool(AnalysisTool) returns (AnalysisTool) {}
     rpc GetAnalysis(Analysis) returns (Analysis) {}
@@ -55,20 +56,18 @@ service KnowledgeBase {
     rpc AddModules (stream Module) returns (stream Module);
     rpc AddAddresses (stream Address) returns (stream Address);
 
-
-    // coverage API fns
+    // Coverage
     rpc AddEdgeCoverage (stream EdgeCoverage) returns (stream EdgeCoverage);
-    
-    // Get the set of inputs that we have done mutational fuzzing on so far
-    rpc GetExecutionInputs (Empty) returns (stream Input);
-    
-    // Get the set of inputs with which coverage has been done
-    rpc GetInputsWithCoverage (Empty) returns (stream Input);  
-    
-    // Get the set of inputs with which coverage has not been done 
-    rpc GetInputsWithoutCoverage (Empty) returns (stream Input);  
-
     rpc GetEdgeCoverageForInput (Input) returns (stream EdgeCoverage);  
+    
+    // Return sets of input uuids for each of the following  
+    rpc GetInputById (id) returns (Input) {} 
+    rpc GetSeedInputs (Empty) returns (stream id); 
+    rpc GetExecutionInputs (Empty) returns (stream id);
+    rpc GetInputsWithCoverage (Empty) returns (stream id);  
+    rpc GetInputsWithoutCoverage (Empty) returns (stream id);  
+    rpc GetTaintInputs(Empty) returns (stream id);
+ 
     // Add a bunch of fuzzable byte sets to the knowledge base  
     // If any were already there, we dont add twice
     // return value indicates success / error
@@ -85,14 +84,12 @@ service KnowledgeBase {
     // items beforehand.
     rpc AddTaintMappings (stream TaintMapping) returns (KnowledgeBaseResult) {}
 
-    rpc GetInputById (id) returns (Input) {} 
     // Returns set of TaintedInstructions discovered thus far by 
     // all taint analyses that have run.
     rpc GetTaintedInstructions(Empty) returns (stream TaintedInstruction) {}
 
     // Returns set of Inputs that have been used to perform taint analysis 
     // thus far.
-    rpc GetTaintInputs(Empty) returns (stream Input) {}
 
     // Returns set of Inputs that taint this instruction
     rpc GetTaintInputsForTantedInstruction(TaintedInstruction) returns (stream Input) {}
@@ -132,16 +129,16 @@ message Target {
 
 // an input to a program being fuzzed
 message Input {
-    bytes uuid = 1;                   // compute this as md5sum of input (file?) contents
-    string filepath = 2;              // path to file on the spitfire shared file system
-    uint64 size = 3;  		    // size of the input
-    string source = 4;		    // where this input came from
-    enum InputType {		  // what type of analysis this tool runs
-        COVG_INCREASED = 0;
-        CRASH = 1;
-        SEED = 2;
-    }
-    InputType type = 5;
+    bytes uuid = 1;                     // compute this as md5sum of input (file?) contents
+    string filepath = 2;                // path to file on the spitfire shared file system
+    uint64 size = 3;  		        // size of the input
+    string source = 4;		        // where this input came from
+    uint64 exit_code = 5;               // can determine if it was a crashing input
+    bool coverage_complete = 6;         // has coverage been performed yet
+    bool increased_coverage = 7;        // did this input find increased coverage
+    bool seed = 8;                      // was this a seed input
+    bool taint_analyzed = 9;            // has taint been performed yet
+    bool fuzzed = 10;                   // has it been fuzzed yet
     map<string, string> additional_infomation = 16;
 }
 
