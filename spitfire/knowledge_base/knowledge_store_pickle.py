@@ -380,7 +380,8 @@ class KnowledgeStorePickle(KnowledgeStore):
     def update_input(self, old, new):
         attrs = [attr for attr in dir(old) if not (attr[0].startswith('__') and attr[0].endswith('__'))] 
         for attr in attrs: 
-            if hasattr(new, attr) and not hasattr(old, attr): 
+            if hasattr(new, attr) and getattr(new, attr) == True and \
+                    hasattr(old, attr) and getattr(old, attr) == False: 
                 setattr(old, attr, getattr(new, attr)) 
 
     def add_input(self, input):
@@ -388,7 +389,7 @@ class KnowledgeStorePickle(KnowledgeStore):
         if self.input_exists(input): 
             was_new = 0
             kb_input = self.get_input(input) 
-            self.update_input(kb_input, input) 
+            self.update_input(kb_input, input)
         #else:
         #    (was_new, kb_input) = self.inputs.add(input)
         #    self.inputs_without_coverage.add(kb_input.uuid) 
