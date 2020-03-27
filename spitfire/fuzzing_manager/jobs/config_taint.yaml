@@ -10,6 +10,8 @@ spec:
       containers:
         - name: taint #panda #init
           image: taint:v1 #latest #taint:v1 #panda:v1 #taint:v1 #panda:v1 #init:v1
+          command: ["ls"] 
+          args: ["-la"]
           imagePullPolicy: Never
           volumeMounts:
             - name: spitfire-pv-storage

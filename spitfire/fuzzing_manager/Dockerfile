@@ -20,9 +20,9 @@ RUN python3.6 setup.py install
 
 WORKDIR /
 COPY spitfire/fuzzing_manager/fm.py ./
-COPY config_taint.yaml ./
-COPY config_fuzzer.yaml ./
-COPY config_coverage.yaml ./
+COPY spitfire/fuzzing_manager/jobs/config_taint.yaml ./
+COPY spitfire/fuzzing_manager/jobs/config_fuzzer.yaml ./
+COPY spitfire/fuzzing_manager/jobs/config_coverage.yaml ./
 COPY infinite ./
 
 CMD ./infinite

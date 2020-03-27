@@ -20,16 +20,19 @@ P_TAINT_ANALYSIS = 0.25
 # so, like 10 cores or nodes or whatever
 budget = 10 
 
-def create_job_from_yaml(api_instance, num, commands, template_file): 
+def create_job_from_yaml(api_instance, num, commands, args, template_file): 
+    commands = ["pwd"] # list
+    args = [""] # override hydra here
+
     with open( template_file ) as f:
         job=yaml.safe_load(f)
         print(job)
         name ="%s-%s" % (job["metadata"]["name"], str(num)) 
         job["metadata"]["name"] = name
         job["spec"]["template"]["metadata"]["name"] = name
-        job["spec"]["template"]["spec"]["containers"][0]["name"]=name
-        #job["spec"]["template"]["spec"]["containers"][0]["command"]=commands
-	
+        job["spec"]["template"]["spec"]["containers"][0]["name"] = name
+        job["spec"]["template"]["spec"]["containers"][0]["command"] = commands
+        job["spec"]["template"]["spec"]["containers"][0]["args"] = args
         #job["spec"]["template"]["metadata"]["labels"]["app"]=name
 	#job["spec"]["template"]["spec"]["containers"][0]["image"]=image
 	#job["spec"]["template"]["spec"]["containers"][0]["command"]=commands
@@ -39,18 +42,27 @@ def create_job_from_yaml(api_instance, num, commands, template_file):
     print("Job created. status='%s'" % str(api_response.status))
     return job
 
+class Job: 
+    def __init__(self, name): 
+        self.file_name = f"config_{name}.yaml"
+        self.count = 0 
+
+    def update_count_by(self, num): 
+        self.count += num
+
 # somehow Heather runs this fn in a kubernetes cron job every M minutes
 # M=5 ?
 # this cfg is the hydra thing, I hope
 cur_dir = os.environ.get("SPITFIRE")  
 @hydra.main(config_path=f"{cur_dir}/config/expt1/config.yaml")
-#@hydra.main(config_path=f"{spitfire_dir}/config/expt1/config.yaml")
+#@hydra.main(config_path=f"{spitfire_dir}/config/expt1/config.yaml"
 def run(cfg):
-
+    job_names = ["taint", "coverage", "fuzzer"]
+    jobs = {name:Job(name) for name in job_names}  
     #N = consult kubernetes to figure out how much many cores we are using currently
     config.load_incluster_config()
     batch_v1 = client.BatchV1Api() 
-    create_job_from_yaml(batch_v1, 1, "python3.6 run.py", "/config_coverage.yaml")  
+    #create_job_from_yaml(batch_v1, 1, "python3.6 run.py", "/config_coverage.yaml")  
     return
     #if N >= budget:
         # we are using all the compute we have -- wait

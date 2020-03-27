@@ -40,9 +40,9 @@ job.batch/init created
 ```
 After this init pod has completed (see Monitoring Kubernetes Objects below), you can create any of the jobs (fuzzer job, taint job, coverage job) listed in these config files. 
 ```
-kubectl apply -f config_taint.yaml
-kubectl apply -f config_fuzzer.yaml
-kubectl apply -f config_coverage.yaml
+kubectl apply -f spitfire/fuzzing-manager/jobs/config_taint.yaml
+kubectl apply -f spitfire/fuzzing-manager/jobs/config_fuzzer.yaml
+kubectl apply -f spitfire/fuzzing-manager/jobs/config_coverage.yaml
 ```
 Note: `config-{x}.yaml` contains the objects to run the {x} part of the system. For instance, `config-server.yaml` contains the Kubernetes objects to run the Knowledge Base grpc server. 
 #### Monitoring Kubernetes Pods
