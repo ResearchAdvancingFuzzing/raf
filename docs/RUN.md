@@ -71,7 +71,7 @@ In order to get a shell to a **running** container (useful for debugging and tes
 kubectl exec -it <pod-name> -- bash
 ```
 #### Notes
-- Right now a lot of the jobs are running an `./infinite` script so they stay up indefinitely and I can get a shell to the container and debug it. This can be easily changed in the respective Dockerfile for the image so that it runs the .py script it is supposed to run. 
+- The commands to change the jobs exist in the `config_{x}.yaml` file under `command` and `args`. Right now, it is just a placeholder. Change it to `command: ["python3.6"]` and `args: ["run.py"]` to actually run it.
 - Also, as of now, the jobs in the `config_{x}.yaml` files that would be created by the fuzzing manager (taint, fuzzer, coverage) are created manually. After the init and fuzzing manager jobs are completed, all of these objects will be created by the fuzzing manager job and the only thing that will need to be run is the following: 
 ```
 kubectl apply -f config_init.yaml
