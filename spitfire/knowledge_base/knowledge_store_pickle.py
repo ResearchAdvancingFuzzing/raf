@@ -343,11 +343,6 @@ class KnowledgeStorePickle(KnowledgeStore):
         self.executions = ExecutionPickle() 
         self.inp2edge_coverage = {}
         #self.edge_coverage = EdgeCoveragePickle() 
-        self.inputs_without_coverage = set([])  
-        self.inputs_with_coverage = set([]) 
-        self.inputs
-        self.execution_inputs = set([]) 
-        self.original_corpus = set([]) # don't implement yet 
 
     def execution_exists(self, execution): 
         return self.executions.exists(execution)
@@ -541,10 +536,12 @@ class KnowledgeStorePickle(KnowledgeStore):
     # All the functions that need to iterate through inputs to get their results 
     def get_input_set(self, attrib, value): 
         inp_set = set([]) 
-        for inp in self.inputs: 
+        for inp_id in self.inputs.things: 
+            inp = self.inputs.get_by_id(inp_id) 
             if hasattr(inp, attrib) and getattr(inp, attrib) == value:
-               inp_set.add(inp.uuid) 
-        return inp_set
+               inp_set.add(inp_id) 
+               #inp_set.add(inp)
+        return [self.inputs.get_by_id(uuid) for uuid in inp_set] 
 
     def get_taint_inputs(self):
         return self.get_input_set("taint_analyzed", 1) 

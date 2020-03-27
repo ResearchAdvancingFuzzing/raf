@@ -62,11 +62,11 @@ service KnowledgeBase {
     
     // Return sets of input uuids for each of the following  
     rpc GetInputById (id) returns (Input) {} 
-    rpc GetSeedInputs (Empty) returns (stream id); 
-    rpc GetExecutionInputs (Empty) returns (stream id);
-    rpc GetInputsWithCoverage (Empty) returns (stream id);  
-    rpc GetInputsWithoutCoverage (Empty) returns (stream id);  
-    rpc GetTaintInputs(Empty) returns (stream id);
+    rpc GetSeedInputs (Empty) returns (stream Input); 
+    rpc GetExecutionInputs (Empty) returns (stream Input);
+    rpc GetInputsWithCoverage (Empty) returns (stream Input);  
+    rpc GetInputsWithoutCoverage (Empty) returns (stream Input);  
+    rpc GetTaintInputs(Empty) returns (stream Input);
  
     // Add a bunch of fuzzable byte sets to the knowledge base  
     // If any were already there, we dont add twice

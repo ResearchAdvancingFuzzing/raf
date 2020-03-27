@@ -253,7 +253,7 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
             yield inp
 
     def GetSeedInputs(self, emp, context):
-        for inp in self.get_seed_inputs():
+        for inp in self.ks.get_seed_inputs():
             yield inp
 
     def GetInputById(self, uuid, context):
