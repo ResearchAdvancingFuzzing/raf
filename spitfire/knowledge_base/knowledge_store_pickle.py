@@ -286,8 +286,10 @@ class ExperimentPickle(ThingPickle):
         assert hasattr(experiment, "target")
         assert hasattr(experiment, "seed_corpus")
 
-    def hash(self, experiment): 
-        return md5(str(experiment.seed_corpus.uuid) + experiment.target.souce_hash)
+    def hash(self, experiment):
+        print(experiment.target.source_hash)
+        target_hash = experiment.target.source_hash
+        return md5(str(experiment.seed_corpus.uuid) + target_hash)
 
 class ExecutionPickle(ThingPickle):
     def __init__(self):
@@ -553,7 +555,9 @@ class KnowledgeStorePickle(KnowledgeStore):
         return self.get_input_set("coverage_complete", 1) 
 
     def get_inputs_without_coverage(self):
-        return self.get_input_set("coverage_complete", 0) 
+        coverage_set = self.get_input_set("coverage_complete", 0) 
+        inc_coverage_set = self.get_input_set("increased_coverage", 1)
+        return inc_coverage_set - coverage_set
 
     def get_seed_inputs(self): 
         return self.get_input_set("seed", 1) 

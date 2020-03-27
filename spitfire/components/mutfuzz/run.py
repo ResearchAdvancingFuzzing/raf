@@ -74,29 +74,7 @@ def run(cfg):
         execution_msg = kbp.Execution(input=input_kb, target=target_kb)
         execution_kb = kbs.AddExecution(execution_msg)
         
-        '''
-        target_msg = kbp.Target(name=cfg.target.name, source_hash=cfg.target.source_hash)
-        target_kb = kbs.AddTarget(target_msg) 
-        
-        fuzz_inputs = []
-        uuid = []
-        for dirpath,_,filenames in os.walk(corpus_dir): 
-            for f in filenames:
-                input_msg = kbp.Input(filepath=os.path.join(dirpath, f))
-                fuzz_input = kbs.AddInput(input_msg)
-                fuzz_inputs.append(fuzz_input)
-                uuid.append(fuzz_input.uuid)
-        uuid = b"".join(uuid)
-        print(uuid)
-
-        corpus_msg = kbp.Corpus(uuid=uuid, input=fuzz_inputs)
-        corpus = kbs.AddCorpus(corpus_msg)
-
-        # experiment also needs a seed and a hash of the fuzzing manager 
-        experiment_msg = kbp.Experiment(target=target, seed_corpus=corpus)
-        experiment = kbs.AddExperiment(experiment_msg) 
-        '''
-    # Now let's fuzz
+   # Now let's fuzz
 
     # Move to the working directory  
     os.mkdir(work_dir)

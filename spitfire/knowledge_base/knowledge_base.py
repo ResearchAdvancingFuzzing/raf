@@ -77,44 +77,64 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
     # Add item to the ks (or not if already there)
     # Return canonical message for each of these, with
     # uuid filled in.
-    def AddTarget(self, program, context):        
+    def AddTarget(self, program, context):      
         (was_new, p) = self.ks.add_target(program)
+        if was_new: 
+            print("Target added: %s" % str(p.uuid), flush=True) 
+            print(p) 
         return p
 
     def AddInput(self, inp, context):        
         (was_new, i) = self.ks.add_input(inp)
+        if was_new:
+            print("Input added: %s" % str(i.uuid), flush=True)
+            print(i)
         return i
 
     def AddCorpus(self, corpus, context):        
         (was_new, c) = self.ks.add_corpus(corpus)
+        if was_new:
+            print("Corpus added: %s" % str(c.uuid), flush=True)
+            print(c)
         return c
 
     def AddExperiment(self, experiment, context):        
         (was_new, e) = self.ks.add_experiment(experiment)
+        if was_new:
+            print("Experiment added: %s" % str(e.uuid), flush=True)
         return e
 
     def AddAnalysisTool(self, tool, context):        
         (was_new, te) = self.ks.add_analysis_tool(tool)
+        if was_new:
+            print(te)
         return te
 
     def AddAnalysis(self, analysis, context):        
         (was_new, ta) = self.ks.add_analysis(analysis)
+        if was_new:
+            print(ta.uuid)
         return ta
 
     def AddModules(self, module_itr, context):
         for mod in module_itr:
             (was_new, m) = self.ks.add_module(mod)
+            if was_new:
+                print(m).uuid
             yield m
 
     def AddAddresses(self, address_itr, context):
         for addr in address_itr:
             (was_new, a) = self.ks.add_address(addr)
+            if was_new:
+                print(a.uuid)
             yield a
 
     def AddEdgeCoverage(self, coverage_itr, context):
         for edge in coverage_itr:
             (was_new, e) = self.ks.add_edge_coverage(edge)
-            print("new edge: " + str(e.uuid), flush=True)
+            if was_new:
+                print("new edge: " + str(e.uuid), flush=True)
             yield e
     
     def AddExecution(self, execution, context): 
@@ -238,6 +258,7 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
 
     def GetInputById(self, uuid, context):
         return self.get_input_by_id(uuid) 
+
 @hydra.main(config_path=fuzzing_config_dir + "/config.yaml")
 def serve(cfg):
     print(cfg.pretty(), flush=True)

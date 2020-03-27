@@ -10,6 +10,16 @@ import time
 import random
 import hydra
 import logging
+import grpc 
+import sys
+spitfire_dir = os.environ.get("SPITFIRE")
+sys.path.append("/")
+sys.path.append(spitfire_dir)
+sys.path.append(spitfire_dir + "/protos")
+assert (not (spitfire_dir is None))
+import spitfire.protos.knowledge_base_pb2 as kbp
+import spitfire.protos.knowledge_base_pb2_grpc as kbpg
+
 # some guess at how much time we'll spend on each of these
 P_SEED_MUTATIONAL_FUZZ = 0.25
 P_COVERAGE_FUZZ = 0.25
@@ -19,6 +29,10 @@ P_TAINT_ANALYSIS = 0.25
 # this is our compute budget? 
 # so, like 10 cores or nodes or whatever
 budget = 10 
+
+
+# Get env
+corpus_dir = os.environ.get("CORPUS_DIR")
 
 def create_job_from_yaml(api_instance, num, commands, args, template_file): 
     commands = ["pwd"] # list
@@ -53,8 +67,8 @@ class Job:
 # somehow Heather runs this fn in a kubernetes cron job every M minutes
 # M=5 ?
 # this cfg is the hydra thing, I hope
-cur_dir = os.environ.get("SPITFIRE")  
-@hydra.main(config_path=f"{cur_dir}/config/expt1/config.yaml")
+
+@hydra.main(config_path=f"{spitfire_dir}/config/expt1/config.yaml")
 #@hydra.main(config_path=f"{spitfire_dir}/config/expt1/config.yaml"
 def run(cfg):
     job_names = ["taint", "coverage", "fuzzer"]
@@ -63,11 +77,33 @@ def run(cfg):
     config.load_incluster_config()
     batch_v1 = client.BatchV1Api() 
     #create_job_from_yaml(batch_v1, 1, "python3.6 run.py", "/config_coverage.yaml")  
-    return
-    #if N >= budget:
+    
+    with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
+        kbs = kbpg.KnowledgeBaseStub(channel)
+
+        target_msg = kbp.Target(name=cfg.target.name, source_hash=cfg.target.source_hash)
+        target_kb = kbs.AddTarget(target_msg) 
+        
+        fuzz_inputs = []
+        uuid = []
+        for dirpath,_,filenames in os.walk(corpus_dir): 
+            for f in filenames:
+                input_msg = kbp.Input(filepath=os.path.join(dirpath, f))
+                fuzz_input = kbs.AddInput(input_msg)
+                fuzz_inputs.append(fuzz_input)
+                uuid.append(fuzz_input.uuid)
+        uuid = b"".join(uuid)
+
+        corpus_msg = kbp.Corpus(uuid=uuid, input=fuzz_inputs)
+        corpus = kbs.AddCorpus(corpus_msg)
+        # experiment also needs a seed and a hash of the fuzzing manager 
+        experiment_msg = kbp.Experiment(target=target_kb, seed_corpus=corpus)
+        experiment = kbs.AddExperiment(experiment_msg) 
+        return
+    
+#if N >= budget:
         # we are using all the compute we have -- wait
     #    exit()
-    with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
         kbs = kbpg.KnowledgeBaseStub(channel) 
         S = kbs.GetSeedInputs()  
         F = kbs.GetExecutionInputs()
@@ -89,7 +125,7 @@ def run(cfg):
 
             # set of seed inputs we have not yet fuzzed
             RS = S - F
-            if abs(RS) == 0:
+            if len(RS) == 0:
                 # seed fuzzing not possible -- try something else 
                 continue
 
@@ -110,7 +146,7 @@ def run(cfg):
 
             # set of inputs for which we have coverage info but have not yet fuzzed
             RC = C - F
-            if abs(RC) == 0:
+            if len(RC) == 0:
                 # covg based fuzzing not possible -- try something else 
                 continue
 
@@ -132,7 +168,7 @@ def run(cfg):
 
             # inputs for which we have taint info AND haven't yet fuzzed
             RT = T - F
-            if abs(RT) == 0:
+            if len(RT) == 0:
                 # taint based fuzzing not possible -- try something else
                 continue
 

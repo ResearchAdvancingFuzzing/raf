@@ -122,7 +122,7 @@ message Empty {
 message Target {
     bytes uuid = 1;                   // compute this as md5sum of rest of this message
     string name = 2;                  // program name, like "awk" or "node" or "mount"
-    string source_hash = 4;              // source hash string for version
+    string source_hash = 3;              // source hash string for version
     map<string, string> additional_infomation = 16;
 }
 
