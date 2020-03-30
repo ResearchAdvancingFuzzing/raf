@@ -99,12 +99,14 @@ def run(cfg):
         # experiment also needs a seed and a hash of the fuzzing manager 
         experiment_msg = kbp.Experiment(target=target_kb, seed_corpus=corpus)
         experiment = kbs.AddExperiment(experiment_msg) 
+        
+        for s in kbs.GetSeedInputs(kbp.Empty()): 
+            print(s)
         return
     
 #if N >= budget:
         # we are using all the compute we have -- wait
     #    exit()
-        kbs = kbpg.KnowledgeBaseStub(channel) 
         S = kbs.GetSeedInputs()  
         F = kbs.GetExecutionInputs()
         C = kbs.GetInputsWithCoverage()

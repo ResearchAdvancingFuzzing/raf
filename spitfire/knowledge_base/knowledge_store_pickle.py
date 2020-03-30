@@ -255,8 +255,10 @@ class EdgeCoveragePickle(ThingPickle):
         assert hasattr(edge, "input")
 
     def hash(self, edge):
-        uuid_data = str(edge.hit_count)
+        uuid_data = "" # str(edge.hit_count)
+        print("addresses:", flush=True)
         for a in edge.address:
+            print(str(a), flush=True)
             uuid_data += str(a.uuid)
         uuid_data += str(edge.input.uuid)
         
@@ -301,6 +303,7 @@ class ExecutionPickle(ThingPickle):
 
     def hash(self, execution):
         return md5(str(execution.input.uuid) + str(execution.target.uuid))
+
 
 class EdgeCoveragePickle(ThingPickle): 
     def __init__(self):
@@ -475,7 +478,7 @@ class KnowledgeStorePickle(KnowledgeStore):
         #print(inp, flush=True)
         if not inp.uuid in self.inp2edge_coverage:
             self.inp2edge_coverage[inp.uuid] = []
-            self.inputs_without_coverage.remove(inp.uuid) 
+            #self.inputs_without_coverage.remove(inp.uuid) 
         self.inp2edge_coverage[inp.uuid].append(edge) 
         #print("Leaving edge coverage", flush=True) 
         return self.edges.add(edge)

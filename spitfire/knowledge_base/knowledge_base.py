@@ -113,21 +113,21 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
     def AddAnalysis(self, analysis, context):        
         (was_new, ta) = self.ks.add_analysis(analysis)
         if was_new:
-            print(ta.uuid)
+            print(ta.uuid, flush=True)
         return ta
 
     def AddModules(self, module_itr, context):
         for mod in module_itr:
             (was_new, m) = self.ks.add_module(mod)
             if was_new:
-                print(m).uuid
+                print("Module added: %s" % m.uuid, flush=True)
             yield m
 
     def AddAddresses(self, address_itr, context):
         for addr in address_itr:
             (was_new, a) = self.ks.add_address(addr)
             if was_new:
-                print(a.uuid)
+                print("Address added: %s" % a.uuid, flush=True)
             yield a
 
     def AddEdgeCoverage(self, coverage_itr, context):
@@ -135,6 +135,7 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
             (was_new, e) = self.ks.add_edge_coverage(edge)
             if was_new:
                 print("new edge: " + str(e.uuid), flush=True)
+                #print(e, flush=True)
             yield e
     
     def AddExecution(self, execution, context): 

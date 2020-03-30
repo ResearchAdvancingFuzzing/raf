@@ -44,7 +44,7 @@ class Edge:
         self.addresses = addresses
         self.hit_count = hit_count 
 
-def create_and_run_recording(cfg, inputfile, plog_filename): 
+def create_recording(cfg, inputfile, plog_filename): 
     
     #log.info("Creating recording")
 
@@ -74,7 +74,7 @@ def create_and_run_recording(cfg, inputfile, plog_filename):
     #print(cmd) 
     #return
     panda = Panda(arch="x86_64", expect_prompt=rb"root@ubuntu:.*#", 
-            qcow=qcf, mem="1G", extra_args="-display none -nographic -panda general:n=3") 
+            qcow=qcf, mem="1G", extra_args="-display none -nographic ") 
 
     @blocking
     def take_recording():
@@ -85,13 +85,21 @@ def create_and_run_recording(cfg, inputfile, plog_filename):
     panda.set_os_name("linux-64-ubuntu:4.15.0-72-generic")
     panda.queue_async(take_recording)
     panda.run()
+    return [panda, replayname]
 
+def run_replay(panda, plugins, plog_filename, replayname):
     # Now insert the plugins and run the replay
     panda.set_pandalog(plog_filename)
-    panda.load_plugin("asidstory") 
+    for plugin in plugins:
+        panda.load_plugin(plugin, args=plugins[plugin]) 
+    panda.run_replay(replayname)
+
+'''
+    panda.load_plugin("asidstory")  
+    panda.run_replay(replayname) 
+    panda.load_plugin("edge_coverage", args={"no_kernel" : 1, "n": "3", "program_name": "xmllint", "first_instr": info[1], "last_instr": info[2], "asid": info[0]}) 
     panda.load_plugin("edge_coverage")
     panda.load_plugin("loaded_libs")
-    panda.run_replay(replayname) 
 
 
 def analyze_asid(log_entry, program, asids, instr_intervals, first_instr, last_instr): 
@@ -105,15 +113,15 @@ def analyze_asid(log_entry, program, asids, instr_intervals, first_instr, last_i
         last_instr = ai.end_instr
 
     return [first_instr, last_instr]
+'''
 
 
-
-def ingest_log(cfg, plog_file_name):
+def ingest_log_for_asid(cfg, plog_file_name):
     plog_file = "%s/%s" % (os.getcwd(), plog_file_name)
     asids = set([]) 
     instr_intervals = []
-    first_instr_for_program = None
-    last_instr_for_program = None
+    first_instr = None
+    last_instr = None
     program = cfg.target.name 
 
     print("Ingesting pandalog") 
@@ -121,18 +129,29 @@ def ingest_log(cfg, plog_file_name):
         try:
             for i, log_entry in enumerate(plr):
                 if log_entry.HasField("asid_info"): 
-                    [first_instr_for_program, last_instr_for_program] = \
-                    analyze_asid(log_entry, program, asids, instr_intervals, 
-                            first_instr_for_program, last_instr_for_program)
+                    ai = log_entry.asid_info
+                    if ai.name == program:
+                        asids.add(ai.asid)
+                        instr_interval = [ai.start_instr, ai.end_instr]
+                        instr_intervals.append(instr_interval)
+                        if first_instr is None:
+                            first_instr = ai.start_instr
+                        last_instr = ai.end_instr
+
         except Exception as e:
             print (str(e))
 
+    asids = list(asids)
+    return [asids[0], first_instr, last_instr] 
+
+def ingest_log(cfg, asid, plog_file_name): 
+    plog_file = "%s/%s" % (os.getcwd(), plog_file_name)
     edges = [] 
     modules = {} 
     with plog.PLogReader(plog_file) as plr: 
         try: 
             for i, log_entry in enumerate(plr): 
-                if not log_entry.asid in asids: 
+                if log_entry.asid != asid: 
                     continue 
                 if log_entry.HasField("edge_coverage"):
                     for edge in log_entry.edge_coverage.edges: 
@@ -153,6 +172,12 @@ def ingest_log(cfg, plog_file_name):
         except Exception as e:
             print (str(e))
     
+    for key in modules:
+        print("Module name: %s" % key)
+        print("Module base: %d" % modules[key].base)
+        print("Module end: %d" % modules[key].end)
+        print(" ") 
+
     resolved_edges = []
     #i = 0
     for edge in edges:
@@ -164,15 +189,24 @@ def ingest_log(cfg, plog_file_name):
             #print("PC: %d" % pc) 
             for key in modules:
                 #print("Range for module %s is [%d, %d]" % (key, modules[key].base, modules[key].end))
+                found = False
                 if pc in range(modules[key].base, modules[key].end):
                     #print("in Module: %s", key) 
                     module = modules[key]
                     offset = pc - modules[key].base
                     #print("at Offset: %d", offset)
                     addresses.append(Address(module, offset))
+                    found = True
                     break
-        resolved_edges.append(Edge(addresses, edge.hit_count))
+            if found == False:
+                print("did not find a pc")
+        if len(addresses) == len(edge.pc): # Make sure we found all of them 
+            resolved_edges.append(Edge(addresses, edge.hit_count))
+        #else:
+            #print("did not find")
         #i+= 1
+
+    print("SIZE OF: %d" % len(resolved_edges))
 
     return [resolved_edges, modules]
 
@@ -197,8 +231,12 @@ def send_to_database(edges, input_file, modules, channel):
             module = address.module
             module = kbp.Module(name=module.name, base=module.base, end=module.end, filepath=module.filepath)
             addresses.append(kbp.Address(module=module, offset=address.offset)) 
-        edge_coverage = kbp.EdgeCoverage(hit_count=edge.hit_count, address=addresses, input=kb_input)
+        kb_addresses = []
+        for r in kbs.AddAddresses(iter(addresses)):
+            kb_addresses.append(r) 
+        edge_coverage = kbp.EdgeCoverage(hit_count=edge.hit_count, address=kb_addresses, input=kb_input)
         kb_edges.append(edge_coverage) 
+       
         #print(edge_coverage)
         #i+=1
     print(len(kb_edges))
@@ -216,11 +254,22 @@ def run(cfg):
     
     input_file = cfg.coverage.input_file 
     plog_file_name = cfg.coverage.plog_file_name
-    create_and_run_recording(cfg, input_file, plog_file_name) 
+    [panda, replayname] = create_recording(cfg, input_file, plog_file_name) 
 
-    [edges, modules] = ingest_log(cfg, plog_file_name) 
     #print(edges)
     #return
+    plugins = {} 
+    plugins["asidstory"] = {} 
+    run_replay(panda, plugins, plog_file_name, replayname) 
+    [asid, first_instr, last_instr] = ingest_log_for_asid(cfg, plog_file_name) 
+    
+    plugins.clear() 
+
+    plugins["edge_coverage"] = {"no_kernel" : 1, "n": "3", "program_name": "xmllint", \
+            "first_instr": first_instr, "last_instr": last_instr, "asid": asid}
+    plugins["loaded_libs"] = {} 
+    run_replay(panda, plugins, "2" + plog_file_name, replayname) 
+    [edges, modules] = ingest_log(cfg, asid, "2" + plog_file_name)
 
     with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
         print("here: connected");

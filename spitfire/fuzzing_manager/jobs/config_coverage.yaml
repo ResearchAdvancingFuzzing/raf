@@ -10,8 +10,8 @@ spec:
       containers:
         - name: coverage
           image: coverage:v1 #latest #taint:v1 #panda:v1 #taint:v1 #panda:v1 #init:v1
-          command: ["ls"] 
-          args: ["-la"]
+          command: ["./infinite"] 
+          args: [""]
           imagePullPolicy: Never
           volumeMounts:
             - name: spitfire-pv-storage
