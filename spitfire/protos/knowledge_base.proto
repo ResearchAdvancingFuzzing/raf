@@ -133,7 +133,8 @@ message Input {
     string filepath = 2;                // path to file on the spitfire shared file system
     uint64 size = 3;  		        // size of the input
     string source = 4;		        // where this input came from
-    uint64 exit_code = 5;               // can determine if it was a crashing input
+    //sint64 exit_code = 5;               // can determine if it was a crashing input
+    bool crash = 5;
     bool coverage_complete = 6;         // has coverage been performed yet
     bool increased_coverage = 7;        // did this input find increased coverage
     bool seed = 8;                      // was this a seed input

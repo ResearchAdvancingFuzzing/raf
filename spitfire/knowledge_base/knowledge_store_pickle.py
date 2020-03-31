@@ -89,20 +89,13 @@ class ThingPickle:
         return (None, thing_uuid)
         
     def exists(self, thing):
-#        print(" exists? " + (str(thing)))
         self.check(thing)
         (th, th_uuid) = self.find(thing)
-#        if th is None:
-#            print (" .. no")
-#        else:
-#            print (" .. yes")
         return (not (th is None))
 
     def add(self, thing):
-#        print(" add " + (str(thing)))
         self.check(thing)
         (th, th_uuid) = self.find(thing)
-#        print ("uuid = %s" % (str(th_uuid)))
         if th is None:
             thing.uuid = th_uuid
             self.things[th_uuid] = thing
@@ -140,7 +133,8 @@ class InputPickle(ThingPickle):
 
     def hash(self, inp):
         with open(inp.filepath, 'rb') as inp:
-            return md5(inp.read())
+            f = inp.read() 
+            return md5(f)
 
 
 class AnalysisToolPickle(ThingPickle):
@@ -351,13 +345,7 @@ class KnowledgeStorePickle(KnowledgeStore):
         return self.executions.exists(execution)
 
     def add_execution(self, execution): 
-        if self.execution_exists(execution): 
-            was_new = 0
-            ex = self.get_execution(execution)
-        else: 
-            (was_new, ex) = self.executions.add(execution) 
-            self.execution_inputs.add(ex.input.uuid) 
-        return (was_new, ex)
+        return self.executions.add(execution) #(was_new, ex)
 
     def get_execution(self, execution):
         return self.executions.get(execution) 
@@ -384,14 +372,9 @@ class KnowledgeStorePickle(KnowledgeStore):
 
     def add_input(self, input):
         # We need to update the fields that aren't present if there are any 
-        if self.input_exists(input): 
-            was_new = 0
+        if self.input_exists(input):
             kb_input = self.get_input(input) 
             self.update_input(kb_input, input)
-        #else:
-        #    (was_new, kb_input) = self.inputs.add(input)
-        #    self.inputs_without_coverage.add(kb_input.uuid) 
-        #return (was_new, kb_input) 
         return self.inputs.add(input) 
 
     def get_input(self, input):

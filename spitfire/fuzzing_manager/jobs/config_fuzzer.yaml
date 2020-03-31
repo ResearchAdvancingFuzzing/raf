@@ -10,8 +10,8 @@ spec:
       containers:
         - name: fuzz
           image: fuzz:v1
-          command: ["ls"] 
-          args: ["-la"]
+          command: ["./infinite"] 
+          args: [""]
           volumeMounts:
             - name: target-instr-pv-storage
               mountPath: "/target"

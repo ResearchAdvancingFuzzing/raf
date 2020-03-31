@@ -16,6 +16,7 @@ import google.protobuf.json_format
 import subprocess
 import shutil
 import hashlib
+import struct 
 
 # Get the environment
 work_dir = os.environ.get("WORK_DIR")
@@ -32,24 +33,30 @@ inputs = {}
 
 # Copy files from src to dest
 # Add the attrb and value to that file 
+def process_file(file_name, src, dest, attrb, value): 
+    full_file_name = os.path.join(src, file_name) 
+    # Anything we need to get from results?
+    #if os.path.isfile(full_file_name) and full_file_name.endswith(".results"): 
+    #    f = open(full_file_name, "rb").read()
+    if os.path.isfile(full_file_name) and full_file_name.endswith(".input"):
+        kb_input = None
+        if not file_name in inputs: 
+            shutil.copy(full_file_name, dest) 
+            kb_input = kbp.Input(filepath = "%s/%s" % (dest, file_name))
+            inputs[file_name] = kb_input
+        setattr(inputs[file_name], attrb, value)
+
 def process_files(src, dest, attrb, value): 
-    src_files = os.listdir(src) 
-    for file_name in src_files:
-        full_file_name = os.path.join(src, file_name) 
-        if os.path.isfile(full_file_name) and full_file_name.endswith(".input"):
-            kb_input = None
-            if not file_name in inputs: 
-                shutil.copy(full_file_name, dest) 
-                kb_input = kbp.Input(filepath = "%s/%s" % (dest, file_name))
-                inputs[file_name] = kb_input
-            else: 
-                kb_input = inputs[file_name] 
-            setattr(kb_input, attrb, value) 
+    if (os.path.isdir(src)): 
+        src_files = os.listdir(src) 
+        for i, file_name in enumerate(src_files):
+            process_file(file_name, src, dest, attrb, value)
 
 
 def send_to_database(kbs, inputs):
     # Inputs is a dictionary of inputs to their kb_input 
     kb_inputs = inputs.values()
+    print("Sending %d new inputs to the database" % len(kb_inputs))
     for kb_input in kb_inputs:
         kbs.AddInput(kb_input) 
 
@@ -74,7 +81,7 @@ def run(cfg):
         execution_msg = kbp.Execution(input=input_kb, target=target_kb)
         execution_kb = kbs.AddExecution(execution_msg)
         
-   # Now let's fuzz
+    # Now let's fuzz
 
     # Move to the working directory  
     os.mkdir(work_dir)
@@ -103,24 +110,13 @@ def run(cfg):
     proc = subprocess.run(args=cmd, env=env)
     exit_code = proc.returncode
 
-    # Move new input to /inputs directory 
-    if (os.path.isdir(interesting_dir)):
-        process_flies(interesting_dir, input_dir, "increased_coverage", 1) 
-        #perform_files(interesting_dir, copy_file, dest=input_dir)
-    if (os.path.isdir(coverage_dir)):
-        process_files(coverage_dir, input_dir, "exit_code", exit_code) 
-        #perform_files(coverage_dir, copy_file, dest=input_dir) 
-    
-    # Send new files over 
+    process_files(coverage_dir, input_dir, "increased_coverage", 1)
+    process_files(interesting_dir, input_dir, "crash", 1) 
+
     with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
         kbs = kbpg.KnowledgeBaseStub(channel)
+        
         send_to_database(kbs, inputs) 
-        #kbp_covg_type = kbp.Input.InputType.COVG_INCREASED;
-        #kbp_interesting_type = kbp.Input.InputType.CRASH;
-        #if (os.path.isdir(interesting_dir)):
-        #    perform_files(interesting_dir, send_file, kbs=kbs)
-        #if (os.path.isdir(coverage_dir)):
-        #    perform_files(coverage_dir, send_file, kbs=kbs)
 
 if __name__ == '__main__':
     logging.basicConfig()

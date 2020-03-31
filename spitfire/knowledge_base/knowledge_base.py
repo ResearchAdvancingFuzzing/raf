@@ -107,13 +107,13 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
     def AddAnalysisTool(self, tool, context):        
         (was_new, te) = self.ks.add_analysis_tool(tool)
         if was_new:
-            print(te)
+            print("Analysis Tool added: %s", te.uuid, flush=True)
         return te
 
     def AddAnalysis(self, analysis, context):        
         (was_new, ta) = self.ks.add_analysis(analysis)
         if was_new:
-            print(ta.uuid, flush=True)
+            print("Analysis added: %s" % ta.uuid, flush=True)
         return ta
 
     def AddModules(self, module_itr, context):
@@ -134,12 +134,14 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
         for edge in coverage_itr:
             (was_new, e) = self.ks.add_edge_coverage(edge)
             if was_new:
-                print("new edge: " + str(e.uuid), flush=True)
+                print("Edge added: " + str(e.uuid), flush=True)
                 #print(e, flush=True)
             yield e
     
     def AddExecution(self, execution, context): 
         (was_new, te) = self.ks.add_execution(execution) 
+        if was_new: 
+            print("Execution added: %s" % te.uuid, flush=True)
         return te 
 
     # obtains canonical protobuf repr for each if its in the kb

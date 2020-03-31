@@ -3,13 +3,13 @@ gtfo:
     name: afl_bitmap_analysis.so
   jig:
     name: afl_jig.so
-    target_arg: "fuzzfile"
+    target_arg: "-c jpeg fuzzfile /dev/null"
   ooze:
-    name: afl_havoc.so
+    name: afl_havoc.so #rand_byte_replace.so #afl_havoc.so
   extra_args: "JIG_MAP_SIZE=65536 ANALYSIS_SIZE=65536" 
-  input_file: "/seed-corpus/slashdot.xml"
-  iteration_count: 5000
+  input_file: "/seed-corpus/not_kitty.tiff" #"/seed-corpus/slashdot.xml"
+  iteration_count: 50000
   ooze_seed: "`head -c 10 /dev/urandom | xxd -p`"
-  max_input_size: 8192 
+  max_input_size: 1024 
   analysis_load_file: "bitmap"
 
