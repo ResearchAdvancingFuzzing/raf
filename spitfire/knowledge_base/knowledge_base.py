@@ -170,32 +170,19 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
     # Returns KnowledgeBaseResult
     # note, these fbs should be unique (no dups) but shouldt have uuids
     def AddFuzzableByteSets(self, fbs_iterator, context):
-        try:
-            num_new = 0 
-            for fbs in fbs_iterator:
-                #print ("Adding fbs [%s]" % (str(fbs)))
-                (was_new, fbs) = self.ks.add_fuzzable_byte_set(fbs)
-                if was_new:
-                    num_new += 1
-            return(kbp.KnowledgeBaseResult(success=True, message="%d fbs added" % num_new))
-        except Exception as e:
-            #print ("Exception: %s" % str(e))
-            return(kbp.KnowledgeBaseResult(success=False, message="AddFuzzableByteSets exception: " + str(e)))
-
-    # Returns KnowledgeBaseResult
-    def AddTaintedInstructions(self, ti_iterator, context):
-        try:
-            num_new = 0
-            for ti in ti_iterator:
-                #print ("Adding ti [%s]" % (str(ti)))
-                (was_new, ti) = self.ks.add_tainted_instruction(ti)
-                if was_new:
-                    num_new += 1
-            return(kbp.KnowledgeBaseResult(success=True, message="%d ti added" % num_new))
-        except Exception as e:
-            #print ("Exception: %s" % str(e))
-            return(kbp.KnowledgeBaseResult(success=False, message="AddTaintedInstructions exception: " + str(e)))
-
+        for f in fbs_iterator:
+            (was_new, fbs) = self.ks.add_fuzzable_byte_set(f)
+            if was_new:
+                print("Fbs added: " + str(fbs.uuid), flush=True)
+            yield fbs
+    
+    def AddTaintedInstructions(self, ti_iterator, context): 
+        for t in ti_iterator: 
+            (was_new, ti) = self.ks.add_tainted_instruction(t) 
+            if was_new:
+                print("Ti added: " + str(ti.uuid), flush=True)
+            yield ti
+   
     # Returns KnowledgeBaseResult
     def AddTaintMappings(self, tm_iterator, context):
         try:

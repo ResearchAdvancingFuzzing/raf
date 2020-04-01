@@ -71,11 +71,11 @@ service KnowledgeBase {
     // Add a bunch of fuzzable byte sets to the knowledge base  
     // If any were already there, we dont add twice
     // return value indicates success / error
-    rpc AddFuzzableByteSets (stream FuzzableByteSet) returns (KnowledgeBaseResult) {}
+    rpc AddFuzzableByteSets (stream FuzzableByteSet) returns (stream FuzzableByteSet);  //KnowledgeBaseResult) {}
 
     // Add a bunch of tainted instructions to the knowledge base
     // If any were already there, we dont add twice
-    rpc AddTaintedInstructions (stream TaintedInstruction) returns (KnowledgeBaseResult) {}
+    rpc AddTaintedInstructions (stream TaintedInstruction) returns (stream TaintedInstruction); //(KnowledgeBaseResult) {}
 
     // Add a bunch of taint mappings to the knowledge base.
     // note that a TaintMapping refers to a FuzzableByteSet and a 
