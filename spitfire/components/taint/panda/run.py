@@ -104,11 +104,12 @@ def create_and_run_recording(cfg, inputfile, plog_filename):
     # Copy directory needed to insert into panda recording
     # We need the inputfile and we need the target binary install directory
     copydir = "./copydir"
+    subdir = "install"
     if os.path.exists(copydir):
         shutfil.rmtree(copydir)
     os.makedirs(copydir) 
     shutil.copy(inputfile, copydir)
-    shutil.copytree(targetdir, copydir + "/install") 
+    shutil.copytree(targetdir, "%s/%s" % (copydir, subdir)) 
 
     # Get the qcow file 
     qcow = cfg.taint.qcow;
@@ -121,8 +122,12 @@ def create_and_run_recording(cfg, inputfile, plog_filename):
     print("replay name = [%s]" % replayname)
 
     # This needs to be changed
-    cmd = "cd copydir/install/ && ./%s ~/copydir/%s" % (cfg.target.name, basename(inputfile))
-    #print(cmd) 
+    args = cfg.taint.args 
+    args = args.replace("file", "~/%s/%s" % (basename(copydir), basename(inputfile)), 1) 
+    print(args) 
+    cmd = "cd %s/%s/ && ./%s %s" % (basename(copydir), subdir, cfg.target.name, args)
+    print(cmd) 
+    #return
     #cmd = "cd copydir/install/libxml2/.libs && ./xmllint ~/copydir/"+basename(inputfile)
     #print(cmd) 
     #return
@@ -151,8 +156,6 @@ def create_and_run_recording(cfg, inputfile, plog_filename):
     
     # Now insert the plugins and run the replay
     panda.set_pandalog(plog_filename)
-    panda.load_plugin("osi")
-    panda.load_plugin("osi_linux")
     panda.load_plugin("tainted_instr")
     panda.load_plugin("asidstory")
     panda.load_plugin("collect_code")
@@ -272,6 +275,8 @@ def make_taint_analysis(tainting_fbs, excluded_fbs, excluded_pcs, modules, first
                     offset = tiv.pc - modules[key].base # offset 
                     #print("Tainted Instruction %d in module %s at offset %d" % (tiv.pc, key, offset))
                     break
+            if module == "Unk": 
+                continue 
             #if (offset == tiv.pc): 
                 #print("Unknown instruction %s" % str(tiv.pc))
             f = FuzzableByteSet(fbs)
@@ -293,8 +298,10 @@ def make_taint_analysis(tainting_fbs, excluded_fbs, excluded_pcs, modules, first
 def ingest_log_to_taint_obj(cfg, plog_filename):
     program = cfg.target.name # the name of the program 
     plog_file = "%s/%s" % (os.getcwd(), plog_filename) 
-    print(plog_file)
-    #plog_file = "/spitfire/tools/taint/panda/outputs/2020-03-16/16-20-10/taint.plog" 
+    #print(plog_file)
+    #plog_file = "/spitfire/components/taint/panda/outputs/2020-04-01/21-04-46/taint.plog" 
+    #outputs/2020-04-01/19-23-33/taint.plog" 
+    #outputs/2020-03-16/16-20-10/taint.plog" 
     
     # Information to track 
     asids = set([])  #used to collect asids for the_program
@@ -396,11 +403,52 @@ def send_to_database(ta, module_list, channel):
     addresses = []
     module_dict = {}
 
+    modules = []
     for i, name in enumerate(module_list):
         value = module_list[name]
         module = kbp.Module(name=name, base=value.base, end=value.end, filepath=value.filepath)
-        module_dict[name] = module
+        modules.append(module) 
+        #module_dict[name] = module
+    
+    print("Sending %d modules" % len(modules))
+    kb_modules = {r.name:r for r in stub.AddModules(iter(modules))} 
+    #kb_modules.append(r)
+    #return 
 
+    #modules = []
+    #for module in module_dict.values(): 
+    #    modules.append(module)
+    
+    for tm in ta.tma:
+        ti = tm.ti
+        if not ti.module in kb_modules: 
+            print("problem")
+            continue
+        module = kb_modules[ti.module]
+
+    addresses = [kbp.Address(module=kb_modules[tm.ti.module], offset = tm.ti.pc) for tm in ta.tma] 
+    kb_addresses = [r for r in stub.AddAddresses(iter(addresses))]
+    print("Added %d addresses" % len(kb_addresses))
+
+    ti = [kbp.TaintedInstruction(address=kb_addresses[i], type=tm.ti.type) for i,tm in enumerate(ta.tma)]
+    kb_ti = [r for r in stub.AddTaintedInstructions(iter(ti))]
+    print("Added %d tainted instructions" % len(kb_ti))
+
+    fbs = [kbp.FuzzableByteSet(label=tm.fbs.labels) for tm in ta.tma]
+    kb_fbs = [r for r in stub.AddFuzzableByteSets(iter(fbs))]
+    print("Added %d fbs" % len(kb_fbs))
+
+    tm = [kbp.TaintMapping(fuzzable_byte_set=kb_fbs[i], tainted_instruction=kb_ti[i], \
+            value=tm.value, value_length=tm.value_length, \
+            min_compute_distance=tm.min_compute_distance, max_compute_distance=tm.max_compute_distance)
+            for i, tm in enumerate(ta.tma)]
+    #i = 0
+    r = stub.AddTaintMappings(iter(tm))
+    #i += 1
+    #    pass
+    print("Added taint mappings")
+    print(r) 
+    '''
     for i, tm in enumerate(ta.tma):
         ti = tm.ti # Tainted Instruction
         fbs = tm.fbs # Fuzzable Byte Set 
@@ -429,18 +477,30 @@ def send_to_database(ta, module_list, channel):
        
     #return 
     #result = stub.AddModules(iter(modules))
-    for r in stub.AddModules(iter(modules)): 
-        pass
-    #result = stub.AddAddresses(iter(addresses))
-    for r in stub.AddAddresses(iter(addresses)):
-        pass
+    print("Sending %d addresses" % len(addresses))
+    #result = stub.AddAddresses(iter(addresses))  
+    kb_addresses = [r for r in stub.AddAddresses(iter(addresses))]
+    print("Sending %d tainted instructions" % len(tainted_instructions))
+    i = 0
     for r in tainted_instructions: 
+        if i == 100:
+            break
         result = stub.AddTaintedInstructions(iter(tainted_instructions))
+        print(result)
+    i = 0
+    print("Sending %d fbs" % len(fuzzable_byte_sets))
     for r in fuzzable_byte_sets:
+        if i == 100:
+            break
         result = stub.AddFuzzableByteSets(iter(fuzzable_byte_sets))
+        print(result)
+    print("Sending %d taint mappings" % len(taint_mappings)) 
+    i = 0
     for r in taint_mappings:
+        if i == 100:
+            break
         result = stub.AddTaintMappings(iter(taint_mappings)) 
-
+        print(result)
     #result = stub.AddTaintedInstructions(tainted_instructions)
     #print(result)
     #for r in stub.AddTaintedInstructions(iter(tainted_instructions)): 
@@ -450,13 +510,14 @@ def send_to_database(ta, module_list, channel):
     #for r in stub.AddTaintMappings(iter(taint_mappings)):
     #    pass
     #print(result)
-    result = stub.AddFuzzableByteSets((fuzzable_byte_sets))
-    print(result)
-    result = stub.AddTaintMappings((taint_mappings))
-    print(result) 
+    #result = stub.AddFuzzableByteSets((fuzzable_byte_sets))
+    #print(result)
+    #result = stub.AddTaintMappings((taint_mappings))
+    #print(result) 
     #modules.append(kbp.Module(name=ti.module)) 
         #addresses.append(kbp.Address(module=modules[i]))
         # what about uuid or base or end or filepath?
+    '''
     print(len(ta.tma))
  
 
@@ -521,10 +582,9 @@ def run(cfg):
     
     # Run the panda recording 
     create_and_run_recording(cfg, inputfile, plog_filename) 
-
+    #return 
     # Ingest the plog  
     fm, modules = ingest_log_to_taint_obj(cfg, plog_filename)
-    
     # Send the information over to the database 
     with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
         send_to_database(fm, modules, channel) 
