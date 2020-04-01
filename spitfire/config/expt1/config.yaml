@@ -1,6 +1,6 @@
 defaults:
     - taint: panda
-    - target: tiff2rgba #xmllint
+    - target: xmllint #tiff2rgba #xmllint
     - knowledge_base: pickle
     - coverage: panda 
     - fuzzer: gtfo

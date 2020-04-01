@@ -9,5 +9,6 @@ taint:
     max_label_set_compute_distance: 16
     max_pcs_for_an_fbs: 16
     max_fbs_for_a_pc: 16
-    input_file: "/seed-corpus/slashdot.xml"
+    input_file: "/seed-corpus/slashdot.xml" #"/seed-corpus/not_kitty.tiff"
+    args: "file" #"-c jpeg file out.jpeg"
     plog_filename: "taint.plog" 
