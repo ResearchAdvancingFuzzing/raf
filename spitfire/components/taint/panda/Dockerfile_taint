@@ -20,5 +20,11 @@ RUN mkdir working
 WORKDIR working 
 COPY ./infinite ./infinite
 COPY ./spitfire/components/taint/panda/run.py ./
-COPY ./spitfire/components/taint/panda/taint_analysis.py ./
+COPY ./sptifire/components/taint/panda/taint_analysis.py ./
+# Setup pypanda
+WORKDIR /panda/panda/python/core/
+RUN python3.6 setup.py install 
+WORKDIR /working 
+
+#COPY ./spitfire/components/taint/panda/taint_analysis.py ./
 #CMD ./infinite

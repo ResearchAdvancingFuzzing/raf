@@ -155,7 +155,7 @@ spec:
                 name: dir-config 
       initContainers: 
         - name: get-target
-          image: target:v1 #hpreslier/target:v1
+          image: target:xmllint #v1 #hpreslier/target:v1
           volumeMounts:
             - name: target-pv-storage
               mountPath: "/target"

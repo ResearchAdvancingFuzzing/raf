@@ -1,6 +1,9 @@
 #!/bin/bash
 
-
+# Requirements 
+# python3.6 
+# minikube 
+# grpcio grpcio-tools 
 #minikube start --disk-size=20g --vm-driver=virtualbox
 #eval $(minikube docker-env)
 
@@ -14,7 +17,8 @@ docker build -t init:v1 -f init/init/Dockerfile .
 docker build -t fm:v1 -f spitfire/fuzzing_manager/Dockerfile .
 docker build -t gtfo-source:v1 -f spitfire/tools/gtfo-source/Dockerfile .
 docker build -t seed-corpus:v1 -f init/seed-corpus/Dockerfile .
-docker build -t target:v1 -f init/target/Dockerfile_target .
+#docker build -t target:tiff -f init/target/Dockerfile_target_tiff2rgba .
+docker build -t target:xmllint -f init/target/Dockerfile_target_xmllint .
 docker build -t spitfire:v1 .
 docker build -t fuzz:v1 -f spitfire/components/mutfuzz/Dockerfile .
 docker build -t knowledge-base:v1 -f spitfire/knowledge_base/Dockerfile .
