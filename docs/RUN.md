@@ -4,7 +4,7 @@
 Follow the instructions at https://kubernetes.io/docs/tasks/tools/install-minikube/ to install minikube, kubectl, and optionally (see below) a hypervisor (e.g. virtualbox). 
   
 ## Setup Env: 
-On your host computer, you need to have python3.6 installed as well as the following: 
+On your host computer, you need to have python3.6 installed as well as the following in order to make the grpcio python files from the .proto file in the run script.
 ```
 sudo python3.6 -m pip install grpcio
 sudo python3.6 -m pip install grpcio-tools
