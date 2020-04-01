@@ -4,14 +4,24 @@
 Follow the instructions at https://kubernetes.io/docs/tasks/tools/install-minikube/ to install minikube, kubectl, and optionally (see below) a hypervisor (e.g. virtualbox). 
   
 ## Setup Env: 
+On your host computer, you need to have python3.6 installed as well as the following: 
+```
+sudo python3.6 -m pip install grpcio
+sudo python3.6 -m pip install grpcio-tools
+```
 Run the following commands in order to set up the single-node Kubernetes cluster in a virtual machine on your personal computer and configure your environment to re-use the docker daemon inside the minikube instance.
 ```
 minikube start --vm-driver=virtualbox
 eval $(minikube docker-env)
 ```
-If you have docker **and** a linux environment you can use the following to set the cluster up on your **host**.
+If you have a linux environment you can use the following to set the cluster up on your **host**.
 ```
+sudo apt-get update
+sudo apt install docker.io
+sudo groupadd docker
+sudo usermod -aG docker $USER
 minikube start --vm-driver=none
+sudo chown -R $USER $HOME/.minikube
 ```
 ## Setup RAF:
 After cloning this repository, run the `run` script in order to pull the gtfo repo, create the docker images, and make the grpc proto files. 
