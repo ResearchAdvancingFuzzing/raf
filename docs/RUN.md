@@ -11,13 +11,15 @@ sudo python3.6 -m pip install grpcio
 sudo python3.6 -m pip install grpcio-tools
 ```
 #### Minikube setup
-Run **one** of the following sets of commands to setup minikube: 
-1. Run the following commands in order to set up the single-node Kubernetes cluster in a virtual machine on your personal computer and configure your environment to re-use the docker daemon inside the minikube instance.
+Run **one** of the following sets of commands to setup the single-node Kubernetes cluster: 
+1. In a virtual machine on your host computer: 
+Run the following commands in order to set up the cluster in a virtual machine on your personal computer and configure your environment to re-use the docker daemon inside the minikube instance.
 ```
 minikube start --vm-driver=virtualbox
 eval $(minikube docker-env)
 ```
-2. If you have a linux environment you can use the following to set the cluster up on your **host**.
+2. On your host computer: 
+If you have a linux environment you can use the following to set the cluster up on your **host**.
 ```
 sudo apt-get update
 sudo apt install docker.io
