@@ -5,6 +5,7 @@ RUN apt-get install -y python3.6 python3-pip vim libyaml-0-2 libyaml-dev
 # Install python3 modules 
 RUN pip3 install grpcio grpcio-tools hydra-core
 RUN pip3 install pyyaml cffi colorama google-api-python-client protobuf
+RUN pip3 install capstone 
 
 # Setup pypanda
 WORKDIR /panda/panda/python/core/

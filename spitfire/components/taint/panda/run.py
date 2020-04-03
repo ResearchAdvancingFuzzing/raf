@@ -33,7 +33,7 @@ import knowledge_base
 import plog_pb2
 from taint_analysis import * 
 from google.protobuf import text_format 
-
+from capstone import * 
 # Get the environment
 
 replaydir = os.environ.get('REPLAY_DIR') # make this env variable 
@@ -89,6 +89,11 @@ class Module:
         self.end = mod.base_addr + mod.size
         self.filepath = mod.file
 
+class BasicBlock:
+    def __init__(self, bb): 
+        self.start = bb.pc
+        self.end = bb.pc + bb.basic_block.size
+        self.code = bb.basic_block.code 
 
 import shutil
 
@@ -186,9 +191,10 @@ def collect_code(log_entry, basic_blocks):
     if not (bb.asid in basic_blocks):
         basic_blocks[bb.asid] = {}
     if not (log_entry.pc in basic_blocks[bb.asid]):
-        basic_blocks[bb.asid][log_entry.pc] = set([])
-    block = (bb.size, bb.code)
-    basic_blocks[bb.asid][log_entry.pc].add(block)
+        basic_blocks[bb.asid][log_entry.pc] = [] #set([])
+    #block = [bb.size, bb.code]
+    block = BasicBlock(log_entry)
+    basic_blocks[bb.asid][log_entry.pc].append(block)
 
 
 
@@ -243,44 +249,84 @@ def exclude_pcs(cfg, tainting_fbs):
         if len(fbs_for_pc[pc]) > cfg.taint.max_fbs_for_a_pc:
             excluded_pcs.add(pc)
 
-    print ("excluding %d pcs since they are tainted by too many fbs" % (len(excluded_pcs)))
+    print ("Excluding %d pcs since they are tainted by too many fbs" % (len(excluded_pcs)))
     return excluded_pcs 
 
 
 
 
-def make_taint_analysis(tainting_fbs, excluded_fbs, excluded_pcs, modules, first_instr, last_instr): 
+def make_taint_analysis(tainting_fbs, excluded_fbs, excluded_pcs, modules, basic_blocks, first_instr, last_instr): 
     print ("Constructing spitfire TaintAnalysis")
 
     ta = TaintAnalysis()
-
+    excluded_ti_1 = 0
+    excluded_ti_2 = 0
+    excluded_fbs_1 = 0
+    excluded_fbs_2 = 0
+    
     for fbs in tainting_fbs.keys():
         if fbs in excluded_fbs: 
+            excluded_fbs_1 += 1
+            excluded_ti_1 += len(tainting_fbs[fbs])
             continue
         num_pcs = 0
         for tiv in tainting_fbs[fbs]:
             if tiv.pc in excluded_pcs:
+                excluded_ti_2 += 1
                 continue
             num_pcs +=1
         if num_pcs == 0:
+            excluded_fbs_2 += 1
             continue
         for tiv in tainting_fbs[fbs]:
             if tiv.pc in excluded_pcs:
                 continue
+            # Get the module and offset 
             module = "Unk" #default values 
-            offset = tiv.pc 
+            mod_offset = tiv.pc 
             for key in modules: 
                 if tiv.pc in range(modules[key].base, modules[key].end): 
                     module = key # module 
-                    offset = tiv.pc - modules[key].base # offset 
+                    mod_offset = tiv.pc - modules[key].base # offset 
                     #print("Tainted Instruction %d in module %s at offset %d" % (tiv.pc, key, offset))
                     break
             if module == "Unk": 
+                print("Unable to find a module for %d", tiv.pc) 
                 continue 
+
+            # Get the type and bytes of the instr
+            typ = None
+            byte = None
+            for pc in basic_blocks:
+                for bb in basic_blocks[pc]:
+                    if tiv.pc in range(bb.start, bb.end): 
+                        bb_offset = tiv.pc - bb.start
+                        bb_byte = bb.code[bb_offset:]
+                        #print("NEW PC")
+                        #print(type(bb_byte))
+                        #print(bb_byte)
+                        md = Cs(CS_ARCH_X86, CS_MODE_64)
+                        md.details = True
+                        print(bb_byte)
+                        for i in md.disasm(bb_byte, 0x1000): #int(tiv.pc).ToString("X")):
+                            typ = i.mnemonic 
+                            byte = i.bytes
+                            #print("0x%x:\t%s\t%s" % (i.address, i.mnemonic, i.op_str))
+                            break
+                        #print("bb")
+                        #print(bb.start - bb.end)
+                        #print(len(bb.code))
+                        #typ = "typ"
+                        break
+            if typ is None or byte is None:
+                print("Unable to find the bb for pc %d", tiv.pc) 
+                continue
             #if (offset == tiv.pc): 
+
                 #print("Unknown instruction %s" % str(tiv.pc))
             f = FuzzableByteSet(fbs)
-            i = TaintedInstruction(offset, module, None) #tiv.pc, "Unk", None)
+            i = TaintedInstruction(mod_offset, module, typ, byte) #None) #tiv.pc, "Unk", None)
+            print(i)
             #print(float(tiv.instr))
             #print(first_instr) #first_instr_for_program) 
             #print(last_instr) #_for_program)
@@ -290,6 +336,10 @@ def make_taint_analysis(tainting_fbs, excluded_fbs, excluded_pcs, modules, first
             ta.add_taint_mapping(tm)
 
     print ("------------------------")
+    print("Excluded %d ti because they are in a forbidden fbs" % excluded_ti_1)
+    print("Excluded %d ti because they are a forbidden pc" % excluded_ti_2)
+    print("Excluded %d fbs because they are a forbideen fbs" % excluded_fbs_1)
+    print("Excluded %d fbs because they have only forbidden pcs" % excluded_fbs_2)
     #print (ta)
     return ta
 
@@ -299,7 +349,7 @@ def ingest_log_to_taint_obj(cfg, plog_filename):
     program = cfg.target.name # the name of the program 
     plog_file = "%s/%s" % (os.getcwd(), plog_filename) 
     #print(plog_file)
-    #plog_file = "/spitfire/components/taint/panda/outputs/2020-04-01/21-04-46/taint.plog" 
+    plog_file = "/spitfire/components/taint/panda/outputs/2020-04-03/20-44-00/taint.plog" #outputs/2020-04-01/21-04-46/taint.plog" 
     #outputs/2020-04-01/19-23-33/taint.plog" 
     #outputs/2020-03-16/16-20-10/taint.plog" 
     
@@ -376,14 +426,25 @@ def ingest_log_to_taint_obj(cfg, plog_filename):
     print("Number of bb entries: %d" % num_bb)
     print("Number of ti entries: %d" % num_ti)
     print ("Found %d tainting fuzzable byte sets (fbs)" % (len(tainting_fbs)))
+    sum_ti = 0;
+    for fbs in tainting_fbs:
+        sum_ti += len(tainting_fbs[fbs])
+    print("Number of ti entires kept: %d" % sum_ti)
     print ("Number of asids for program: %d" % len(asids))
     print ("Number of basic blocks in program: %d" % len(basic_blocks))
     print ("Number of instruction intervals for program: %d" % len(instr_intervals))
 
+    basic_block = None
+    for asid in basic_blocks:
+        if asid in asids:
+            basic_block = basic_blocks[asid]
+            break
+    assert (not (basic_block is None))
+    
     # Determine set of fbs and pcs to exclude.
     excluded_fbs = exclude_fbs(cfg, tainting_fbs) 
     excluded_pcs = exclude_pcs(cfg, tainting_fbs) 
-    fm = make_taint_analysis(tainting_fbs, excluded_fbs, excluded_pcs, modules,  
+    fm = make_taint_analysis(tainting_fbs, excluded_fbs, excluded_pcs, modules, basic_block, \
                 first_instr_for_program, last_instr_for_program) 
     return [fm, modules] 
 
@@ -581,11 +642,12 @@ def run(cfg):
     plog_filename = cfg.taint.plog_filename
     
     # Run the panda recording 
-    create_and_run_recording(cfg, inputfile, plog_filename) 
+    #create_and_run_recording(cfg, inputfile, plog_filename) 
     #return 
     # Ingest the plog  
     fm, modules = ingest_log_to_taint_obj(cfg, plog_filename)
     # Send the information over to the database 
+    return 
     with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
         send_to_database(fm, modules, channel) 
     

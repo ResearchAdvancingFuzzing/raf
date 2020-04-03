@@ -99,10 +99,11 @@ class TaintedInstruction:
     # pc:           (uint64)    program counter within module 
     # module:       (string)    module this instruction is in 
     # typ:          InstrType   type of instruction
-    def __init__(self, pc, module, typ):
+    def __init__(self, pc, module, typ, byte):
         self.pc = pc
         self.module = module
         self.type = typ
+        self.bytes = byte
         self.uuid = hashlib.md5((str(pc) + str(module) + str(typ)).encode("utf-8")).hexdigest()
 
     # marshal TaintedInstr object to f
