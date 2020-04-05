@@ -476,10 +476,11 @@ def send_to_database(ta, module_list, channel):
             value=tm.value, value_length=tm.value_length, \
             min_compute_distance=tm.min_compute_distance, max_compute_distance=tm.max_compute_distance)
             for i, tm in enumerate(ta.tma)]
-    r = stub.AddTaintMappings(iter(tm))
-    print("Added taint mappings")
-    print(r) 
     
+    for r in stub.AddTaintMappings(iter(tm)):
+        pass
+    #print(r)
+    #r = stub.AddTaintMappings(iter(tm))
     print(len(ta.tma))
  
 

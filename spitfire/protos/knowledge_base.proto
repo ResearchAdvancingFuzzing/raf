@@ -82,7 +82,7 @@ service KnowledgeBase {
     // TaintedInstruction, but by uuid only.  So you have to have called 
     // AddFuzzableByteSet and AddTaintedInstruction on the corresponding 
     // items beforehand.
-    rpc AddTaintMappings (stream TaintMapping) returns (KnowledgeBaseResult) {}
+    rpc AddTaintMappings (stream TaintMapping) returns (stream TaintMapping); //KnowledgeBaseResult) {}
 
     // Returns set of TaintedInstructions discovered thus far by 
     // all taint analyses that have run.

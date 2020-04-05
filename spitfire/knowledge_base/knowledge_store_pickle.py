@@ -329,7 +329,7 @@ class KnowledgeStorePickle(KnowledgeStore):
         self.fuzzable_byte_sets = FuzzableByteSetPickle()
         self.tainted_instructions = TaintedInstructionPickle()
         self.taint_mappings = TaintMappingPickle()
-        self.taint_inputs = set([])
+        #self.taint_inputs = set([])
         self.instr2tainted_inputs = {}
         self.inp2fuzzable_byte_sets = {}
         self.inp2tainted_instructions = {}
@@ -440,7 +440,7 @@ class KnowledgeStorePickle(KnowledgeStore):
             input_uuid = taintm.input.uuid # nothing else set right now
             instr_uuid = taintm.tainted_instruction.uuid
             fbs_uuid = taintm.fuzzable_byte_set.uuid 
-            tm = self.taint_inputs.add(input_uuid)#i.ti.uuid)
+            #tm = self.taint_inputs.add(input_uuid)#i.ti.uuid)
             # keep track, by instruction, of what inputs taint it
             if not (input_uuid in self.instr2tainted_inputs):
                 self.instr2tainted_inputs[instr_uuid] = set([])
@@ -451,7 +451,7 @@ class KnowledgeStorePickle(KnowledgeStore):
             if not (input_uuid in self.inp2tainted_instructions):
                 self.inp2tainted_instructions[input_uuid] = set([])
             self.inp2tainted_instructions[input_uuid].add(instr_uuid)
-        return (was_new, tm)
+        return self.taint_mappings.add(taintm) #(was_new, tm)
     
     def get_taint_mapping(self, taintm):
         return self.taint_mappings.get(taintm)

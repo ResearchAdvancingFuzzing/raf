@@ -185,16 +185,11 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
    
     # Returns KnowledgeBaseResult
     def AddTaintMappings(self, tm_iterator, context):
-        try:
-            num_new = 0
-            for tm in tm_iterator:
-                #print("Adding tm [%s]" % (str(tm)))
-                (was_new, tm) = self.ks.add_taint_mapping(tm)
-                if was_new:
-                    num_new += 1 
-            return(kbp.KnowledgeBaseResult(success=True, message="%d taint mappings added" % num_new) )
-        except Exception as e:
-            return(kbp.KnowledgeBaseResult(success=False, message=str(e)))        
+        for t in tm_iterator:
+            (was_new, tm) = self.ks.add_taint_mapping(t)
+            if was_new:
+                print("Tm added: " + str(tm.uuid), flush=True)
+            yield tm
 
     # iterator over tainted instructions in the knowledge base
     def GetTaintedInstructions(self, emp, context):
