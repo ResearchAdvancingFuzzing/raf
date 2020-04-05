@@ -190,7 +190,6 @@ class TaintedInstructionPickle(ThingPickle):
         assert hasattr(tinstr, "instruction_bytes")
 
     def hash(self, tinstr):
-        print("Hashing with address: %s type: %s and bytes: %s" % (str(tinstr.address.uuid), str(tinstr.type), str(tinstr.instruction_bytes))) 
         return md5(str(tinstr.address.uuid) + str(tinstr.type) + str(tinstr.instruction_bytes))
         #return md5(str(tinstr.address.offset) + str(tinstr.address.module.uuid) + str(tinstr.type) \
         #           + str(tinstr.instruction_bytes))
@@ -417,11 +416,11 @@ class KnowledgeStorePickle(KnowledgeStore):
         return self.tainted_instructions.exists(tinstr)
 
     def add_tainted_instruction(self, tinstr):
-        (was_new, ti) = self.tainted_instructions.add(tinstr)
-        if was_new: 
-            print("New: %s" % str(ti.uuid))
-        else:
-            print("Old: %s" % str(ti.uuid))
+        #(was_new, ti) = self.tainted_instructions.add(tinstr)
+        #if was_new: 
+        #    print("New: %s" % str(ti.uuid))
+        #else:
+        #    print("Old: %s" % str(ti.uuid))
         return self.tainted_instructions.add(tinstr)
     
     def get_tainted_instruction(self, tinstr):
