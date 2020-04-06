@@ -460,17 +460,13 @@ class KnowledgeStorePickle(KnowledgeStore):
         return self.addresses.add(address)
     
     def add_edge_coverage(self, edge):
-        #print("In edge coverage", flush=True) 
-        uuid = self.inputs.hash(edge.input) 
-        #print(uuid, flush=True) 
-        inp = self.inputs.get_by_id(uuid)
-        #print(inp, flush=True)
-        if not inp.uuid in self.inp2edge_coverage:
-            self.inp2edge_coverage[inp.uuid] = []
-            #self.inputs_without_coverage.remove(inp.uuid) 
-        self.inp2edge_coverage[inp.uuid].append(edge) 
-        #print("Leaving edge coverage", flush=True) 
-        return self.edges.add(edge)
+        (was_new, e) = self.edges.add(edge) 
+        if was_new:
+            inp_uuid = edge.input.uuid
+            if not inp_uuid in self.inp2edge_coverage: 
+                self.inp2edge_coverage[inp_uuid] = []
+            self.inp2edge_coverage[inp_uuid].append(edge)
+        return (was_new, e)  
 
     def add_module(self, module):
         return self.modules.add(module)

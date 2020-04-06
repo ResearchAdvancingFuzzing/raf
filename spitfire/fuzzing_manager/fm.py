@@ -106,37 +106,37 @@ def run(cfg):
 #if N >= budget:
         # we are using all the compute we have -- wait
     #    exit()
+        
+        #S = consult knowledge base to get set of original corpus seed inputs
         print("Seed")
         S = {inp.uuid for inp in kbs.GetSeedInputs(kbp.Empty())} 
         for s in S: 
             print(s)
         print("Execution")
+        #F = consult knowledge base to get set of inputs we have done mutational fuzzing on so far
         F = {inp.uuid for inp in kbs.GetExecutionInputs(kbp.Empty())}
         for f in F:
             print(f)
         print("Inputs With Coverage")
+        #C = consult knowledge base to get set of inputs for which we have measured coverage
         C = {inp.uuid for inp in kbs.GetInputsWithCoverage(kbp.Empty())}
         for c in C:
             print(c)
         print("Inputs without Coverage")
+        #ICV = consult knowledge base to get set of interesting inputs that got marginal covg (increased covg)
         ICV = {inp.uuid for inp in kbs.GetInputsWithoutCoverage(kbp.Empty())}
         for icv in ICV:
             print(icv)
         print("Taint Inputs")
+        #T = consult knowledge base to get set of inputs for which we have done taint analysis
         T = {inp.uuid for inp in kbs.GetTaintInputs(kbp.Empty())}
         for t in T:
             print(t)
-        #return
-        #S = consult knowledge base to get set of original corpus seed inputs
-        #F = consult knowledge base to get set of inputs we have done mutational fuzzing on so far
-        #C = consult knowledge base to get set of inputs for which we have measured coverage
-        #ICV = consult knowledge base to get set of interesting inputs that got marginal covg (increased covg)
-        #T = consult knowledge base to get set of inputs for which we have done taint analysis
 
         while True:
             p = random.uniform(0, 1) # generate a random number between 0 and 1 to see what we are doing 
 
-            if p < P_SEED_MUTATIONAL_FUZZ:
+            if False: #True: #p < P_SEED_MUTATIONAL_FUZZ:
 
                 # We want to just fuzz a seed (mutational)
 
@@ -153,8 +153,6 @@ def run(cfg):
                 
                 job = jobs["fuzzer"]
                 job.update_count_by(1) 
-    
-                # Run fuzzer here with ths kb_inp 
                 
                 args = f"gtfo.input_file={kb_inp.filepath}"
                 create_job_from_yaml(batch_v1, job.count, args, job.file_name)  
@@ -163,7 +161,7 @@ def run(cfg):
                 return
                 exit()
 
-            elif p < (P_SEED_MUTATIONAL_FUZZ + P_COVERAGE_FUZZ):
+            elif False: #True: #p < (P_SEED_MUTATIONAL_FUZZ + P_COVERAGE_FUZZ):
 
                 # We want to do covg-based fuzzing
 
@@ -172,20 +170,40 @@ def run(cfg):
                 if len(RC) == 0:
                     # covg based fuzzing not possible -- try something else 
                     continue
-
+                
+                max_inp = None
+                max_cov = 0
+                for inp_id in RC:
+                    inp = kbs.GetInputById(kbp.id(uuid=inp_id))
+                    print(inp)
+                    n_cov = sum(1 for c in  kbs.GetEdgeCoverageForInput(inp))
+                    print(n_cov)
+                    if n_cov > max_cov:
+                        max_cov = n_cov
+                        max_inp = inp
+                
+                job = jobs["fuzzer"]
+                job.update_count_by(1) 
+                args = f"gtfo.input_file={max_inp.filepath}" 
+                create_job_from_yaml(batch_v1, job.count, args, job.file_name) 
+                
                 # Choose to fuzz next the input that exposes the most new coverage
                 # wrt all other inputs for which we have measured coverage.
                 # How do we compute this, exactly?                
                 # NB: Better would be to choose with probability, where input that 
                 # exposes the most new coverage is most likely and the input that 
                 # exposes the least new coverage is least likely.
-                c = choose_input_according_to_marginal_coverage(RC)
-                gtfo(c, timeout=cfg.mutfuzz.timeout)
+                
+
+                # Get all 
+                # Get edge coverage for an input 
+                #c = choose_input_according_to_marginal_coverage(RC)
+                #gtfo(c, timeout=cfg.mutfuzz.timeout)
                 #tell knowledge base to add s to F?  Or maybe gtfo does that
                 # cron job finished 
                 exit()
 
-            elif p < (P_SEED_MUTATIONAL_FUZZ + P_COVERAGE_FUZZ + P_TAINT_FUZZ):
+            elif True: # p < (P_SEED_MUTATIONAL_FUZZ + P_COVERAGE_FUZZ + P_TAINT_FUZZ):
 
                 # We want to do taint-based fuzzing
 
@@ -197,8 +215,10 @@ def run(cfg):
 
                 # Choose an input for which we have taint info 
                 # At random?  Hmm that's probably not ideal but fine for now.
-                t = random.choice(RT)
-
+                t = random.choice(list(RT))
+                kb_inp = kbs.GetInputById(kbp.id(uuid=t))
+                print(kb_inp)
+                #return
                 # Now we need to make some actual reccomendations to fuzzer
                 # in order that it can make use of taint info.
                 
@@ -223,14 +243,24 @@ def run(cfg):
                 # this is the set of seed inputs unioned with set of interesting inputs 
                 # that increase coverage
                 # minus those for which we have measured taint already
-                IS = S + ICV - T
-
+                IS = S | ICV - T
                 # choose one at random to measure taint on? 
                 # gotta be a better way maybe using covg?
-                t = random.random(IS)
-                panda_taint(t)
+                t = random.choice(list(IS))
+                kb_inp = kbs.GetInputById(kbp.id(uuid=t)) 
+                print(kb_inp)
+                
+                job = jobs["taint"]
+                job.update_count_by(1) 
+                
+                args = f"gtfo.input_file={kb_inp.filepath}"
+                print(args)
+                create_job_from_yaml(batch_v1, job.count, args, job.file_name)  
+
+                #panda_taint(t)
                 #tell knowledge base to add t to T?  Or maybe panda taint does that
                 # cron job finished
+                return
                 exit()
 
                 
