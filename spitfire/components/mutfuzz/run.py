@@ -72,7 +72,7 @@ def run(cfg):
 
         # Add the target, input, seed corpus, and experiment to the KB 
         kbs = kbpg.KnowledgeBaseStub(channel)
-        input_msg = kbp.Input(filepath=fcfg.input_file)
+        input_msg = kbp.Input(filepath=fcfg.input_file, fuzzed=True)
         input_kb = kbs.AddInput(input_msg)
         #input_kb = kbs.GetInput(input_msg)
         target_msg = kbp.Target(name=cfg.target.name, source_hash=cfg.target.source_hash)

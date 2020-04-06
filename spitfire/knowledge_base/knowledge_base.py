@@ -242,7 +242,7 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
             yield inp
 
     def GetInputById(self, uuid, context):
-        return self.get_input_by_id(uuid) 
+        return self.ks.get_input_by_id(uuid) 
 
 @hydra.main(config_path=fuzzing_config_dir + "/config.yaml")
 def serve(cfg):

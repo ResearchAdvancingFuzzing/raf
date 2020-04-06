@@ -207,7 +207,8 @@ def ingest_log(cfg, asid, plog_file_name):
         #i+= 1
 
     print("SIZE OF: %d" % len(resolved_edges))
-
+    # TODO: if len(resolved_edges) == 0:
+    # we need to do it again    
     return [resolved_edges, modules]
 
 

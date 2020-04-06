@@ -533,24 +533,31 @@ class KnowledgeStorePickle(KnowledgeStore):
             if hasattr(inp, attrib) and getattr(inp, attrib) == value:
                inp_set.add(inp_id) 
                #inp_set.add(inp)
-        return [self.inputs.get_by_id(uuid) for uuid in inp_set] 
+        #return {self.inputs.get_by_id(uuid) for uuid in inp_set} 
+        return inp_set
 
     def get_taint_inputs(self):
-        return self.get_input_set("taint_analyzed", 1) 
+        return [self.inputs.get_by_id(uuid) for uuid in self.get_input_set("taint_analyzed", 1)] 
 
     def get_execution_inputs(self):
-        return self.get_input_set("fuzzed", 1) 
+        return [self.inputs.get_by_id(uuid) for uuid in self.get_input_set("fuzzed", 1)] 
+
 
     def get_inputs_with_coverage(self):
-        return self.get_input_set("coverage_complete", 1) 
+        return [self.inputs.get_by_id(uuid) for uuid in self.get_input_set("coverage_complete", 1)] 
+        #return self.get_input_set("coverage_complete", 1) 
 
     def get_inputs_without_coverage(self):
-        coverage_set = self.get_input_set("coverage_complete", 0) 
+        coverage_set = self.get_input_set("coverage_complete", 1) 
         inc_coverage_set = self.get_input_set("increased_coverage", 1)
-        return inc_coverage_set - coverage_set
+        new = inc_coverage_set - coverage_set
+        return [self.inputs.get_by_id(uuid) for uuid in new] 
+        #return inc_coverage_set - coverage_set
 
     def get_seed_inputs(self): 
-        return self.get_input_set("seed", 1) 
+        #return self.get_input_set("seed", 1) 
+        return [self.inputs.get_by_id(uuid) for uuid in self.get_input_set("seed", 1)] 
 
-    def get_input_by_id(self, uuid): 
-        return self.inputs.get_by_id(uuid) 
+    def get_input_by_id(self, inp):
+        assert hasattr (inp, "uuid")
+        return self.inputs.get_by_id(inp.uuid) 
