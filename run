@@ -1,14 +1,5 @@
 #!/bin/bash
 
-# Requirements 
-# python3.6 
-# minikube 
-# grpcio grpcio-tools 
-#minikube start --disk-size=20g --vm-driver=virtualbox
-#eval $(minikube docker-env)
-
-#minikube start --vm-driver=none
-
 git clone https://github.com/ResearchAdvancingFuzzing/gtfo.git spitfire/tools/gtfo-source/gtfo
 git clone https://github.com/ResearchAdvancingFuzzing/panda-replays.git init/seed-corpus/panda-replays
 mv init/seed-corpus/panda-replays/targets/xmllint-3e7e75bed2cf2853b0d42d635d36676b3330d475-64bit/inputs init/seed-corpus/corpus
@@ -25,10 +16,3 @@ docker build -t knowledge-base:v1 -f spitfire/knowledge_base/Dockerfile .
 docker pull pandare/panda 
 docker build -t taint:v1 -f spitfire/components/taint/panda/Dockerfile_taint .
 docker build -t coverage:v1 -f spitfire/components/coverage/Dockerfile .
-
-#This job needs to be created "after" but for now this will do
-#kubectl apply -f config-init.yaml
-#kubectl apply -f config-server.yaml
-#kubectl apply -f config-taint.yaml 
-#kubectl apply -f config-fuzzer.yaml
-#kubectl apply -f config-coverage.yaml

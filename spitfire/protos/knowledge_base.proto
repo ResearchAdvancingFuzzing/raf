@@ -39,12 +39,12 @@ service KnowledgeBase {
     rpc AddAnalysisTool(AnalysisTool) returns (AnalysisTool) {}
     rpc AddAnalysis(Analysis) returns (Analysis) {}
     rpc AddExecution (Execution) returns (Execution) {}
+    
     // Obtain canonical protobuf message for each from the knowledge base,
     // raise an exception if its not there.
     rpc GetTarget(Target) returns (Target) {}
     rpc GetInput(Input) returns (Input) {}
     //rpc GetCorpus(Corpus) returns (Corpus) {}
-    
     rpc GetExperiment(Experiment) returns (Experiment) {}
     rpc GetAnalysisTool(AnalysisTool) returns (AnalysisTool) {}
     rpc GetAnalysis(Analysis) returns (Analysis) {}
@@ -83,24 +83,16 @@ service KnowledgeBase {
     // AddFuzzableByteSet and AddTaintedInstruction on the corresponding 
     // items beforehand.
     rpc AddTaintMappings (stream TaintMapping) returns (stream TaintMapping); //KnowledgeBaseResult) {}
-
+    
+    rpc GetFuzzableByteSetsForTaintInput(Input) returns (stream FuzzableByteSet); 
+    rpc GetTaintInputsForTaintedInstruction(TaintedInstruction) returns (stream Input);
+    rpc GetTaintedInstructionsForTaintInput(Input) returns (stream TaintedInstruction); 
+    
     // Returns set of TaintedInstructions discovered thus far by 
     // all taint analyses that have run.
     rpc GetTaintedInstructions(Empty) returns (stream TaintedInstruction) {}
 
-    // Returns set of Inputs that have been used to perform taint analysis 
-    // thus far.
-
-    // Returns set of Inputs that taint this instruction
-    rpc GetTaintInputsForTantedInstruction(TaintedInstruction) returns (stream Input) {}
-
-    // Returns set of FuzzableByteSets for this input
-    rpc GetFuzzableBytesSetsForTaintInput(Input) returns (stream FuzzableByteSet) {}
-
-    // Returns set of instructions seen to be tainted when we analyzed this input
-    rpc GetTaintedInstructionsForTaintInput(Input) returns (stream TaintedInstruction) {}
-
-    // Returns set of TaintMappings from this Input+FuzzableByteSet to this TaintedInstruction
+    // Returns set of Inputs turns set of TaintMappings from this Input+FuzzableByteSet to this TaintedInstruction
     rpc GetTaintMappings(TaintMappingKey) returns (stream TaintMapping) {}    
 
 }
