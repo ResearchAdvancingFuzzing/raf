@@ -187,9 +187,10 @@ def ingest_log(cfg, asid, plog_file_name):
         #print("Edge %d:" % i)
         for pc in edge.pc:
             #print("PC: %d" % pc) 
+            
+            found = False
             for key in modules:
                 #print("Range for module %s is [%d, %d]" % (key, modules[key].base, modules[key].end))
-                found = False
                 if pc in range(modules[key].base, modules[key].end):
                     #print("in Module: %s", key) 
                     module = modules[key]
@@ -223,8 +224,8 @@ def send_to_database(edges, input_file, modules, channel):
         pass
     #print(result) 
 
-    kb_input = kbp.Input(filepath=input_file, coverage_complete=True)
-    input_msg = kbs.AddInput(kb_input)
+    inp = kbp.Input(filepath=input_file, coverage_complete=True)
+    kb_input = kbs.AddInput(inp)
     kb_edges = []
     for edge in edges:
         addresses = []
