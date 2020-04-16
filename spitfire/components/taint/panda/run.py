@@ -433,7 +433,7 @@ def byte_uuid(uuid):
     return bytes(uuid, 'utf-8')
 
 # Ta is the TaintAnalysis 
-def send_to_database(ta, module_list, channel): 
+def send_to_database(ta, kb_input, module_list, channel): 
     stub = kbpg.KnowledgeBaseStub(channel) #spitire_pb2_grpc.SpitfireStub(kb_channel)
      
     taint_mappings = []
@@ -472,7 +472,7 @@ def send_to_database(ta, module_list, channel):
     kb_fbs = [r for r in stub.AddFuzzableByteSets(iter(fbs))]
     print("Added %d fbs" % len(kb_fbs))
 
-    tm = [kbp.TaintMapping(fuzzable_byte_set=kb_fbs[i], tainted_instruction=kb_ti[i], \
+    tm = [kbp.TaintMapping(input=kb_input, fuzzable_byte_set=kb_fbs[i], tainted_instruction=kb_ti[i], \
             value=tm.value, value_length=tm.value_length, \
             min_compute_distance=tm.min_compute_distance, max_compute_distance=tm.max_compute_distance)
             for i, tm in enumerate(ta.tma)]
@@ -516,10 +516,10 @@ def check_analysis_complete(cfg, channel, inputfile):
     
     if taint_analysis.complete:
         log.info("Taint analysis already performed for %s" % msg_end)
-        return True
+        return [True, None]
     
     log.info("Taint analysis proceeding for %s" % msg_end)
-    return False
+    return [False, taint_input] 
 
 
 @hydra.main(config_path=fuzzing_config_dir + "/config.yaml")
@@ -537,7 +537,8 @@ def run(cfg):
         
         log.info("Connected to knowledge_base")
 
-        if check_analysis_complete(cfg, channel, inputfile):
+        [complete, kb_input] = check_analysis_complete(cfg, channel, inputfile)
+        if complete:   
             return
     
     # Get the plog filename 
@@ -551,7 +552,7 @@ def run(cfg):
     # Send the information over to the database 
     #return 
     with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
-        send_to_database(fm, modules, channel) 
+        send_to_database(fm, kb_input, modules, channel) 
     
     print("%d seconds" % tock()) 
 
