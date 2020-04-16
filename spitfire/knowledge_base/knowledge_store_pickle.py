@@ -284,7 +284,7 @@ class ExperimentPickle(ThingPickle):
         assert hasattr(experiment, "seed_corpus")
 
     def hash(self, experiment):
-        print(experiment.target.source_hash)
+        #print(experiment.target.source_hash)
         target_hash = experiment.target.source_hash
         return md5(str(experiment.seed_corpus.uuid) + target_hash)
 
@@ -333,6 +333,7 @@ class KnowledgeStorePickle(KnowledgeStore):
         self.instr2tainted_inputs = {}
         self.inp2fuzzable_byte_sets = {}
         self.inp2tainted_instructions = {}
+        self.fbs2taint_mappings = {}
         self.modules = ModulePickle()
         self.addresses = AddressPickle()
         self.edges = EdgeCoveragePickle()
@@ -365,18 +366,25 @@ class KnowledgeStorePickle(KnowledgeStore):
         return self.inputs.exists(input)
 
     def update_input(self, old, new):
+        updated = False
         attrs = [attr for attr in dir(old) if not (attr[0].startswith('__') and attr[0].endswith('__'))] 
         for attr in attrs: 
             if hasattr(new, attr) and getattr(new, attr) == True and \
                     hasattr(old, attr) and getattr(old, attr) == False: 
                 setattr(old, attr, getattr(new, attr)) 
+                updated = True
+        return updated 
 
     def add_input(self, input):
         # We need to update the fields that aren't present if there are any 
+        updated = False 
         if self.input_exists(input):
             kb_input = self.get_input(input) 
-            self.update_input(kb_input, input)
-        return self.inputs.add(input) 
+            updated = self.update_input(kb_input, input)
+        (was_new, inp) = self.inputs.add(input)
+        if updated:
+            was_new = 1
+        return (was_new, inp) 
 
     def get_input(self, input):
         return self.inputs.get(input)
@@ -410,7 +418,6 @@ class KnowledgeStorePickle(KnowledgeStore):
     
     def get_fuzzable_byte_set(self, fbs):
         return self.fuzzable_byte_sets.get(fbs)
-
     
     def tainted_instruction_exists(self, tinstr):
         return self.tainted_instructions.exists(tinstr)
@@ -430,19 +437,23 @@ class KnowledgeStorePickle(KnowledgeStore):
         return self.taint_mappings.exists(taintm)
 
     def add_taint_mapping(self, taintm):
-        if self.taint_mapping_exists(taintm):
-           tm = self.get_taint_mapping(taintm)
-           was_new = 0
-        else:
+        (was_new, kb_tm) = self.taint_mappings.add(taintm)
+        if was_new: #not self.taint_mapping_exists(taintm):
+           #tm = self.get_taint_mapping(taintm)
+           #was_new = 0
+        #else:
             # keep track of set of inputs that we've taint analyzed
             #taint_uuid = # something 
-            was_new = 1
+            #was_new = 1
             input_uuid = taintm.input.uuid # nothing else set right now
             instr_uuid = taintm.tainted_instruction.uuid
             fbs_uuid = taintm.fuzzable_byte_set.uuid 
             #tm = self.taint_inputs.add(input_uuid)#i.ti.uuid)
             # keep track, by instruction, of what inputs taint it
-            if not (input_uuid in self.instr2tainted_inputs):
+            if not (fbs_uuid in self.fbs2taint_mappings): 
+                self.fbs2taint_mappings[fbs_uuid] = set([])
+            self.fbs2taint_mappings[fbs_uuid].add(kb_tm.uuid)
+            if not (instr_uuid in self.instr2tainted_inputs):
                 self.instr2tainted_inputs[instr_uuid] = set([])
             self.instr2tainted_inputs[instr_uuid].add(input_uuid)
             if not (input_uuid in self.inp2fuzzable_byte_sets):
@@ -451,7 +462,7 @@ class KnowledgeStorePickle(KnowledgeStore):
             if not (input_uuid in self.inp2tainted_instructions):
                 self.inp2tainted_instructions[input_uuid] = set([])
             self.inp2tainted_instructions[input_uuid].add(instr_uuid)
-        return self.taint_mappings.add(taintm) #(was_new, tm)
+        return (was_new, kb_tm) #self.taint_mappings.add(taintm) #(was_new, tm)
     
     def get_taint_mapping(self, taintm):
         return self.taint_mappings.get(taintm)
@@ -465,7 +476,7 @@ class KnowledgeStorePickle(KnowledgeStore):
             inp_uuid = edge.input.uuid
             if not inp_uuid in self.inp2edge_coverage: 
                 self.inp2edge_coverage[inp_uuid] = []
-            self.inp2edge_coverage[inp_uuid].append(edge)
+            self.inp2edge_coverage[inp_uuid].append(e)
         return (was_new, e)  
 
     def add_module(self, module):
@@ -504,22 +515,29 @@ class KnowledgeStorePickle(KnowledgeStore):
     def get_taint_inputs_for_tainted_instruction(self, instr):
         if not instr.uuid in self.instr2tainted_inputs:
             return None # is this how we have a generator with no elements?
-        return self.instr2tainted_inputs[instr.uuid]
+        return [self.inputs.get_by_id(inp_id) for inp_id in self.instr2tainted_inputs[instr.uuid]]
                 
     def get_fuzzable_byte_sets_for_taint_input(self, inp):
         if not inp.uuid in self.inp2fuzzable_byte_sets:
             return None
-        return self.inp2fuzzable_byte_sets[inp.uuid]
+        return [self.fuzzable_byte_sets.get_by_id(fbs_id) for fbs_id in self.inp2fuzzable_byte_sets[inp.uuid]]
+        #print(thing)
 
     def get_tainted_instructions_for_taint_input(self, inp):
         if not inp.uuid in self.inp2tainted_instructions:
             return None
-        return self.inp2tainted_instructions[inp.uuid]
+        return [self.tainted_instructions.get_by_id(ti_id) for ti_id in self.inp2tainted_instructions[inp.uuid]]
+
+    def get_taint_mappings_for_fuzzable_byte_set(self, fbs): 
+        if not fbs.uuid in self.fbs2taint_mappings: 
+            return None
+        return [self.taint_mappings.get_by_id(tm_id) for tm_id in self.fbs2taint_mappings[fbs.uuid]]
 
     def get_edge_coverage_for_input(self, inp):
         if not inp.uuid in self.inp2edge_coverage:
             return None
         return self.inp2edge_coverage[inp.uuid]
+
 
     # All the functions that need to iterate through inputs to get their results 
     def get_input_set(self, attrib, value): 
@@ -556,4 +574,7 @@ class KnowledgeStorePickle(KnowledgeStore):
 
     def get_input_by_id(self, inp):
         assert hasattr (inp, "uuid")
-        return self.inputs.get_by_id(inp.uuid) 
+        return self.inputs.get_by_id(inp.uuid)
+
+
+

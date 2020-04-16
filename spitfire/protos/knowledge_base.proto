@@ -87,7 +87,7 @@ service KnowledgeBase {
     rpc GetFuzzableByteSetsForTaintInput(Input) returns (stream FuzzableByteSet); 
     rpc GetTaintInputsForTaintedInstruction(TaintedInstruction) returns (stream Input);
     rpc GetTaintedInstructionsForTaintInput(Input) returns (stream TaintedInstruction); 
-    
+    rpc GetTaintMappingsForFuzzableByteSet(FuzzableByteSet) returns (stream TaintMapping);  
     // Returns set of TaintedInstructions discovered thus far by 
     // all taint analyses that have run.
     rpc GetTaintedInstructions(Empty) returns (stream TaintedInstruction) {}

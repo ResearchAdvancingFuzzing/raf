@@ -206,6 +206,10 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
         for inp in self.ks.get_taint_inputs_for_tainted_instruction(instr):
             yield inp
 
+    def GetTaintMappingsForFuzzableByteSet(self, fbs, context):
+        for tm in self.ks.get_taint_mappings_for_fuzzable_byte_set(fbs): 
+            yield tm
+
     # iterator over fbs for this input
     def GetFuzzableByteSetsForTaintInput(self, inp, context):
         for fbs in self.ks.get_fuzzable_byte_sets_for_taint_input(inp):
