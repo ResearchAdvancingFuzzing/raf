@@ -25,7 +25,7 @@ P_SEED_MUTATIONAL_FUZZ = 0.25
 P_COVERAGE_FUZZ = 0.25
 P_TAINT_FUZZ = 0.25
 P_TAINT_ANALYSIS = 0.25
-
+MAX_TAINT_OUT_DEGREE = 16
 # this is our compute budget? 
 # so, like 10 cores or nodes or whatever
 budget = 10 
@@ -37,8 +37,9 @@ corpus_dir = os.environ.get("CORPUS_DIR")
 def create_job_from_yaml(api_instance, num, arg, template_file): 
     commands = ["python3.6"]
     args = ["run.py"]
-    args.append(arg)
+    args.extend(arg)
     print(args) # override hydra here
+    #return
     with open( template_file ) as f:
         job=yaml.safe_load(f)
         print(job)
@@ -154,7 +155,7 @@ def run(cfg):
                 job = jobs["fuzzer"]
                 job.update_count_by(1) 
                 
-                args = f"gtfo.input_file={kb_inp.filepath}"
+                args = [f"gtfo.input_file={kb_inp.filepath}"]
                 create_job_from_yaml(batch_v1, job.count, args, job.file_name)  
 
                 # cron job finished
@@ -184,7 +185,7 @@ def run(cfg):
                 
                 job = jobs["fuzzer"]
                 job.update_count_by(1) 
-                args = f"gtfo.input_file={max_inp.filepath}" 
+                args = [f"gtfo.input_file={max_inp.filepath}"] 
                 create_job_from_yaml(batch_v1, job.count, args, job.file_name) 
                 
                 # Choose to fuzz next the input that exposes the most new coverage
@@ -223,15 +224,30 @@ def run(cfg):
                 # in order that it can make use of taint info.
                 
                 #fbss = Consult knowledge base taint info to get Fbs for t that taint fewer than MAX_TAINT_OUT_DEGREE instructions
-                fbs_to_fuzz = set([])
-                for fbs in fbss:
-                    if len(taint_mappings_for_fbs(fbs)) < MAX_TAINT_IN_DEGREE:
-                        fbs_to_fuzz.add(fbs)
+                fbs_to_fuzz = []
+                for fbs in kbs.GetFuzzableByteSetsForTaintInput(kb_inp): 
+                    #print(fbs.uuid)
+                    tm_sum = sum(1 for tm in kbs.GetTaintMappingsForFuzzableByteSet(fbs))
+                    #print(tm_sum)
+                    if tm_sum < MAX_TAINT_OUT_DEGREE:
+                        fbs_to_fuzz.append(fbs)
                 # so now, fbs_to_fuzz contains a number of Fuzzable byte sets to fuzz 
                 # that are maybe promising 
                 # NB: We need a new version of GTFO that can be informed by this, i.e., that 
                 # can take as input a set of fuzzable byte sets to fuzz in a focused way 
-                gtfo_taint(t, fbs_to_fuzz, timeout=cfg.mutfuzz.timeout)
+                #gtfo_taint(t, fbs_to_fuzz, timeout=cfg.mutfuzz.timeout)
+                fbs = fbs_to_fuzz[10] 
+                fbs_len = len(fbs.label)
+                str_fbs = [str(f) for f in fbs.label]
+                str_fbs = ','.join(str_fbs)
+                # Write fbs to a file 
+                job = jobs["fuzzer"]
+                job.update_count_by(1) 
+                args = [f"gtfo.input_file={kb_inp.filepath}", f"gtfo.ooze.name=restrict_bytes.so", \
+                        f"gtfo.extra_args='JIG_MAP_SIZE=65536 ANALYSIS_SIZE=65536 \
+                        OOZE_LABELS={str_fbs} OOZE_LABELS_SIZE={fbs_len} OOZE_MODULE_NAME=afl_havoc.so'"] 
+                print(args)
+                create_job_from_yaml(batch_v1, job.count, args, job.file_name) 
                 #tell knowledge base to add s to F?  Or maybe gtfo does that
                 # cron job finished 
                 exit()
@@ -253,7 +269,7 @@ def run(cfg):
                 job = jobs["taint"]
                 job.update_count_by(1) 
                 
-                args = f"gtfo.input_file={kb_inp.filepath}"
+                args = [f"gtfo.input_file={kb_inp.filepath}"]
                 print(args)
                 create_job_from_yaml(batch_v1, job.count, args, job.file_name)  
 

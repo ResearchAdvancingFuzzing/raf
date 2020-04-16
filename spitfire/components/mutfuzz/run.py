@@ -97,6 +97,12 @@ def run(cfg):
         arg = arg.split("=")
         env[arg[0]] = arg[1]
     
+    ooze_env_mod_name = "OOZE_MODULE_NAME"
+    if ooze_env_mod_name in env:
+        mod_name = env[ooze_env_mod_name]
+        mod_name = f"{gtfo_dir}/gtfo/gtfo/ooze/{mod_name}" 
+        env[ooze_env_mod_name] = mod_name
+    
     # Make the gtfo command 
     cmd = f'{gtfo_dir}/gtfo/bin/the_fuzz -S {gtfo_dir}/gtfo/gtfo/analysis/%s -O {gtfo_dir}/gtfo/gtfo/ooze/%s \
             -J {gtfo_dir}/gtfo/gtfo/the_fuzz/%s -i %s -n %d -x %d -c %s' % \
@@ -105,7 +111,7 @@ def run(cfg):
     cmd = cmd.split()
     cmd += ["-s", fcfg.ooze_seed] 
     print(cmd) 
-
+    #return 
     # Run fuzzer 
     proc = subprocess.run(args=cmd, env=env)
     exit_code = proc.returncode
