@@ -2,6 +2,9 @@ kind: Job
 apiVersion: batch/v1
 metadata: 
   name: taint #panda #init
+  labels:
+    tier: backend
+    job: taint 
 spec:
   template:
     metadata:

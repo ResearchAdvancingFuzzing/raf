@@ -1,7 +1,10 @@
 kind: Job 
 apiVersion: batch/v1
 metadata: 
-  name: coverage 
+  name: coverage
+  labels: 
+    tier: backend
+    job: coverage 
 spec:
   template:
     metadata:

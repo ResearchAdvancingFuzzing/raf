@@ -36,7 +36,7 @@ budget = 10
 # Get env
 corpus_dir = os.environ.get("CORPUS_DIR")
 
-def create_job_from_yaml(api_instance, num, arg, template_file): 
+def create_job_from_yaml(api_instance, num, arg, template_file, namespace): 
     commands = ["python3.6"]
     args = ["run.py"]
     args.extend(arg)
@@ -56,7 +56,7 @@ def create_job_from_yaml(api_instance, num, arg, template_file):
 	#job["spec"]["template"]["spec"]["containers"][0]["command"]=commands
 	#job["spec"]["template"]["spec"]["containers"][0]["env"]=envs
     print(job)
-    api_response = api_instance.create_namespaced_job(body=job, namespace="default")
+    api_response = api_instance.create_namespaced_job(body=job, namespace=namespace)
     print("Job created. status='%s'" % str(api_response.status))
     return job
 
@@ -94,7 +94,14 @@ def run(cfg):
     
     # Setup access to cluster 
     config.load_incluster_config()
-    batch_v1 = client.BatchV1Api() 
+    batch_v1 = client.BatchV1Api()
+    core_v1 = client.CoreV1Api() 
+    namespace = "default"
+    
+    # Cleanup anything from before 
+    for cj in batch_v1.list_namespaced_job(namespace=namespace, label_selector='tier=backend').items: 
+        if not cj.status.active and cj.status.succeeded: 
+            batch_v1.delete_namespaced_job(name=cj.metadata.name, namespace=namespace, propagation_policy="Background") 
     
     # Connect to the knowledge base 
     with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
@@ -104,43 +111,44 @@ def run(cfg):
         # we are using all the compute we have -- wait
         #    exit()
        
-        # Get all sets of inputs 
-
-        #S = set of original corpus seed inputs
-        print("Seed")
-        S = {inp.uuid for inp in kbs.GetSeedInputs(kbp.Empty())} 
-        for s in S: 
-            print(s)
-        
-        #F = set of inputs we have done mutational fuzzing on so far
-        print("Execution")
-        F = {inp.uuid for inp in kbs.GetExecutionInputs(kbp.Empty())}
-        for f in F:
-            print(f)
-        
-        #C = set of inputs for which we have measured coverage
-        print("Inputs With Coverage")
-        C = {inp.uuid for inp in kbs.GetInputsWithCoverage(kbp.Empty())}
-        for c in C:
-            print(c)
-        
-        #ICV = set of interesting inputs that got marginal covg (increased covg)
-        print("Inputs without Coverage")
-        ICV = {inp.uuid for inp in kbs.GetInputsWithoutCoverage(kbp.Empty())}
-        for icv in ICV:
-            print(icv)
-        
-        #T = set of inputs for which we have done taint analysis
-        print("Taint Inputs")
-        T = {inp.uuid for inp in kbs.GetTaintInputs(kbp.Empty())}
-        for t in T:
-            print(t)
-
         while True:
+                
+            # Get all sets of inputs 
+
+            #S = set of original corpus seed inputs
+            print("Seed")
+            S = {inp.uuid for inp in kbs.GetSeedInputs(kbp.Empty())} 
+            for s in S: 
+                print(s)
+            
+            #F = set of inputs we have done mutational fuzzing on so far
+            print("Execution")
+            F = {inp.uuid for inp in kbs.GetExecutionInputs(kbp.Empty())}
+            for f in F:
+                print(f)
+            
+            #C = set of inputs for which we have measured coverage
+            print("Inputs With Coverage")
+            C = {inp.uuid for inp in kbs.GetInputsWithCoverage(kbp.Empty())}
+            for c in C:
+                print(c)
+            
+            #ICV = set of interesting inputs that got marginal covg (increased covg)
+            print("Inputs without Coverage")
+            ICV = {inp.uuid for inp in kbs.GetInputsWithoutCoverage(kbp.Empty())}
+            for icv in ICV:
+                print(icv)
+            
+            #T = set of inputs for which we have done taint analysis
+            print("Taint Inputs")
+            T = {inp.uuid for inp in kbs.GetTaintInputs(kbp.Empty())}
+            for t in T:
+                print(t) 
+
             # Generate a random number between 0 and 1 to see what we are doing 
             p = random.uniform(0, 1) 
 
-            if False: #True: #p < P_SEED_MUTATIONAL_FUZZ:
+            if True: #False: #True: #p < P_SEED_MUTATIONAL_FUZZ:
 
                 # We want to just fuzz a seed (mutational)
 
@@ -159,7 +167,7 @@ def run(cfg):
                 job.update_count_by(1) 
                 
                 args = [f"gtfo.input_file={kb_inp.filepath}"]
-                create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name)  
+                create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace)  
 
                 # cron job finished
                 return
@@ -191,7 +199,7 @@ def run(cfg):
                 job = jobs["fuzzer"]
                 job.update_count_by(1) 
                 args = [f"gtfo.input_file={max_inp.filepath}"] 
-                create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name) 
+                create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace) 
                 
                 # NB: Better would be to choose with probability, where input that 
                 # exposes the most new coverage is most likely and the input that 
@@ -241,7 +249,7 @@ def run(cfg):
                         f"gtfo.extra_args='JIG_MAP_SIZE=65536 ANALYSIS_SIZE=65536 \
                         OOZE_LABELS={str_fbs} OOZE_LABELS_SIZE={fbs_len} OOZE_MODULE_NAME=afl_havoc.so'"] 
                 print(args)
-                create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name) 
+                create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace) 
                 
                 # cron job finished 
                 exit()
@@ -269,7 +277,7 @@ def run(cfg):
                 
                 args = [f"gtfo.input_file={kb_inp.filepath}"]
                 print(args)
-                create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name)  
+                create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace)  
 
                 # cron job finished
                 return
@@ -294,7 +302,7 @@ def run(cfg):
                 
                 args = [f"coverage.input_file={kb_inp.filepath}"] 
                 print(args)
-                create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name) 
+                create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace) 
 
                 return
                 exit() 
