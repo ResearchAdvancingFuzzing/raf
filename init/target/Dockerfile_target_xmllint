@@ -4,16 +4,14 @@ RUN apt-get upgrade -y
 RUN apt-get install -y clang wget xxd build-essential python cmake python-pip pkg-config python-yaml libyaml-0-2 libyaml-dev systemd --fix-missing
 RUN apt-get install -y git libtool autoconf pkg-config
 
-
-WORKDIR /fuzzing
-RUN mkdir working
-WORKDIR /fuzzing/working
+ENV WORK_DIR /fuzzing
+WORKDIR $WORK_DIR
 
 # Get AFL
 RUN wget http://lcamtuf.coredump.cx/afl/releases/afl-2.52b.tgz
 RUN  tar xvf afl-2.52b.tgz
 RUN rm afl-2.52b.tgz
-WORKDIR /fuzzing/working/afl-2.52b
+WORKDIR $WORK_DIR/afl-2.52b
 RUN make
 
 # Get the target
@@ -21,46 +19,27 @@ WORKDIR /
 RUN git clone https://gitlab.gnome.org/GNOME/libxml2.git
 WORKDIR /libxml2
 RUN git checkout 3e7e75bed2cf2853b0d42d635d36676b3330d475
-#RUN wget https://download.osgeo.org/libtiff/old/tiff-3.7.0.tar.gz
-#RUN tar xvf tiff-3.7.0.tar.gz 
-#RUN rm tiff-3.7.0.tar.gz
 
 # Move the target to /target_source
 RUN cp -r /libxml2 /target_source
-#RUN cp -r /tiff-3.7.0 /target_source
 
 # Copy over to instrumented as well
-WORKDIR /fuzzing/working
+WORKDIR $WORK_DIR
 RUN cp -r /target_source ./instrumented
-
-# Dependencies for the target
-#RUN apt-get install -y libjpeg-dev liblzma-dev liblz-dev zlib1g-dev
 
 # Make regular
 WORKDIR /target_source
 RUN ./autogen.sh
 RUN ./configure && make
-#RUN ./configure --enable-shared=no --enable-jpeg=yes 
-#RUN make
-#RUN make install
 
 # Make instrumented
-WORKDIR /fuzzing/working/instrumented
-RUN CFLAGS="-static -fno-PIE -fno-PIC" CC=/fuzzing/working/afl-2.52b/afl-clang ./autogen.sh
-RUN CFLAGS="-static -fno-PIE -fno-PIC" CC=/fuzzing/working/afl-2.52b/afl-clang ./configure 
-#--enable-shared=no 
-RUN CFLAGS="-static -fno-PIE -fno-PIC" CC=/fuzzing/working/afl-2.52b/afl-clang make
-#RUN make install
+WORKDIR $WORK_DIR/instrumented
+RUN CFLAGS="-static -fno-PIE -fno-PIC" CC=$WORK_DIR/afl-2.52b/afl-clang ./autogen.sh
+RUN CFLAGS="-static -fno-PIE -fno-PIC" CC=$WORK_DIR/afl-2.52b/afl-clang ./configure 
+RUN CFLAGS="-static -fno-PIE -fno-PIC" CC=$WORK_DIR/afl-2.52b/afl-clang make
 
 # Copy to instrumented 
 WORKDIR /
-RUN mv /fuzzing/working/instrumented/ /instrumented/
+RUN mv $WORK_DIR/instrumented/ /instrumented/
 
-
-#CMD cp /usr/local/bin/tiff2rgba /target
-#CMD cp -r /libxml2/.libs/* /target && cp -r /fuzzing/working/instrumented/* /target
-#CMD cp -r /libxml2/.libs/xmllint /target/xmllint && cp -r /instrumented/* /target-instr 
-RUN ldd /target_source/.libs/xmllint
 CMD cp /target_source/.libs/xmllint /target/xmllint && cp -r /instrumented/xmllint /target-instr/xmllint
-#CMD cp /target_source/tools/tiff2rgba /target/tiff2rgba && cp /instrumented/tools/tiff2rgba /target-instr
-#CMD mkdir /shared/target && cp /usr/local/bin/tiff2rgba /shared/target

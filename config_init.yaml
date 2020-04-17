@@ -140,6 +140,8 @@ spec:
     spec: 
       containers:
         - name: init
+          command: ["python3.6"] #["./infinite"] #python3.6"]
+          args: ["init.py"]
           image: init:v1
           volumeMounts:
             - name: target-pv-storage

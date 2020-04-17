@@ -19,6 +19,7 @@ corpus_dir = os.environ.get("CORPUS_DIR")
 # This requires the config_server.yaml file named accordingly and the yaml deployment 
 # specified first and the yaml service second 
 def create_kb_from_yaml(cfg, client, namespace):
+    print("Starting server") 
     core_v1 = client.CoreV1Api()
     apps_v1 = client.AppsV1Api()
     
@@ -34,7 +35,7 @@ def create_kb_from_yaml(cfg, client, namespace):
         core_v1.create_namespaced_service(body=kb_service, namespace=namespace) 
     
     # Wait for the server to start running 
-    time.sleep(2)
+    time.sleep(3)
 
 @hydra.main(config_path=f"{spitfire_dir}/config/expt1/config.yaml")
 def setup(cfg):
@@ -45,7 +46,6 @@ def setup(cfg):
     
     # Create the kb server and check the status  
     create_kb_from_yaml(cfg, client, "default")
-    #utils.create_from_yaml(k_client, "/config_server.yaml") 
 
     # Send experiment information to the database 
     with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
