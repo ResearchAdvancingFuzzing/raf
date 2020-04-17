@@ -1,3 +1,12 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: job-counts 
+data:
+  FUZZER: '0'
+  TAINT: '0'
+  COVERAGE: '0' 
+---
 kind: Job 
 apiVersion: batch/v1
 metadata: 
@@ -24,7 +33,9 @@ spec:
               mountPath: "/seed-corpus"
           envFrom: 
             - configMapRef: 
-                name: dir-config 
+                name: dir-config
+            - configMapRef:
+                name: job-counts  
       volumes: # Pods access storage by using the claim as a volume. `
         - name: replay-pv-storage
           persistentVolumeClaim: 
