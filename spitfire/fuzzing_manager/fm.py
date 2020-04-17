@@ -21,10 +21,11 @@ import spitfire.protos.knowledge_base_pb2 as kbp
 import spitfire.protos.knowledge_base_pb2_grpc as kbpg
 
 # some guess at how much time we'll spend on each of these
-P_SEED_MUTATIONAL_FUZZ = 0.25
-P_COVERAGE_FUZZ = 0.25
-P_TAINT_FUZZ = 0.25
-P_TAINT_ANALYSIS = 0.25
+P_SEED_MUTATIONAL_FUZZ = 0.2
+P_COVERAGE_FUZZ = 0.2
+P_TAINT_FUZZ = 0.2
+P_TAINT_ANALYSIS = 0.2
+P_COVERAGE = 0.2
 MAX_TAINT_OUT_DEGREE = 16
 
 # Compute budget 
@@ -200,7 +201,7 @@ def run(cfg):
                 return
                 exit()
 
-            elif True: # p < (P_SEED_MUTATIONAL_FUZZ + P_COVERAGE_FUZZ + P_TAINT_FUZZ):
+            elif False: #True: # p < (P_SEED_MUTATIONAL_FUZZ + P_COVERAGE_FUZZ + P_TAINT_FUZZ):
 
                 # We want to do taint-based fuzzing
 
@@ -245,7 +246,7 @@ def run(cfg):
                 # cron job finished 
                 exit()
 
-            else:
+            elif False: #p < (P_SEED_MUTATIONAL_FUZZ + P_COVERAGE_FUZZ + P_TAINT_FUZZ + P_TAINT_ANALYSIS):
 
                 # We want to measure taint for some input
 
@@ -253,6 +254,10 @@ def run(cfg):
                 # minus those for which we have measured taint already
                 IS = S | ICV - T
                 
+                if len(IS) == 0:
+                    # Taint analysis not possible -- try something else
+                    continue 
+
                 # Choose one at random to measure taint on 
                 # (gotta be a better way maybe using covg)
                 t = random.choice(list(IS))
@@ -270,9 +275,31 @@ def run(cfg):
                 return
                 exit()
 
+            else: 
+                # Do some coverage 
+                
+                # Inputs that need coverage run; so seed inputs if they don't already have coverage
+                # or new intersting inputs without coverage 
+                IC = S - C | ICV 
+                if len(IC) == 0:
+                    # Coverage not possible -- try something else
+                    continue 
 
-        # Do coverage stuff here 
-        
+                t = random.choice(list(IC)) 
+                kb_inp = kbs.GetInputById(kbp.id(uuid=t)) 
+                print(kb_inp)
+
+                job = jobs["coverage"] 
+                job.update_count_by(1) 
+                
+                args = [f"coverage.input_file={kb_inp.filepath}"] 
+                print(args)
+                create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name) 
+
+                return
+                exit() 
+
+
 if __name__ == "__main__":
     logging.basicConfig()
     run()
