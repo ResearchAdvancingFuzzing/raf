@@ -275,7 +275,7 @@ def run(cfg):
                 job = jobs["taint"]
                 job.update_count_by(1) 
                 
-                args = [f"gtfo.input_file={kb_inp.filepath}"]
+                args = [f"taint.input_file={kb_inp.filepath}"]
                 print(args)
                 create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace)  
 
