@@ -35,6 +35,7 @@ budget = 10
 
 # Get env
 corpus_dir = os.environ.get("CORPUS_DIR")
+counts_dir = os.environ.get("COUNTS_DIR") 
 
 def create_job_from_yaml(api_instance, num, arg, template_file, namespace): 
     commands = ["python3.6"]
@@ -63,7 +64,7 @@ def create_job_from_yaml(api_instance, num, arg, template_file, namespace):
 class Job: 
     def __init__(self, name): 
         self.file_name = f"/config_{name}.yaml"
-        self.count_file = "/%s" % name
+        self.count_file = "%s/%s" % (counts_dir, name)
         # Setup the count; we need them to be persistent 
         try:
             with open(self.count_file) as f:
