@@ -148,7 +148,7 @@ def run(cfg):
             # Generate a random number between 0 and 1 to see what we are doing 
             p = random.uniform(0, 1) 
 
-            if True: #False: #True: #p < P_SEED_MUTATIONAL_FUZZ:
+            if p < P_SEED_MUTATIONAL_FUZZ:
 
                 # We want to just fuzz a seed (mutational)
 
@@ -173,7 +173,7 @@ def run(cfg):
                 return
                 exit()
 
-            elif False: #True: #p < (P_SEED_MUTATIONAL_FUZZ + P_COVERAGE_FUZZ):
+            elif p < (P_SEED_MUTATIONAL_FUZZ + P_COVERAGE_FUZZ):
 
                 # We want to do covg-based fuzzing
 
@@ -209,7 +209,7 @@ def run(cfg):
                 return
                 exit()
 
-            elif False: #True: # p < (P_SEED_MUTATIONAL_FUZZ + P_COVERAGE_FUZZ + P_TAINT_FUZZ):
+            elif p < (P_SEED_MUTATIONAL_FUZZ + P_COVERAGE_FUZZ + P_TAINT_FUZZ):
 
                 # We want to do taint-based fuzzing
 
@@ -254,7 +254,7 @@ def run(cfg):
                 # cron job finished 
                 exit()
 
-            elif False: #p < (P_SEED_MUTATIONAL_FUZZ + P_COVERAGE_FUZZ + P_TAINT_FUZZ + P_TAINT_ANALYSIS):
+            elif p < (P_SEED_MUTATIONAL_FUZZ + P_COVERAGE_FUZZ + P_TAINT_FUZZ + P_TAINT_ANALYSIS):
 
                 # We want to measure taint for some input
 
