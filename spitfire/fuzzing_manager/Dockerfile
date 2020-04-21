@@ -1,6 +1,5 @@
 FROM ubuntu:18.04
 
-#FROM python:3.6
 RUN apt-get upgrade -y
 RUN apt-get update -y
 RUN apt-get install -y python3.6 python3-pip
@@ -19,12 +18,12 @@ WORKDIR python
 RUN python3.6 setup.py install 
 
 WORKDIR /
-COPY spitfire/fuzzing_manager/fm.py ./
-COPY spitfire/fuzzing_manager/jobs/config_taint.yaml ./
-COPY spitfire/fuzzing_manager/jobs/config_fuzzer.yaml ./
-COPY spitfire/fuzzing_manager/jobs/config_coverage.yaml ./
+ENV SOURCE_DIR spitfire/fuzzing_manager
+COPY $SOURCE_DIR/fm.py ./
+COPY $SOURCE_DIR/jobs/config_taint.yaml ./
+COPY $SOURCE_DIR/jobs/config_fuzzer.yaml ./
+COPY $SOURCE_DIR/jobs/config_coverage.yaml ./
 COPY infinite ./
 
 CMD ./infinite
-#CMD python3.6 fm.py
 

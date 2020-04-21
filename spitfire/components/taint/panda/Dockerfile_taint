@@ -17,15 +17,7 @@ WORKDIR /qcows
 RUN wget http://panda-re.mit.edu/qcows/linux/ubuntu/1804/x86_64/bionic-server-cloudimg-amd64.qcow2
 
 WORKDIR /
-RUN mkdir working 
-WORKDIR working 
+ENV SOURCE_DIR spitfire/components/taint/panda
 COPY ./infinite ./infinite
-COPY ./spitfire/components/taint/panda/run.py ./
-COPY ./spitfire/components/taint/panda/taint_analysis.py ./
-# Setup pypanda
-#WORKDIR /panda/panda/python/core/
-#RUN python3.6 setup.py install 
-WORKDIR /working 
-
-#COPY ./spitfire/components/taint/panda/taint_analysis.py ./
-#CMD ./infinite
+COPY $SOURCE_DIR/run.py ./
+COPY $SOURCE_DIR/taint_analysis.py ./

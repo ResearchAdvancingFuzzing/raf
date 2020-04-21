@@ -10,12 +10,9 @@ RUN git clone --recursive https://github.com/kubernetes-client/python.git
 WORKDIR python
 RUN python setup.py install 
 
+ENV SOURCE_DIR spitfire/init/init
 WORKDIR /
-COPY init/init/init.py ./
-COPY config_server.yaml ./
+COPY $SOURCE_DIR/init.py ./
+COPY $SOURCE_DIR/config_server.yaml ./ 
+COPY $SOURCE_DIR/config_fm.yaml ./
 COPY infinite ./
-#CMD python3.6 init.py 
-
-#FROM ubuntu
-#CMD echo "Target Regular:" && ls /target && echo "Seed Corpus:" && ls /seed-corpus && echo "Spitfire: " && ls /spitfire 
-#CMD echo "hi" && ls $SHARED_DIR && echo "AFTER" && $TARGET_DIR && ls $GTFO_DIR && echo "seed" && ls $CORPUS_DIR && echo "spittttfire: " && ls $SPITFIRE && echo "coverage" && ls $COVERAGE_DIR

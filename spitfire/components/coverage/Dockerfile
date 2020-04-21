@@ -20,5 +20,4 @@ RUN mkdir working
 WORKDIR working
 COPY ./infinite ./infinite 
 COPY ./spitfire/components/coverage/run.py ./
-#CMD ./infinite
 

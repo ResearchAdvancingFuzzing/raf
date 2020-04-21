@@ -7,6 +7,3 @@ RUN apt-get update -y
 RUN apt-get install -y vim
 COPY spitfire/components/mutfuzz/run.py ./
 COPY infinite ./
-
-#CMD ./infinite 
-
