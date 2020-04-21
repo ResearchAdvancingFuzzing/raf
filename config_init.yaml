@@ -10,7 +10,7 @@ metadata:
   namespace: default
 rules: 
 - apiGroups: ["", "apps", "batch"]  
-  resources: ["nodes", "pods", "services", "secrets", "deployments", "jobs", "cronjobs"] # what resources this Cluster Role applies to 
+  resources: ["configmaps", "nodes", "pods", "services", "secrets", "deployments", "jobs", "cronjobs"] # what resources this Cluster Role applies to 
   verbs: ["list", "get", "watch", "create", "update", "delete"] # what actions it can perform (right now just list things) 
 
 ---
@@ -140,8 +140,8 @@ spec:
     spec: 
       containers:
         - name: init
-          command: ["python3.6"] #["./infinite"] #python3.6"]
-          args: ["init.py"]
+          command:  ["python3.6"] #["./infinite"] #python3.6"]
+          args:  ["init.py"]
           image: init:v1
           volumeMounts:
             - name: target-pv-storage

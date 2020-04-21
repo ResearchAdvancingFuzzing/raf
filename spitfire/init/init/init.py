@@ -35,7 +35,7 @@ def create_kb_from_yaml(cfg, client, namespace):
         core_v1.create_namespaced_service(body=kb_service, namespace=namespace) 
     
     # Wait for the server to start running 
-    time.sleep(3)
+    time.sleep(5)
 
 @hydra.main(config_path=f"{spitfire_dir}/config/expt1/config.yaml")
 def setup(cfg):
@@ -71,9 +71,9 @@ def setup(cfg):
         # Experiment also needs a seed and a hash of the fuzzing manager 
         experiment_msg = kbp.Experiment(target=target_kb, seed_corpus=corpus)
         experiment = kbs.AddExperiment(experiment_msg) 
-    
+    print("here")  
     # Need to start up the fm
-    #k8s_api = utils.create_from_yaml(client, "config_fm.py")
+    utils.create_from_yaml(k_client, "/config_fm.yaml")
 
 
 if __name__ == '__main__':
