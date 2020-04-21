@@ -141,7 +141,7 @@ spec:
       containers:
         - name: init
           command:  ["python3.6"] #["./infinite"] #python3.6"]
-          args:  ["init.py"]
+          args: ["init.py"]
           image: init:v1
           volumeMounts:
             - name: target-pv-storage
@@ -186,6 +186,6 @@ spec:
         - name: spitfire-pv-storage
           persistentVolumeClaim:
             claimName: spitfire-pv-claim
-      restartPolicy: OnFailure
+      restartPolicy: Never # OnFailure
 
 

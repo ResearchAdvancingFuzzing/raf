@@ -35,7 +35,7 @@ def create_kb_from_yaml(cfg, client, namespace):
         core_v1.create_namespaced_service(body=kb_service, namespace=namespace) 
     
     # Wait for the server to start running 
-    time.sleep(5)
+    time.sleep(10)
 
 @hydra.main(config_path=f"{spitfire_dir}/config/expt1/config.yaml")
 def setup(cfg):

@@ -23,7 +23,7 @@ COPY $SOURCE_DIR/fm.py ./
 COPY $SOURCE_DIR/jobs/config_taint.yaml ./
 COPY $SOURCE_DIR/jobs/config_fuzzer.yaml ./
 COPY $SOURCE_DIR/jobs/config_coverage.yaml ./
-COPY infinite ./
-
-CMD ./infinite
+#COPY infinite ./
+CMD python3.6 fm.py 
+#./infinite
 
