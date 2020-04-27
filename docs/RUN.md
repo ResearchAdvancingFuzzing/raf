@@ -25,7 +25,7 @@ sudo apt-get update
 sudo apt install docker.io
 sudo groupadd docker
 sudo usermod -aG docker $USER
-minikube start --vm-driver=none
+sudo minikube start --vm-driver=none
 sudo chown -R $USER $HOME/.minikube
 ```
 ## Setup RAF:
