@@ -1,8 +1,7 @@
 # RAF Setup
 
 ## Installation: 
-Follow the instructions at https://kubernetes.io/docs/tasks/tools/install-minikube/ to install minikube, kubectl, and optionally (see below) a hypervisor (e.g. virtualbox). 
-On Linux,
+Follow the instructions at https://kubernetes.io/docs/tasks/tools/install-minikube/ to install minikube, kubectl, and optionally (see below) a hypervisor (e.g. virtualbox). The instructions for linux are reproduced below for convenience: 
 ```
 curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64 \
   && chmod +x minikube
@@ -34,6 +33,7 @@ sudo usermod -aG docker $USER
 sudo minikube start --vm-driver=none
 sudo chown -R $USER $HOME/.minikube
 ```
+Note: you need to log out and log back in for some of these changes to take effect. 
 ## Setup RAF:
 After cloning this repository, run the `run` script in order to pull the gtfo repo, create the docker images, and make the grpc proto files. 
 ```
