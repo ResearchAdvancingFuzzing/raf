@@ -2,7 +2,13 @@
 
 ## Installation: 
 Follow the instructions at https://kubernetes.io/docs/tasks/tools/install-minikube/ to install minikube, kubectl, and optionally (see below) a hypervisor (e.g. virtualbox). 
-  
+On Linux,
+```
+curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64 \
+  && chmod +x minikube
+sudo mkdir -p /usr/local/bin/
+sudo install minikube /usr/local/bin/
+```
 ## Setup Env: 
 #### gRPC setup
 On your host computer, you need to have python3.6 installed as well as the following in order to make the grpcio python files from the .proto file in the run script.
