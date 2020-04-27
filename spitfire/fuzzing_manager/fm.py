@@ -117,32 +117,32 @@ def run(cfg):
             # Get all sets of inputs 
 
             #S = set of original corpus seed inputs
-            print("Seed")
             S = {inp.uuid for inp in kbs.GetSeedInputs(kbp.Empty())} 
+            print("%d Seeds" % (len(S)))
             for s in S: 
                 print(s)
             
             #F = set of inputs we have done mutational fuzzing on so far
-            print("Execution")
             F = {inp.uuid for inp in kbs.GetExecutionInputs(kbp.Empty())}
+            print("%d Execution" % (len(F)))
             for f in F:
                 print(f)
             
             #C = set of inputs for which we have measured coverage
-            print("Inputs With Coverage")
             C = {inp.uuid for inp in kbs.GetInputsWithCoverage(kbp.Empty())}
+            print("%d Inputs With Coverage" % (len(C)))
             for c in C:
                 print(c)
             
             #ICV = set of interesting inputs that got marginal covg (increased covg)
-            print("Inputs without Coverage")
             ICV = {inp.uuid for inp in kbs.GetInputsWithoutCoverage(kbp.Empty())}
+            print("%d Inputs without Coverage" % (len(ICV)))
             for icv in ICV:
                 print(icv)
             
             #T = set of inputs for which we have done taint analysis
-            print("Taint Inputs")
             T = {inp.uuid for inp in kbs.GetTaintInputs(kbp.Empty())}
+            print("%d Taint Inputs" % (len(T)))
             for t in T:
                 print(t) 
 
@@ -153,6 +153,8 @@ def run(cfg):
 
                 # We want to just fuzz a seed (mutational)
 
+                print ("Mutational fuzzing selected")
+                
                 # Set of seed inputs we have not yet fuzzed
                 RS = S - F
                 if len(RS) == 0:
@@ -178,6 +180,8 @@ def run(cfg):
 
                 # We want to do covg-based fuzzing
 
+                print ("Coverage-based fuzzing selected")
+                
                 # Set of inputs for which we have coverage info but have not yet fuzzed
                 RC = C - F
                 if len(RC) == 0:
@@ -214,6 +218,8 @@ def run(cfg):
 
                 # We want to do taint-based fuzzing
 
+                print ("Taint-based fuzzing selected")
+                
                 # Inputs for which we have taint info AND haven't yet fuzzed
                 RT = T - F
                 if len(RT) == 0:
@@ -259,6 +265,8 @@ def run(cfg):
 
                 # We want to measure taint for some input
 
+                print("Taint measure selected")
+                
                 # Seed inputs and interesting inputs that increase coverage
                 # minus those for which we have measured taint already
                 IS = S | ICV - T
@@ -286,6 +294,8 @@ def run(cfg):
 
             else: 
                 # Do some coverage 
+
+                print ("Coverage measure selected")
                 
                 # Inputs that need coverage run; so seed inputs if they don't already have coverage
                 # or new intersting inputs without coverage 
