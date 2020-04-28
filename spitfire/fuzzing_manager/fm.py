@@ -153,14 +153,14 @@ def run(cfg):
 
                 # We want to just fuzz a seed (mutational)
 
-                print ("Mutational fuzzing selected")
-                
                 # Set of seed inputs we have not yet fuzzed
                 RS = S - F
                 if len(RS) == 0:
                     # seed fuzzing not possible -- try something else 
                     continue
 
+                print ("Mutational fuzzing selected")
+                                
                 # Fuzz one of the remaining seeds chosen at random 
                 s = random.choice(list(RS))
                 kb_inp = kbs.GetInputById(kbp.id(uuid=s)) 
@@ -179,15 +179,15 @@ def run(cfg):
             elif p < (P_SEED_MUTATIONAL_FUZZ + P_COVERAGE_FUZZ):
 
                 # We want to do covg-based fuzzing
-
-                print ("Coverage-based fuzzing selected")
                 
                 # Set of inputs for which we have coverage info but have not yet fuzzed
                 RC = C - F
                 if len(RC) == 0:
                     # Covg based fuzzing not possible -- try something else 
                     continue
-                
+
+                print ("Coverage-based fuzzing selected")
+
                 # Choose to fuzz next the input that exposes the most new coverage
                 # wrt all other inputs for which we have measured coverage.
                 max_inp = None
@@ -218,13 +218,13 @@ def run(cfg):
 
                 # We want to do taint-based fuzzing
 
-                print ("Taint-based fuzzing selected")
-                
                 # Inputs for which we have taint info AND haven't yet fuzzed
                 RT = T - F
                 if len(RT) == 0:
                     # Taint based fuzzing not possible -- try something else
                     continue
+
+                print ("Taint-based fuzzing selected")                
 
                 # Choose an input for which we have taint info 
                 # At random, for now (not ideal) 
@@ -265,8 +265,6 @@ def run(cfg):
 
                 # We want to measure taint for some input
 
-                print("Taint measure selected")
-                
                 # Seed inputs and interesting inputs that increase coverage
                 # minus those for which we have measured taint already
                 IS = S | ICV - T
@@ -275,6 +273,8 @@ def run(cfg):
                     # Taint analysis not possible -- try something else
                     continue 
 
+                print("Taint measure selected")
+                                
                 # Choose one at random to measure taint on 
                 # (gotta be a better way maybe using covg)
                 t = random.choice(list(IS))
@@ -295,8 +295,6 @@ def run(cfg):
             else: 
                 # Do some coverage 
 
-                print ("Coverage measure selected")
-                
                 # Inputs that need coverage run; so seed inputs if they don't already have coverage
                 # or new intersting inputs without coverage 
                 IC = S - C | ICV 
@@ -304,6 +302,8 @@ def run(cfg):
                     # Coverage not possible -- try something else
                     continue 
 
+                print ("Coverage measure selected")
+                
                 t = random.choice(list(IC)) 
                 kb_inp = kbs.GetInputById(kbp.id(uuid=t)) 
                 print(kb_inp)
