@@ -9,6 +9,9 @@ import grpc
 import hydra
 import logging
 
+from pprint import pprint
+from kubernetes import client, utils, config
+
 spitfire_dir = os.environ.get("SPITFIRE")
 sys.path.append("/")
 sys.path.append(spitfire_dir)
@@ -23,6 +26,30 @@ import spitfire.protos.knowledge_base_pb2_grpc as kbpg
 @hydra.main(config_path=f"{spitfire_dir}/config/expt1/config.yaml")
 def run(cfg):
 
+    # Setup access to cluster 
+    config.load_kube_config()
+    api_instance = client.CoreV1Api() # client.BatchV1Api()
+
+    # peek at pods to see what's running / completed / etc
+    resp = api_instance.list_pod_for_all_namespaces()
+    count = {}
+    for i in resp.items:
+        pt = i.spec.containers[0].image
+        if not (("k8s" in pt) or ("gcr.io" in pt) or ("knowledge" in pt) or ("init" in pt)):
+            s = i.status.phase
+            if not (s in count):
+                count[s] = {}
+            if not (pt in count[s]):
+                count[s][pt] = 0
+            count[s][pt] += 1
+    for s in count.keys():
+        print ("Status=%s:" % s)
+        for pt in count[s].keys():
+            print("  %d %s" % (count[s][pt], pt))
+#        print("\n")
+    
+    
+    
     # Connect to the knowledge base 
     with grpc.insecure_channel("172.17.0.5:61111") as channel:
 #    with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
@@ -36,7 +63,7 @@ def run(cfg):
         T = {inp.uuid for inp in kbs.GetTaintInputs(kbp.Empty())}
 
         
-        print("S=%d F=%d S-F=%d C=%d ICV=%d T=%d" % (len(S),len(F),len(S-F),len(C),len(ICV),len(T)))
+        print("seds=%d exec=%d seeds-fuzzed=%d coverage=%d int_nocovg=%d taint=%d" % (len(S),len(F),len(S-F),len(C),len(ICV),len(T)))
         
         
 if __name__ == "__main__":
