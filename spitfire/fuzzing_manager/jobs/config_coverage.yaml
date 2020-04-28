@@ -9,7 +9,8 @@ spec:
   template:
     metadata:
       name: coverage
-    spec: 
+    spec:
+      successfulJobsHistoryLimit: 100
       containers:
         - name: coverage
           image: coverage:v1 #latest #taint:v1 #panda:v1 #taint:v1 #panda:v1 #init:v1
