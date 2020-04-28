@@ -24,6 +24,8 @@ metadata:
   name: fm 
 spec:
   schedule: "*/1 * * * *"
+  successfulJobsHistoryLimit: 100
+  failedJobsHistoryLimit: 30
   jobTemplate:
     metadata:
       name: fm
@@ -75,3 +77,4 @@ spec:
               persistentVolumeClaim:
                 claimName: seed-corpus-pv-claim
           restartPolicy: OnFailure
+    
