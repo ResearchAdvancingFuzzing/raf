@@ -12,6 +12,8 @@ import hydra
 import logging
 import grpc 
 import sys
+from pprint import pprint
+
 spitfire_dir = os.environ.get("SPITFIRE")
 sys.path.append("/")
 sys.path.append(spitfire_dir)
@@ -21,11 +23,11 @@ import spitfire.protos.knowledge_base_pb2 as kbp
 import spitfire.protos.knowledge_base_pb2_grpc as kbpg
 
 # some guess at how much time we'll spend on each of these
-P_SEED_MUTATIONAL_FUZZ = 0.2
-P_COVERAGE_FUZZ = 0.2
-P_TAINT_FUZZ = 0.2
-P_TAINT_ANALYSIS = 0.2
-P_COVERAGE = 0.2
+P_SEED_MUTATIONAL_FUZZ = 0.3
+P_COVERAGE_FUZZ = 0.3
+P_TAINT_FUZZ = 0.05
+P_TAINT_ANALYSIS = 0.05
+P_COVERAGE = 0.3
 MAX_TAINT_OUT_DEGREE = 16
 
 # Compute budget 
@@ -59,6 +61,7 @@ def create_job_from_yaml(api_instance, num, arg, template_file, namespace):
     print(job)
     api_response = api_instance.create_namespaced_job(body=job, namespace=namespace)
     print("Job created. status='%s'" % str(api_response.status))
+#    pprint(api_response)
     return job
 
 class Job: 
@@ -84,13 +87,33 @@ class Job:
         return self.count 
 
 
+def take_stock(core_v1):
+    resp = core_v1.list_pod_for_all_namespaces()
+    count = {}
+    for i in resp.items:
+        pt = i.spec.containers[0].image
+        if not (("k8s" in pt) or ("gcr.io" in pt) or ("knowledge" in pt) or ("init" in pt)):
+            s = i.status.phase
+            if not (s in count):
+                count[s] = {}
+            if not (pt in count[s]):
+                count[s][pt] = 0
+            count[s][pt] += 1
+    for s in count.keys():
+        print ("Status=%s:" % s)
+        for pt in count[s].keys():
+            print("  %d %s" % (count[s][pt], pt))
+        print("\n")
+    return len(count["Running"])
+
+    
 @hydra.main(config_path=f"{spitfire_dir}/config/expt1/config.yaml")
 def run(cfg):
     
     # Setup job information
     job_names = ["taint", "coverage", "fuzzer"]
     jobs = {name:Job(name) for name in job_names}  
-    
+
     #N = consult kubernetes to figure out how much many cores we are using currently
     
     # Setup access to cluster 
@@ -98,7 +121,8 @@ def run(cfg):
     batch_v1 = client.BatchV1Api()
     core_v1 = client.CoreV1Api() 
     namespace = "default"
-    
+
+        
     # Cleanup anything from before 
     for cj in batch_v1.list_namespaced_job(namespace=namespace, label_selector='tier=backend').items: 
         if not cj.status.active and cj.status.succeeded: 
@@ -107,13 +131,19 @@ def run(cfg):
     # Connect to the knowledge base 
     with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
         kbs = kbpg.KnowledgeBaseStub(channel)
-        
-        #if N >= budget:
-        # we are using all the compute we have -- wait
-        #    exit()
-       
+               
         while True:
-                
+
+
+            num_running_pods = take_stock(core_v1)
+            print ("\n%d running pods" % num_running_pods)
+    
+            if num_running_pods >= 25:
+                print("Exceeded budget -- exiting")
+                return
+
+            print("Under budget -- proceeding")
+            
             # Get all sets of inputs 
 
             #S = set of original corpus seed inputs
@@ -172,9 +202,7 @@ def run(cfg):
                 args = [f"gtfo.input_file={kb_inp.filepath}"]
                 create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace)  
 
-                # cron job finished
                 return
-                exit()
 
             elif p < (P_SEED_MUTATIONAL_FUZZ + P_COVERAGE_FUZZ):
 
@@ -209,10 +237,9 @@ def run(cfg):
                 # NB: Better would be to choose with probability, where input that 
                 # exposes the most new coverage is most likely and the input that 
                 # exposes the least new coverage is least likely.
-                
-                # cron job finished 
-                return
-                exit()
+
+                return 
+
 
             elif p < (P_SEED_MUTATIONAL_FUZZ + P_COVERAGE_FUZZ + P_TAINT_FUZZ):
 
@@ -258,8 +285,7 @@ def run(cfg):
                 print(args)
                 create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace) 
                 
-                # cron job finished 
-                exit()
+                return
 
             elif p < (P_SEED_MUTATIONAL_FUZZ + P_COVERAGE_FUZZ + P_TAINT_FUZZ + P_TAINT_ANALYSIS):
 
@@ -288,9 +314,7 @@ def run(cfg):
                 print(args)
                 create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace)  
 
-                # cron job finished
                 return
-                exit()
 
             else: 
                 # Do some coverage 
@@ -315,8 +339,7 @@ def run(cfg):
                 print(args)
                 create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace) 
 
-                return
-                exit() 
+                return           
 
 
 if __name__ == "__main__":
