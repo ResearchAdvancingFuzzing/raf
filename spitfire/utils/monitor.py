@@ -63,8 +63,13 @@ def run(cfg):
         T = {inp.uuid for inp in kbs.GetTaintInputs(kbp.Empty())}
 
         
-        print("seds=%d exec=%d seeds-fuzzed=%d coverage=%d int_nocovg=%d taint=%d" % (len(S),len(F),len(S-F),len(C),len(ICV),len(T)))
-        
+        print("%d seeds" % len(S))
+        print("%d fuzzed" % len(F))
+        print("%d seedsfuzzed" % (len(S & F)))
+        print("%d coverage" % (len(C)))
+        print("%d seedscoverage" % (len(S & C)))
+        print("%d taint" % len(T))
+                
         
 if __name__ == "__main__":
     logging.basicConfig()

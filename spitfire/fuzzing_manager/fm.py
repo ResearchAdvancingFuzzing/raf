@@ -99,12 +99,15 @@ def take_stock(core_v1):
             if not (pt in count[s]):
                 count[s][pt] = 0
             count[s][pt] += 1
+    rp = 0
     for s in count.keys():
         print ("Status=%s:" % s)
+        if s=="Running" or s=="Pending":
+            rp += 1
         for pt in count[s].keys():
             print("  %d %s" % (count[s][pt], pt))
         print("\n")
-    return len(count["Running"])
+    return rp
 
     
 @hydra.main(config_path=f"{spitfire_dir}/config/expt1/config.yaml")
@@ -131,9 +134,14 @@ def run(cfg):
     # Connect to the knowledge base 
     with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
         kbs = kbpg.KnowledgeBaseStub(channel)
-               
+
+        jobs_created = 0
+        
         while True:
 
+            if jobs_created >= 5:
+                print("Created %d jobs -- exiting" % jobs_created)
+                return
 
             num_running_pods = take_stock(core_v1)
             print ("\n%d running pods" % num_running_pods)
@@ -149,32 +157,32 @@ def run(cfg):
             #S = set of original corpus seed inputs
             S = {inp.uuid for inp in kbs.GetSeedInputs(kbp.Empty())} 
             print("%d Seeds" % (len(S)))
-            for s in S: 
-                print(s)
+#            for s in S: 
+#                print(s)
             
             #F = set of inputs we have done mutational fuzzing on so far
             F = {inp.uuid for inp in kbs.GetExecutionInputs(kbp.Empty())}
             print("%d Execution" % (len(F)))
-            for f in F:
-                print(f)
+#            for f in F:
+#                print(f)
             
             #C = set of inputs for which we have measured coverage
             C = {inp.uuid for inp in kbs.GetInputsWithCoverage(kbp.Empty())}
             print("%d Inputs With Coverage" % (len(C)))
-            for c in C:
-                print(c)
+#            for c in C:
+#                print(c)
             
             #ICV = set of interesting inputs that got marginal covg (increased covg)
             ICV = {inp.uuid for inp in kbs.GetInputsWithoutCoverage(kbp.Empty())}
             print("%d Inputs without Coverage" % (len(ICV)))
-            for icv in ICV:
-                print(icv)
+#            for icv in ICV:
+#                print(icv)
             
             #T = set of inputs for which we have done taint analysis
             T = {inp.uuid for inp in kbs.GetTaintInputs(kbp.Empty())}
             print("%d Taint Inputs" % (len(T)))
-            for t in T:
-                print(t) 
+#            for t in T:
+#                print(t) 
 
             # Generate a random number between 0 and 1 to see what we are doing 
             p = random.uniform(0, 1) 
@@ -200,9 +208,15 @@ def run(cfg):
                 job.update_count_by(1) 
                 
                 args = [f"gtfo.input_file={kb_inp.filepath}"]
-                create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace)  
-
-                return
+                try:
+                    create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace)  
+                except Exception as e:
+                    print("Unable to create job exception = %s" % str(e))
+                    # try again
+                    continue
+                
+                jobs_created += 1
+                continue
 
             elif p < (P_SEED_MUTATIONAL_FUZZ + P_COVERAGE_FUZZ):
 
@@ -218,27 +232,92 @@ def run(cfg):
 
                 # Choose to fuzz next the input that exposes the most new coverage
                 # wrt all other inputs for which we have measured coverage.
-                max_inp = None
-                max_cov = 0
+
+                # get edge counts (how many inputs cover each)
+                edge_count = {}
                 for inp_id in RC:
                     inp = kbs.GetInputById(kbp.id(uuid=inp_id))
-                    print(inp)
-                    n_cov = sum(1 for c in  kbs.GetEdgeCoverageForInput(inp))
-                    print(n_cov)
-                    if n_cov > max_cov:
-                        max_cov = n_cov
-                        max_inp = inp
+                    covg = kbs.GetEdgeCoverageForInput(inp)
+                    try:
+                        for e in covg:
+                            et = tuple([(i.module,i.offset) for i in e])
+                            if not (et in edge_count): edge_count[et] = 0
+                            edge_count[et] += 1
+                    except:
+                        # sometimes there's no covg
+                        pass
+
+                print("Total of %d edges for all inputs" % len(edge_count))
+                    
+                # compute number of times an input has an edge only a few other inputs cover
+                num_unc_edges = {}
+                for inp_id in RC:
+                    inp = kbs.GetInputById(kbp.id(uuid=inp_id))
+                    covg = kbs.GetEdgeCoverageForInput(inp)
+                    num_unc_edges[inp_id] = 0
+                    try:
+                        for e in covg:
+                            et = tuple([(i.module,i.offset) for i in e])
+                            if edge_count[et] < 3:
+                                # an uncommon edge!
+                                num_unc_edges[inp_id] += 1
+                    except:
+                        pass
+                                
+                # find best input as the one with the most uncommon edges
+                best_inp = None
+                best_num_unc = 0
+                for inp_id in RC:
+                    if num_unc_edges[inp_id] > best_num_unc:
+                        best_num_unc = num_unc_edges[inp_id]
+                        best_inp = inp_id
+
+                if best_inp is None:
+                    continue
+                
+                print("Best input has %d uncommon edges" % best_num_unc)
+                best_inp = kbs.GetInputById(kbp.id(uuid=best_inp))
+
+                max_inp = best_inp
+                        
+#                max_inp = None
+#                max_cov = 0
+#                for inp_id in RC:
+#                    inp = kbs.GetInputById(kbp.id(uuid=inp_id))
+#                    print(inp)
+#                    covg =  kbs.GetEdgeCoverageForInput(inp)
+#                    if covg is None:
+#                        continue                    
+#                    print(covg)
+#                    print (type(covg))
+#                    try:
+#                        n_cov = sum(1 for c in covg)
+#                        print(n_cov)
+#                        if n_cov > max_cov:
+#                            max_cov = n_cov
+#                            max_inp = inp
+#                    except:
+#                        continue
+#
+#                if max_inp is None:
+#                    continue
                 
                 job = jobs["fuzzer"]
                 job.update_count_by(1) 
                 args = [f"gtfo.input_file={max_inp.filepath}"] 
-                create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace) 
+                try:
+                    create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace) 
+                except Exception as e:
+                    print("Unable to create job exception = %s" % str(e))
+                    # try again
+                    continue
                 
                 # NB: Better would be to choose with probability, where input that 
                 # exposes the most new coverage is most likely and the input that 
                 # exposes the least new coverage is least likely.
 
-                return 
+                jobs_created += 1
+                continue
 
 
             elif p < (P_SEED_MUTATIONAL_FUZZ + P_COVERAGE_FUZZ + P_TAINT_FUZZ):
@@ -283,9 +362,16 @@ def run(cfg):
                         f"gtfo.extra_args='JIG_MAP_SIZE=65536 ANALYSIS_SIZE=65536 \
                         OOZE_LABELS={str_fbs} OOZE_LABELS_SIZE={fbs_len} OOZE_MODULE_NAME=afl_havoc.so'"] 
                 print(args)
-                create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace) 
-                
-                return
+                try:
+                    create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace) 
+                except Exception as e:
+                    print("Unable to create job exception = %s" % str(e))
+                    # try again
+                    continue
+                    
+                jobs_created += 1
+                continue
+#                return
 
             elif p < (P_SEED_MUTATIONAL_FUZZ + P_COVERAGE_FUZZ + P_TAINT_FUZZ + P_TAINT_ANALYSIS):
 
@@ -312,9 +398,16 @@ def run(cfg):
                 
                 args = [f"taint.input_file={kb_inp.filepath}"]
                 print(args)
-                create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace)  
-
-                return
+                try:
+                    create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace)  
+                except Exception as e:
+                    print("Unable to create job exception = %s" % str(e))
+                    # try again
+                    continue
+                    
+                jobs_created += 1
+                continue
+#               return
 
             else: 
                 # Do some coverage 
@@ -337,9 +430,16 @@ def run(cfg):
                 
                 args = [f"coverage.input_file={kb_inp.filepath}"] 
                 print(args)
-                create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace) 
+                try:
+                    create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace) 
+                except Exception as e:
+                    print("Unable to create job exception = %s" % str(e))
+                    # try again
+                    continue
 
-                return           
+                jobs_created += 1
+                continue
+#                return           
 
 
 if __name__ == "__main__":
