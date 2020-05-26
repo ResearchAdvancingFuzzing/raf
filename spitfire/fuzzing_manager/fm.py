@@ -30,6 +30,8 @@ P_TAINT_ANALYSIS = 0.05
 P_COVERAGE = 0.3
 MAX_TAINT_OUT_DEGREE = 16
 
+RARE_EDGE_COUNT = 3
+
 # Compute budget 
 # so, like 10 cores or nodes or whatever
 budget = 10 
@@ -87,6 +89,8 @@ class Job:
         return self.count 
 
 
+# count how many pods are in the various phases
+# returns number that are running + pending
 def take_stock(core_v1):
     resp = core_v1.list_pod_for_all_namespaces()
     count = {}
@@ -230,46 +234,43 @@ def run(cfg):
 
                 print ("Coverage-based fuzzing selected")
 
-                # Choose to fuzz next the input that exposes the most new coverage
-                # wrt all other inputs for which we have measured coverage.
+                # Choose to fuzz next the input that *has* exposed the most new
+                # coverage wrt all other inputs for which we have measured coverage.
 
-                # get edge counts (how many inputs cover each)
+                # count number of inputs that cover each edge
                 edge_count = {}
-                for inp_id in RC:
+                inp_edges = {}
+                for inp_id in C:
                     inp = kbs.GetInputById(kbp.id(uuid=inp_id))
                     covg = kbs.GetEdgeCoverageForInput(inp)
                     try:
+                        inp_edges[inp_id] = set([])
                         for e in covg:
                             et = tuple([(i.module,i.offset) for i in e])
                             if not (et in edge_count): edge_count[et] = 0
                             edge_count[et] += 1
+                            inp_edges[inp_id].add(et)
                     except:
-                        # sometimes there's no covg
+                        # XXX sometimes there's no covg?
                         pass
 
                 print("Total of %d edges for all inputs" % len(edge_count))
-                    
-                # compute number of times an input has an edge only a few other inputs cover
-                num_unc_edges = {}
-                for inp_id in RC:
-                    inp = kbs.GetInputById(kbp.id(uuid=inp_id))
-                    covg = kbs.GetEdgeCoverageForInput(inp)
-                    num_unc_edges[inp_id] = 0
-                    try:
-                        for e in covg:
-                            et = tuple([(i.module,i.offset) for i in e])
-                            if edge_count[et] < 3:
-                                # an uncommon edge!
-                                num_unc_edges[inp_id] += 1
-                    except:
-                        pass
-                                
-                # find best input as the one with the most uncommon edges
+
+                # for each input in RC, (no covg measure), count number of
+                # rare edges (only a small number of inputs cover that edge)
+                num_rare_edges = {}
+                for inp_id in inp_edges.keys():
+                    num_rare_edges[inp_id] = 0
+                    for et in inp_edges[inp_id]:
+                        if edge_count[et] < RARE_EDGE_COUNT:
+                            num_rare_edges[inp_id] += 1
+
+                # *** best input to fuzz next is the one with the most rare edges
                 best_inp = None
                 best_num_unc = 0
                 for inp_id in RC:
-                    if num_unc_edges[inp_id] > best_num_unc:
-                        best_num_unc = num_unc_edges[inp_id]
+                    if num_rare_edges[inp_id] > best_num_unc:
+                        best_num_unc = num_rare_edges[inp_id]
                         best_inp = inp_id
 
                 if best_inp is None:
@@ -279,28 +280,6 @@ def run(cfg):
                 best_inp = kbs.GetInputById(kbp.id(uuid=best_inp))
 
                 max_inp = best_inp
-                        
-#                max_inp = None
-#                max_cov = 0
-#                for inp_id in RC:
-#                    inp = kbs.GetInputById(kbp.id(uuid=inp_id))
-#                    print(inp)
-#                    covg =  kbs.GetEdgeCoverageForInput(inp)
-#                    if covg is None:
-#                        continue                    
-#                    print(covg)
-#                    print (type(covg))
-#                    try:
-#                        n_cov = sum(1 for c in covg)
-#                        print(n_cov)
-#                        if n_cov > max_cov:
-#                            max_cov = n_cov
-#                            max_inp = inp
-#                    except:
-#                        continue
-#
-#                if max_inp is None:
-#                    continue
                 
                 job = jobs["fuzzer"]
                 job.update_count_by(1) 
