@@ -13,8 +13,14 @@ class KnowledgeStore(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def continue(self):
+    def run(self):
         raise NotImplementedError
+
+    # returns current fuzzing mgr mode
+    @abstractmethod
+    def get_fm_mode(self):
+        raise NotImplementedError
+
     
     # Determine if item is already in the knowledge store
     # All of these return KnowledgeBaseResult with success=True to indicate

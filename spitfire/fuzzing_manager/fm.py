@@ -146,6 +146,12 @@ def run(cfg):
         if res.type == 2:
             print ("PAUSED -- do nothing")
             return
+        elif res.type == 1:
+            print ("RUN -- fuzzing happens")
+        else:
+            print ("Impossible mode?")
+            assert (1==0)
+            
         
         
         jobs_created = 0

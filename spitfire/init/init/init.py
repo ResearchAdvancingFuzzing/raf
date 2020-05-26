@@ -70,7 +70,11 @@ def setup(cfg):
         
         # Experiment also needs a seed and a hash of the fuzzing manager 
         experiment_msg = kbp.Experiment(target=target_kb, seed_corpus=corpus)
-        experiment = kbs.AddExperiment(experiment_msg) 
+        experiment = kbs.AddExperiment(experiment_msg)
+
+        # set fuzzing manager to run
+        kbs.Run(kbp.Empty())
+        
     print("here")  
     # Need to start up the fm
     utils.create_from_yaml(k_client, "/config_fm.yaml")
