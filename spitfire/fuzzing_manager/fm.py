@@ -116,7 +116,7 @@ def take_stock(core_v1):
     
 @hydra.main(config_path=f"{spitfire_dir}/config/expt1/config.yaml")
 def run(cfg):
-    
+
     # Setup job information
     job_names = ["taint", "coverage", "fuzzer"]
     jobs = {name:Job(name) for name in job_names}  
@@ -134,11 +134,20 @@ def run(cfg):
     for cj in batch_v1.list_namespaced_job(namespace=namespace, label_selector='tier=backend').items: 
         if not cj.status.active and cj.status.succeeded: 
             batch_v1.delete_namespaced_job(name=cj.metadata.name, namespace=namespace, propagation_policy="Background") 
-    
+
+
     # Connect to the knowledge base 
     with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
         kbs = kbpg.KnowledgeBaseStub(channel)
 
+        res = kbs.GetMode(kbp.Empty())
+        print ("FM mode is %d" % res.type)
+
+        if res.type == 2:
+            print ("PAUSED -- do nothing")
+            return
+        
+        
         jobs_created = 0
         
         while True:

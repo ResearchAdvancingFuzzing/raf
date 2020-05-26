@@ -17,6 +17,14 @@ service KnowledgeBase {
     // The knowledge base will compute or generate it and return a message of 
     // the same type containing the correct uuid and duplicating all other fields.
 
+    // pause fuzzing campaign (fuzzing manager just quits without
+    // starting any jobs)
+    rpc Pause(Empty) returns (KnowledgeBaseResult) {}
+    // continue fuzzing campaign
+    rpc Continue(Empty) returns (KnowledgeBaseResult) {}
+    // determine current mode
+    rpc GetMode(Empty) returns (FuzzingManagerMode) {}
+
     // returns true iff exists in knowledge base
     // note: don't fill in uuid
     rpc TargetExists(Target) returns (KnowledgeBaseResult) {}
@@ -107,6 +115,15 @@ message id {
 } 
 
 message Empty {
+}
+
+
+message FuzzingManagerMode {
+    enum ModeType {
+        RUNNING = 0;
+	PAUSE = 1;
+    }
+    ModeType type = 1;
 }
 
 

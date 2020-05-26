@@ -40,6 +40,18 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
     def __init__(self, ksc):
         self.ks = ks.KnowledgeStorePickle(ksc)
 
+
+    def Pause(self, empty, context):
+        return kbp.KnowledgeBaseResult(success=self.ks.pause(),
+                                       message="None")
+
+    def Continue(self, empty, context):
+        return kbp.KnowledgeBaseResult(success=self.ks.continue(),
+                                       message="None")
+
+    def GetMode(self, empty, context):
+        return kbp.FuzzingManagerMode(type=self.ks.get_fm_mode())
+    
     # Determines if item is already in the knowledge store
     # All of these return KnowledgeBaseResult with success=True to indicate 
     # that the item exists.  success=False otherwise

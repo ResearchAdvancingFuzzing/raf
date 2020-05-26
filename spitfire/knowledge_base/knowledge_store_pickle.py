@@ -8,6 +8,12 @@ A very simple in-memory and pickle-based knowledge store
 import os
 import sys
 import queue
+from enum import Enum
+
+class Mode(Enum):
+    RUNNING = 1
+    PAUSED = 2
+        
 
 # walk up the path to find 'spitfire' and add that to python path
 # at most 10 levels up?
@@ -342,7 +348,17 @@ class KnowledgeStorePickle(KnowledgeStore):
         self.executions = ExecutionPickle() 
         self.inp2edge_coverage = {}
         #self.edge_coverage = EdgeCoveragePickle() 
+        self.mode = Mode.RUNNING
+        
+        
+    def pause(self):
+        self.mode = Mode.PAUSED
+        return true
 
+    def continue(self):
+        self.mode = Mode.RUNNING
+        return true
+        
     def execution_exists(self, execution): 
         return self.executions.exists(execution)
 

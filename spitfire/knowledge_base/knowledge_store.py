@@ -6,6 +6,16 @@ from abc import ABC,abstractmethod
 
 class KnowledgeStore(ABC):
 
+
+    # to pause / continue fuzzing campaing
+    @abstractmethod
+    def pause(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    def continue(self):
+        raise NotImplementedError
+    
     # Determine if item is already in the knowledge store
     # All of these return KnowledgeBaseResult with success=True to indicate
     # that the item exists in the kb. success=False otherwise
