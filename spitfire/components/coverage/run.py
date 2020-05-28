@@ -51,11 +51,12 @@ def create_recording(cfg, inputfile, plog_filename):
     # Copy directory needed to insert into panda recording
     # We need the inputfile and we need the target binary install directory
     copydir = "./copydir"
+    subdir = "install"
     if os.path.exists(copydir):
         shutfil.rmtree(copydir)
     os.makedirs(copydir) 
     shutil.copy(inputfile, copydir)
-    shutil.copytree(target_dir, copydir + "/install") 
+    shutil.copytree(target_dir, "%s/%s" % (copydir, subdir)) 
 
     # Get the qcow file 
     qcow = cfg.taint.qcow;
@@ -68,8 +69,18 @@ def create_recording(cfg, inputfile, plog_filename):
     print("replay name = [%s]" % replayname)
 
     # This needs to be changed
-    cmd = "cd copydir/install/ && ./%s ~/copydir/%s" % (cfg.target.name, basename(inputfile))
-    print(cmd) 
+    args = cfg.coverage.args
+    args = args.replace("file", "~/%s/%s" % (basename(copydir), basename(inputfile)), 1) 
+    print(args)
+    cmd = "cd %s/%s/ && ./%s %s" % (basename(copydir), subdir, cfg.target.name, args)
+    print(cmd)
+    exists_replay_name = ("%s%s" % (replayname, "-rr-snp")) 
+    extra_args = ["-display", "none", "-nographic"] 
+    if (os.path.exists(exists_replay_name)): 
+        extra_args.extend(["-loadvm", "root"]) 
+    #cmd = "cd copydir/install/ && ./%s ~/copydir/%s" % (cfg.target.name, basename(inputfile))
+    #print(cmd)
+    #return
     #cmd = "cd copydir/install/libxml2/.libs && ./xmllint ~/copydir/"+basename(inputfile)
     #print(cmd) 
     #return
@@ -83,8 +94,9 @@ def create_recording(cfg, inputfile, plog_filename):
 
 
     panda.set_os_name("linux-64-ubuntu:4.15.0-72-generic")
-    panda.queue_async(take_recording)
-    panda.run()
+    if not os.path.exists(exists_replay_name): 
+        panda.queue_async(take_recording)
+        panda.run()
     return [panda, replayname]
 
 def run_replay(panda, plugins, plog_filename, replayname):
@@ -118,10 +130,10 @@ def analyze_asid(log_entry, program, asids, instr_intervals, first_instr, last_i
 
 def ingest_log_for_asid(cfg, plog_file_name):
     plog_file = "%s/%s" % (os.getcwd(), plog_file_name)
-    asids = set([]) 
-    instr_intervals = []
-    first_instr = None
-    last_instr = None
+    plog_file = "/working/outputs/2020-05-28/16-11-22/coverage.plog"  
+    xm = None
+    modules = {}
+    base_addr = 0xffffffffffffffff
     program = cfg.target.name 
 
     print("Ingesting pandalog") 
@@ -130,32 +142,13 @@ def ingest_log_for_asid(cfg, plog_file_name):
             for i, log_entry in enumerate(plr):
                 if log_entry.HasField("asid_info"): 
                     ai = log_entry.asid_info
-                    if ai.name == program:
-                        asids.add(ai.asid)
-                        instr_interval = [ai.start_instr, ai.end_instr]
-                        instr_intervals.append(instr_interval)
-                        if first_instr is None:
-                            first_instr = ai.start_instr
-                        last_instr = ai.end_instr
-
-        except Exception as e:
-            print (str(e))
-
-    asids = list(asids)
-    return [asids[0], first_instr, last_instr] 
-
-def ingest_log(cfg, asid, plog_file_name): 
-    plog_file = "%s/%s" % (os.getcwd(), plog_file_name)
-    edges = [] 
-    modules = {} 
-    with plog.PLogReader(plog_file) as plr: 
-        try: 
-            for i, log_entry in enumerate(plr): 
-                if log_entry.asid != asid: 
-                    continue 
-                if log_entry.HasField("edge_coverage"):
-                    for edge in log_entry.edge_coverage.edges: 
-                        edges.append(edge)
+                    if ai.name == program and ai.asid < 0xffffffff:
+                        if xm is None: 
+                            xm = (ai.asid, ai.end_instr - ai.start_instr) 
+                        else:
+                            (asid, span) = xm
+                            if ai.end_instr - ai.start_instr > span:
+                                xm = (ai.asid, ai.end_instr - ai.start_instr) 
                 if log_entry.HasField("asid_libraries"): 
                     for m in log_entry.asid_libraries.modules:
                         mod = Module(m)
@@ -168,15 +161,67 @@ def ingest_log(cfg, asid, plog_file_name):
                                 modules[mod.name].base = mod.base
                             if mod.end > modules[mod.name].end:
                                 modules[mod.name].end = mod.end 
-                       
+                        
+                        if m.name == program and m.base_addr < base_addr:
+                            base_addr = m.base_addr
+
         except Exception as e:
             print (str(e))
-    
+
     for key in modules:
         print("Module name: %s" % key)
         print("Module base: %d" % modules[key].base)
         print("Module end: %d" % modules[key].end)
         print(" ") 
+
+
+    if xm is None: 
+        print("Could not find asid") 
+    else:
+        (the_asid, range) = xm
+        print("Asid is 0x%x" % the_asid) 
+
+    if base_addr == 0xffffffffffffffff:
+        print ("Could not find base addr") 
+    else:
+        print("Base addr is 0x%x" % base_addr)
+
+    return [the_asid, base_addr, modules] 
+
+def ingest_log(cfg, asid, modules, plog_file_name): 
+    plog_file = "%s/%s" % (os.getcwd(), plog_file_name)
+    edges = [] 
+    with plog.PLogReader(plog_file) as plr: 
+        try: 
+            for i, log_entry in enumerate(plr): 
+                if log_entry.asid != asid: 
+                    continue 
+                if log_entry.HasField("edge_coverage"):
+                    for edge in log_entry.edge_coverage.edges: 
+                        edges.append(edge)
+                '''
+                if log_entry.HasField("asid_libraries"): 
+                    for m in log_entry.asid_libraries.modules:
+                        mod = Module(m)
+                        if (mod.name == "[???]"):
+                            continue 
+                        if not (mod.name in modules): 
+                            modules[mod.name] = mod
+                        else: 
+                            if mod.base < modules[mod.name].base:
+                                modules[mod.name].base = mod.base
+                            if mod.end > modules[mod.name].end:
+                                modules[mod.name].end = mod.end 
+                '''    
+        except Exception as e:
+            print (str(e))
+    '''
+    for key in modules:
+        print("Module name: %s" % key)
+        print("Module base: %d" % modules[key].base)
+        print("Module end: %d" % modules[key].end)
+        print(" ") 
+    ''' 
 
     resolved_edges = []
     #i = 0
@@ -210,7 +255,7 @@ def ingest_log(cfg, asid, plog_file_name):
     print("SIZE OF: %d" % len(resolved_edges))
     # TODO: if len(resolved_edges) == 0:
     # we need to do it again    
-    return [resolved_edges, modules]
+    return [resolved_edges]
 
 
 def send_to_database(edges, input_file, modules, channel): 
@@ -257,22 +302,21 @@ def run(cfg):
     input_file = cfg.coverage.input_file 
     plog_file_name = cfg.coverage.plog_file_name
     [panda, replayname] = create_recording(cfg, input_file, plog_file_name) 
-
-    #print(edges)
-    #return
     plugins = {} 
     plugins["asidstory"] = {} 
-    run_replay(panda, plugins, plog_file_name, replayname) 
-    [asid, first_instr, last_instr] = ingest_log_for_asid(cfg, plog_file_name) 
+    plugins["loaded_libs"] = {"program_name": cfg.target.name}
+    #run_replay(panda, plugins, plog_file_name, replayname) 
+    [asid, base_addr, modules] = ingest_log_for_asid(cfg, plog_file_name) 
     
     plugins.clear() 
-
-    plugins["edge_coverage"] = {"no_kernel" : 1, "n": "3", "program_name": "xmllint", \
-            "first_instr": first_instr, "last_instr": last_instr, "asid": asid}
-    plugins["loaded_libs"] = {} 
+    main_addr = int(cfg.target.main_addr, 0) 
+    print("0x%x" % main_addr) 
+    print("0x%x" % base_addr)
+    print("0x%x" % (main_addr + base_addr))
+    plugins["edge_coverage"] = {"n" : "3", "main": "%x" % (main_addr + base_addr)} 
     run_replay(panda, plugins, "2" + plog_file_name, replayname) 
-    [edges, modules] = ingest_log(cfg, asid, "2" + plog_file_name)
-
+    #edges = ingest_log(cfg, asid, modules, "2" + plog_file_name)
+    return 
     with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
         print("here: connected");
         send_to_database(edges, input_file, modules, channel) 
