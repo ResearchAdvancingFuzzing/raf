@@ -20,8 +20,8 @@ service KnowledgeBase {
     // pause fuzzing campaign (fuzzing manager just quits without
     // starting any jobs)
     rpc Pause(Empty) returns (KnowledgeBaseResult) {}
-    // continue fuzzing campaign
-    rpc Continue(Empty) returns (KnowledgeBaseResult) {}
+    // Run (or continue) fuzzing campaign
+    rpc Run(Empty) returns (KnowledgeBaseResult) {}
     // determine current mode
     rpc GetMode(Empty) returns (FuzzingManagerMode) {}
 

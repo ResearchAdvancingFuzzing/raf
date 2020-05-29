@@ -353,12 +353,15 @@ class KnowledgeStorePickle(KnowledgeStore):
         
     def pause(self):
         self.mode = Mode.PAUSED
-        return true
+        return True
 
-    def continue(self):
+    def run(self):
         self.mode = Mode.RUNNING
-        return true
-        
+        return True
+
+    def get_fm_mode(self):
+        return self.mode.value
+    
     def execution_exists(self, execution): 
         return self.executions.exists(execution)
 

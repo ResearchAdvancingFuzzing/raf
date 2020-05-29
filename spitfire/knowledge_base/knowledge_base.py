@@ -42,13 +42,13 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
 
 
     def Pause(self, empty, context):
-        return kbp.KnowledgeBaseResult(success=self.ks.pause(),
+        return kbp.KnowledgeBaseResult(success=self.ks.pause(), \
                                        message="None")
 
-    def Continue(self, empty, context):
-        return kbp.KnowledgeBaseResult(success=self.ks.continue(),
+    def Run(self, empty, context):
+        return kbp.KnowledgeBaseResult(success=self.ks.run(), \
                                        message="None")
-
+    
     def GetMode(self, empty, context):
         return kbp.FuzzingManagerMode(type=self.ks.get_fm_mode())
     
