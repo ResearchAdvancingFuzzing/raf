@@ -1,7 +1,12 @@
 #!/bin/bash
 
+# Exit if error
+set -e
 
+# Rebuild protos
 cd spitfire/protos && make clean && make && cd ../..
+
+# Rebuild docker images 
 docker build -t init:v1 -f spitfire/init/init/Dockerfile .
 docker build -t fm:v1 -f spitfire/fuzzing_manager/Dockerfile .
 docker build -t gtfo-source:v1 -f spitfire/tools/gtfo-source/Dockerfile .
