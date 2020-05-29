@@ -74,17 +74,17 @@ def run(cfg):
         inp_edges = {}
         for inp_id in C:
             inp = kbs.GetInputById(kbp.id(uuid=inp_id))
-            covg = kbs.GetEdgeCoverageForInput(inp)
             try:
                 print ("covg for inp %s" % (inp_id))
                 inp_edges[inp_id] = set([])
-                for e in covg:
+                for e in kbs.GetEdgeCoverageForInput(inp):
                     et = tuple([(i.module,i.offset) for i in e])
                     if not (et in edge_count): edge_count[et] = 0
                     edge_count[et] += 1
                     inp_edges[inp_id].add(et)
-            except:
+            except Exception as e:
                 # XXX sometimes there's no covg?
+                print (str(e))
                 print ("Actually no covg?")
                 pass
 
