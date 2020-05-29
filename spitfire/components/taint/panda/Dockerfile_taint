@@ -1,4 +1,5 @@
-FROM pandare/panda:latest 
+#FROM pandare/panda:latest 
+FROM spitfirepanda
 
 RUN apt-get install -y python3.6 python3-pip vim libyaml-0-2 libyaml-dev
 

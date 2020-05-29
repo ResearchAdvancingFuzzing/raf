@@ -49,6 +49,41 @@ def tick():
 def tock():
     return time.time() - last_time
 
+def in_range(x, rng):
+    (rng_start, rng_len) = rng
+    if (x >= rng_start) and (x <= (rng_start + rng_len)):
+        return True
+    return False
+                                
+# True iff i1 is wholly within i2
+def subsumed(i1, i2):
+    (s1,l1) = i1
+    (s2,l2) = i2
+    if (s1 >= s2) and ((s1+l1) <= (s2+l2)):
+        return True
+
+def get_module_offset(pc, modules):
+    for mn in modules.keys():
+        module_range = modules[mn]
+        if in_range(pc, module_range):
+            return (mn, pc - module_range[0])
+    return None
+
+def get_instr_type_bytes(target_pc, basic_blocks): 
+    typ = None
+    byte = None
+    for pc in basic_blocks:
+        for bb in basic_blocks[pc]:
+            if target_pc in range(bb.start, bb.end): 
+                bb_offset = target_pc - bb.start
+                bb_byte = bb.code[bb_offset:]
+                md = Cs(CS_ARCH_X86, CS_MODE_64)
+                md.details = True
+                for i in md.disasm(bb_byte, 0x1000): #int(tiv.pc).ToString("X")):
+                    typ = i.mnemonic 
+                    byte = i.bytes
+                    return (typ, byte) 
+    return None 
 
 # Class to containt result of a panda taint query
 ptr2labelset = {}
@@ -82,12 +117,14 @@ class TaintedInstrValue:
                 % (self.pc, self.instr, self.len, tcnstr, self.labels)
 
 # Class to contain result of libraries 
+'''
 class Module: 
     def __init__(self, mod): 
         self.name = mod.name
         self.base = mod.base_addr 
         self.end = mod.base_addr + mod.size
         self.filepath = mod.file
+'''
 
 class BasicBlock:
     def __init__(self, bb): 
@@ -103,7 +140,7 @@ log = logging.getLogger(__name__)
 fuzzing_config_dir = "%s/config/expt1" % spitfire_dir  # Can you send this in as an argument? 
 
 
-def create_and_run_recording(cfg, inputfile, plog_filename): 
+def create_recording(cfg, inputfile, plog_filename): 
     
 
     # Copy directory needed to insert into panda recording
@@ -133,9 +170,9 @@ def create_and_run_recording(cfg, inputfile, plog_filename):
     cmd = "cd %s/%s/ && ./%s %s" % (basename(copydir), subdir, cfg.target.name, args)
     print(cmd) 
     exists_replay_name = ("%s%s" % (replayname, "-rr-snp"))
-    extra_args = "-display none -nographic" 
+    extra_args = ["-display", "none", "-nographic"] 
     if (os.path.exists(exists_replay_name)):
-        extra_args = extra_args + " -loadvm root" 
+        extra_args.extend(["-loadvm", "root"]) 
     
     print(replayname)
     panda = Panda(arch="x86_64", expect_prompt=rb"root@ubuntu:.*#", 
@@ -153,6 +190,9 @@ def create_and_run_recording(cfg, inputfile, plog_filename):
         panda.queue_async(take_recording)
         panda.run()
 
+    return [panda, replayname] 
+
+'''
     log.info("Running replay") 
     
     # Now insert the plugins and run the replay
@@ -163,12 +203,113 @@ def create_and_run_recording(cfg, inputfile, plog_filename):
     panda.load_plugin("tainted_branch")
     panda.load_plugin("file_taint", 
             args={"filename": "/root/copydir/"+basename(inputfile), "pos": "1"})
-    panda.load_plugin("edge_coverage")
     panda.load_plugin("loaded_libs")
     panda.run_replay(replayname) 
+'''
+
+
+def run_replay(panda, plugins, plog_filename, replayname):
+    # Now insert the plugins and run the replay
+    panda.set_pandalog(plog_filename)
+    for plugin in plugins:
+        panda.load_plugin(plugin, args=plugins[plugin]) 
+    panda.run_replay(replayname)
 
 
 
+def ingest_log_for_asid(cfg, plog_file_name):
+    plog_file = "%s/%s" % (os.getcwd(), plog_file_name)
+    #plog_file = "/outputs/2020-05-29/02-38-03/taint.plog"  
+    xm = None
+    modules = {}
+    base_addr = 0xffffffffffffffff
+    program = cfg.target.name 
+
+    print("Ingesting pandalog") 
+    with plog.PLogReader(plog_file) as plr:
+        try:
+            for i, log_entry in enumerate(plr):
+                if log_entry.HasField("asid_info"): 
+                    ai = log_entry.asid_info
+                    if ai.name == program and ai.asid < 0xffffffff:
+                        if xm is None: 
+                            xm = (ai.asid, ai.end_instr - ai.start_instr) 
+                        else:
+                            (asid, span) = xm
+                            if ai.end_instr - ai.start_instr > span:
+                                xm = (ai.asid, ai.end_instr - ai.start_instr) 
+                if log_entry.HasField("asid_libraries"): 
+                    for mod in log_entry.asid_libraries.modules:
+                        if (mod.name == "[???]"):
+                            continue 
+                        name = mod.name
+                        if not (name in modules): 
+                            modules[name] = []
+                        p = (mod.base_addr, mod.size) 
+                        modules[name].append(p)
+                        if mod.name == program and mod.base_addr < base_addr:
+                            base_addr = mod.base_addr
+
+        except Exception as e:
+            print (str(e))
+
+    new_modules = {}
+    for name in modules.keys():
+        print (name)
+        # this discards exact duplicates
+        ml = list(set(modules[name]))
+        new_ml = []
+        l = len(ml)
+        for i in range(l-1): # for each range that the module is split into
+            m1 = ml[i]
+            # if m1 is subsumed by ANY of the modules
+            # *later* in the list ml then we discard it                 
+            subsumed_by_any = False
+            for j in range(i+1,l): # check this one with the remainder 
+                m2 = ml[j]
+                if subsumed(m1,m2):
+                    subsumed_by_any=True
+                    break
+            if not subsumed_by_any:
+                new_ml.append(m1)
+        ml = new_ml
+
+        # order them by base addr
+        def get_first(a):
+            return a[0]
+        ml.sort(key = get_first)
+
+        # renaming to xmllint-1, xmllint-2, etc
+        i = 1
+        for m in ml:
+            new_modules["%s-%d" % (name,i)] = m
+            i += 1
+
+    # discard that old modules list.  
+    modules = new_modules
+    
+    print("Printing all the modules:")
+    for module in modules: 
+        print(module)
+        print(modules[module])
+
+    if xm is None: 
+        print("Could not find asid") 
+    else:
+        (the_asid, the_range) = xm
+        print("Asid is %d" % the_asid) 
+
+    if base_addr == 0xffffffffffffffff:
+        print ("Could not find base addr") 
+    else:
+        print("Base addr is 0x%x" % base_addr)
+
+    return [the_asid, modules] 
+
+
+
+
+'''
 def analyze_asid(log_entry, program, asids, instr_intervals, first_instr, last_instr): 
     ai = log_entry.asid_info
     if ai.name == program:
@@ -180,6 +321,7 @@ def analyze_asid(log_entry, program, asids, instr_intervals, first_instr, last_i
         last_instr = ai.end_instr
 
     return [first_instr, last_instr]
+'''
 
 
 def collect_code(log_entry, basic_blocks): 
@@ -251,7 +393,7 @@ def exclude_pcs(cfg, tainting_fbs):
 
 
 
-def make_taint_analysis(tainting_fbs, excluded_fbs, excluded_pcs, modules, basic_blocks, first_instr, last_instr): 
+def make_taint_analysis(tainting_fbs, excluded_fbs, excluded_pcs, modules, basic_blocks): #first_instr, last_instr): 
     print ("Constructing spitfire TaintAnalysis")
 
     ta = TaintAnalysis()
@@ -274,74 +416,67 @@ def make_taint_analysis(tainting_fbs, excluded_fbs, excluded_pcs, modules, basic
         if num_pcs == 0:
             excluded_fbs_2 += 1
             continue
+
+        not_found = False
         for tiv in tainting_fbs[fbs]:
             if tiv.pc in excluded_pcs:
                 continue
-            # Get the module and offset 
-            module = "Unk" #default values 
-            mod_offset = tiv.pc 
-            for key in modules: 
-                if tiv.pc in range(modules[key].base, modules[key].end): 
-                    module = key # module 
-                    mod_offset = tiv.pc - modules[key].base # offset 
-                    break
-            if module == "Unk": 
-                print("Unable to find a module for %d", tiv.pc) 
-                continue 
 
+            # Get the module and offset
+            m = get_module_offset(tiv.pc, modules) 
+            if m is None:
+                print("did not find a (mod, offset for this pc: %d", tiv.pc)
+                not_found = True
+                continue
+            (module, mod_offset) = m
+            
             # Get the type and bytes of the instr
-            typ = None
-            byte = None
-            for pc in basic_blocks:
-                for bb in basic_blocks[pc]:
-                    if tiv.pc in range(bb.start, bb.end): 
-                        bb_offset = tiv.pc - bb.start
-                        bb_byte = bb.code[bb_offset:]
-                        md = Cs(CS_ARCH_X86, CS_MODE_64)
-                        md.details = True
-                        for i in md.disasm(bb_byte, 0x1000): #int(tiv.pc).ToString("X")):
-                            typ = i.mnemonic 
-                            byte = i.bytes
-                            #print(byte)
-                            break
-                        break
-            if typ is None or byte is None:
+            b = get_instr_type_bytes(tiv.pc, basic_blocks) 
+            if b is None: 
                 print("Unable to find the bb for pc %d", tiv.pc) 
                 continue
-            
+
+            (typ, byte) = b
+
             f = FuzzableByteSet(fbs)
             i = TaintedInstruction(mod_offset, module, typ, byte) #None) #tiv.pc, "Unk", None)
             #print(i)
-            tm = TaintMapping(f, i, 42, tiv.len,
-                    (float(tiv.instr - first_instr) / (last_instr - first_instr)), 
+            tm = TaintMapping(f, i, 42, tiv.len, 0, 
+                    #(float(tiv.instr - first_instr) / (last_instr - first_instr)), 
                     tiv.tcn_min, tiv.tcn_max)
             ta.add_taint_mapping(tm)
-
+            print(tiv.pc)
+            print(typ)
+            print(byte)
+            print(module)
+            print(mod_offset)
     print ("------------------------")
     print("Excluded %d ti because they are in a forbidden fbs" % excluded_ti_1)
     print("Excluded %d ti because they are a forbidden pc" % excluded_ti_2)
     print("Excluded %d fbs because they are a forbideen fbs" % excluded_fbs_1)
     print("Excluded %d fbs because they have only forbidden pcs" % excluded_fbs_2)
+    
     return ta
 
 
 
-def ingest_log_to_taint_obj(cfg, plog_filename):
+def ingest_log_to_taint_obj(cfg, asid, modules, plog_filename):
     program = cfg.target.name # the name of the program 
     plog_file = "%s/%s" % (os.getcwd(), plog_filename) 
+    #plog_file = "/outputs/2020-05-29/02-40-24/2taint.plog"
     #plog_file = "/working/outputs/2020-04-05/13-17-14/taint.plog"
     
     # Information to track 
-    asids = set([])  #used to collect asids for the_program
-    instr_intervals = [] # used to collect instr intervals for the_program
+    #asids = set([])  #used to collect asids for the_program
+    #instr_intervals = [] # used to collect instr intervals for the_program
     basic_blocks = {}
     tainting_fbs = {} # fbs -> TaintedInstrValues, where fbs is fuzzable byte set
     
-    first_instr_for_program = None
-    last_instr_for_program = None
-    last_instr = None
+    #first_instr_for_program = None
+    #last_instr_for_program = None
+    #last_instr = None
     
-    num_asid = 0
+    #num_asid = 0
     num_bb = 0
     num_ti = 0
     
@@ -353,11 +488,11 @@ def ingest_log_to_taint_obj(cfg, plog_filename):
                 last_instr = log_entry.instr
 
                 # Collect asids and instruction intervals for the target  
-                if log_entry.HasField("asid_info"):
-                    num_asid += 1
-                    [first_instr_for_program, last_instr_for_program] = \
-                    analyze_asid(log_entry, program, asids, instr_intervals, 
-                            first_instr_for_program, last_instr_for_program)
+                #if log_entry.HasField("asid_info"):
+                #    num_asid += 1
+                #    [first_instr_for_program, last_instr_for_program] = \
+                #    analyze_asid(log_entry, program, asids, instr_intervals, 
+                #            first_instr_for_program, last_instr_for_program)
                 
                 # Collect basic block information for program counters and asids
                 if log_entry.HasField("basic_block"):
@@ -373,9 +508,10 @@ def ingest_log_to_taint_obj(cfg, plog_filename):
             print (str(e))
             #break
 
-    for asid in asids: 
-        print("Asid: " + str(asid)) 
+    #for asid in asids: 
+    #    print("Asid: " + str(asid)) 
 
+    '''
     modules = {} 
     with plog.PLogReader(plog_file) as plr:
         try:
@@ -398,9 +534,10 @@ def ingest_log_to_taint_obj(cfg, plog_filename):
     
     for m in modules: 
         print("Name %s: Base: %d End: %d" % (m, modules[m].base, modules[m].end))  
+    '''
 
-    print("Total number of logs: %d" % i)
-    print("Number of asid entries: %d" % num_asid)
+    #print("Total number of logs: %d" % i)
+    #print("Number of asid entries: %d" % num_asid)
     print("Number of bb entries: %d" % num_bb)
     print("Number of ti entries: %d" % num_ti)
     print ("Found %d tainting fuzzable byte sets (fbs)" % (len(tainting_fbs)))
@@ -408,23 +545,24 @@ def ingest_log_to_taint_obj(cfg, plog_filename):
     for fbs in tainting_fbs:
         sum_ti += len(tainting_fbs[fbs])
     print("Number of ti entires kept: %d" % sum_ti)
-    print ("Number of asids for program: %d" % len(asids))
+    #print ("Number of asids for program: %d" % len(asids))
     print ("Number of basic blocks in program: %d" % len(basic_blocks))
-    print ("Number of instruction intervals for program: %d" % len(instr_intervals))
+    #print ("Number of instruction intervals for program: %d" % len(instr_intervals))
 
-    basic_block = None
+    basic_block = basic_blocks[asid] #None
+    print("Number of bb for asid: %d" % len(basic_block))
+    '''
     for asid in basic_blocks:
         if asid in asids:
             basic_block = basic_blocks[asid]
             break
     assert (not (basic_block is None))
-    
+    '''
     # Determine set of fbs and pcs to exclude.
     excluded_fbs = exclude_fbs(cfg, tainting_fbs) 
     excluded_pcs = exclude_pcs(cfg, tainting_fbs) 
-    fm = make_taint_analysis(tainting_fbs, excluded_fbs, excluded_pcs, modules, basic_block, \
-                first_instr_for_program, last_instr_for_program) 
-    return [fm, modules] 
+    fm = make_taint_analysis(tainting_fbs, excluded_fbs, excluded_pcs, modules, basic_block)
+    return fm 
 
 
 
@@ -443,12 +581,18 @@ def send_to_database(ta, kb_input, module_list, channel):
     module_dict = {}
 
     modules = []
+    for name in module_list: 
+        (base_addr, size) = module_list[name]
+        module = kbp.Module(name=name, base=base_addr, end=base_addr + size, filepath=name)
+        modules.append(module) 
+    '''
+    modules = []
     for i, name in enumerate(module_list):
         value = module_list[name]
         module = kbp.Module(name=name, base=value.base, end=value.end, filepath=value.filepath)
         modules.append(module) 
         #module_dict[name] = module
-    
+    '''
     print("Sending %d modules" % len(modules))
     kb_modules = {r.name:r for r in stub.AddModules(iter(modules))} 
     
@@ -542,15 +686,28 @@ def run(cfg):
             return
     
     # Get the plog filename 
-    plog_filename = cfg.taint.plog_filename
+    plog_file_name = cfg.taint.plog_filename
     
-    # Run the panda recording 
-    create_and_run_recording(cfg, inputfile, plog_filename) 
-    #return 
-    # Ingest the plog  
-    fm, modules = ingest_log_to_taint_obj(cfg, plog_filename)
+    # Run the panda recording
+    [panda, replayname] = create_recording(cfg, inputfile, plog_file_name)
+
+    plugins = {}
+    plugins["asidstory"] = {}
+    plugins["loaded_libs"] = {"program_name": cfg.target.name}
+    run_replay(panda, plugins, plog_file_name, replayname) 
+    [asid, modules] = ingest_log_for_asid(cfg, plog_file_name)
+    print(asid)
+    print(modules)
+    
+    plugins.clear()
+    plugins["tainted_instr"] = {}
+    plugins["collect_code"] = {}
+    plugins["tainted_branch"] = {} 
+    plugins["file_taint"] = {"filename": "/root/copydir/"+basename(inputfile), "pos": "1"}
+    run_replay(panda, plugins, "2" + plog_file_name, replayname) 
+    fm = ingest_log_to_taint_obj(cfg, asid, modules, "2" + plog_file_name) 
+    
     # Send the information over to the database 
-    #return 
     with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
         send_to_database(fm, kb_input, modules, channel) 
     
