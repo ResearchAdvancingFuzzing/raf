@@ -1,3 +1,5 @@
 coverage:
   input_file: "/seed-corpus/slashdot.xml"
   plog_file_name: "coverage.plog"
+  args: "file"
+  n: 3
