@@ -1,4 +1,6 @@
 #import drcov
+from os.path import join
+import subprocess as sp
 import logging
 import grpc
 import hydra
@@ -126,8 +128,10 @@ def create_recording(cfg, inputfile, plog_filename):
         panda.run()
     return [panda, replayname]
 
-def run_replay(panda, plugins, plog_filename, replayname):
+def run_replay(panda, plugins, old_plugins, plog_filename, replayname):
     # Now insert the plugins and run the replay
+    for plugin in old_plugins:
+        panda.unload_plugin(plugin)
     panda.set_pandalog(plog_filename)
     for plugin in plugins:
         panda.load_plugin(plugin, args=plugins[plugin]) 
@@ -290,18 +294,45 @@ def run(cfg):
     input_file = cfg.coverage.input_file 
     plog_file_name = cfg.coverage.plog_file_name
     
-    [panda, replayname] = create_recording(cfg, input_file, plog_file_name) 
+    [_, replayname] = create_recording(cfg, input_file, plog_file_name) 
     
-    plugins = {} 
-    plugins["asidstory"] = {} 
-    plugins["loaded_libs"] = {"program_name": cfg.target.name}
-    run_replay(panda, plugins, plog_file_name, replayname) 
+    #plugins = {} 
+    #plugins["asidstory"] = {} 
+    #plugins["loaded_libs"] = {"program_name": cfg.target.name}
+    #run_replay(panda, plugins, {}, plog_file_name, replayname) 
+    
+    panda_dir = "/panda" 
+    arch = "x86_64" 
+    
+    panda = join(join(join(panda_dir,"build"), "%s-softmmu" % arch), "panda-system-%s" % arch)
+    general_panda_args = " -m 1G -os linux-64-ubuntu:4.15.0-72-generic" 
+    rfpfx = join(replay_dir, "%s-panda" % basename(input_file))
+
+    plog_file = "%s/%s" % (os.getcwd(), plog_file_name)
+    panda_cmd = panda + general_panda_args + (" -replay %s" % rfpfx) \
+                + (" -pandalog %s" % plog_file) \
+                + " -panda asidstory" \
+                + (" -panda loaded_libs:program_name=%s" % cfg.target.name)  
+    print(panda_cmd)
+    sp.call(panda_cmd.split())
+    
     [asid, base_addr, modules] = ingest_log_for_asid(cfg, plog_file_name) 
+    plog_file = "%s/%s" % (os.getcwd(), "2" + plog_file_name)
+    panda_cmd = panda + general_panda_args + (" -replay %s" % rfpfx) \
+                + (" -pandalog %s" % plog_file) \
+                + (" -panda general:program_name=%s" % cfg.target.name) \
+                + (" -panda edge_coverage:n=2,main=%x" % (base_addr + int(cfg.target.main_addr, 0)))
     
-    plugins.clear() 
+    print(panda_cmd)
+    sp.call(panda_cmd.split())
+    
+    '''
+    plugins_ec = {}  
     main_addr = int(cfg.target.main_addr, 0) 
-    plugins["edge_coverage"] = {"n" : "%d" % cfg.coverage.n, "main": "%x" % (main_addr + base_addr)} 
-    run_replay(panda, plugins, "2" + plog_file_name, replayname) 
+    plugins_ec["edge_coverage"] = {"n" : "%d" % cfg.coverage.n, "main": "%x" % (main_addr + base_addr)} 
+    run_replay(panda, plugins_ec, plugins, "2" + plog_file_name, replayname) 
+    '''
+
     edges = ingest_log(cfg, asid, modules, "2" + plog_file_name)
     
     with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:

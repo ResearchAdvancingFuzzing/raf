@@ -203,9 +203,9 @@ def run_replay(panda, plugins, plog_filename, replayname):
 
 
 
-def ingest_log_for_asid(cfg, xm, modules, base_addr):
-    '''
+def ingest_log_for_asid(cfg, plog_file_name):
     plog_file = "%s/%s" % (os.getcwd(), plog_file_name)
+    #plog_file = "/outputs/2020-05-29/02-38-03/taint.plog"  
     xm = None
     modules = {}
     base_addr = 0xffffffffffffffff
@@ -238,7 +238,7 @@ def ingest_log_for_asid(cfg, xm, modules, base_addr):
 
         except Exception as e:
             print (str(e))
-    '''
+
     new_modules = {}
     for name in modules.keys():
         print (name)
@@ -430,54 +430,23 @@ def make_taint_analysis(tainting_fbs, excluded_fbs, excluded_pcs, modules, basic
 
 
 
-def ingest_log_to_taint_obj(cfg, plog_filename):
+def ingest_log_to_taint_obj(cfg, asid, modules, plog_filename):
     program = cfg.target.name # the name of the program 
     plog_file = "%s/%s" % (os.getcwd(), plog_filename) 
     
     # Information to track 
     basic_blocks = {}
     tainting_fbs = {} # fbs -> TaintedInstrValues, where fbs is fuzzable byte set
+    
     num_bb = 0
     num_ti = 0
     
-    #plog_file = "%s/%s" % (os.getcwd(), plog_file_name)
-    xm = None
-    modules = {}
-    base_addr = 0xffffffffffffffff
-    program = cfg.target.name 
-
-    print("Ingesting pandalog") 
- 
-    #[asid, modules] = ingest_log_for_asid(cfg, plog_file_name)
-    #print(asid)
-    #print(modules)
     # Ingest Pandalog 
     print ("Ingesting pandalog")
     with plog.PLogReader(plog_file) as plr:
         try:
             for i, log_entry in enumerate(plr):
-                #last_instr = log_entry.instr
-                
-                if log_entry.HasField("asid_info"): 
-                    ai = log_entry.asid_info
-                    if ai.name == program and ai.asid < 0xffffffff:
-                        if xm is None: 
-                            xm = (ai.asid, ai.end_instr - ai.start_instr) 
-                        else:
-                            (asid, span) = xm
-                            if ai.end_instr - ai.start_instr > span:
-                                xm = (ai.asid, ai.end_instr - ai.start_instr) 
-                if log_entry.HasField("asid_libraries"): 
-                    for mod in log_entry.asid_libraries.modules:
-                        if (mod.name == "[???]"):
-                            continue 
-                        name = mod.name
-                        if not (name in modules): 
-                            modules[name] = []
-                        p = (mod.base_addr, mod.size) 
-                        modules[name].append(p)
-                        if mod.name == program and mod.base_addr < base_addr:
-                            base_addr = mod.base_addr
+                last_instr = log_entry.instr
 
                 # Collect basic block information for program counters and asids
                 if log_entry.HasField("basic_block"):
@@ -491,8 +460,6 @@ def ingest_log_to_taint_obj(cfg, plog_filename):
         
         except Exception as e: 
             print (str(e))
-
-    [asid, modules] = ingest_log_for_asid(cfg, xm, modules, base_addr)
 
     print("Number of bb entries: %d" % num_bb)
     print("Number of ti entries: %d" % num_ti)
@@ -510,7 +477,7 @@ def ingest_log_to_taint_obj(cfg, plog_filename):
     excluded_fbs = exclude_fbs(cfg, tainting_fbs) 
     excluded_pcs = exclude_pcs(cfg, tainting_fbs) 
     fm = make_taint_analysis(tainting_fbs, excluded_fbs, excluded_pcs, modules, basic_block)
-    return [fm, modules] 
+    return fm 
 
 
 
@@ -630,19 +597,53 @@ def run(cfg):
     plog_file_name = cfg.taint.plog_filename
     
     # Run the panda recording
-    [panda, replayname] = create_recording(cfg, inputfile, plog_file_name)
+    [_, replayname] = create_recording(cfg, inputfile, plog_file_name)
 
-    plugins = {}
-    plugins.clear()
+    #plugins = {}
+    #plugins["asidstory"] = {}
+    #plugins["loaded_libs"] = {"program_name": cfg.target.name}
+    #run_replay(panda, plugins, plog_file_name, replayname) 
     
-    plugins["asidstory"] = {}
-    plugins["loaded_libs"] = {"program_name": cfg.target.name}   
-    plugins["tainted_instr"] = {}
-    plugins["collect_code"] = {}
-    plugins["tainted_branch"] = {} 
-    plugins["file_taint"] = {"filename": "/root/copydir/"+basename(inputfile), "pos": "1"}
-    run_replay(panda, plugins, plog_file_name, replayname) 
-    [fm, modules] = ingest_log_to_taint_obj(cfg, plog_file_name) 
+    panda_dir = "/panda" 
+    arch = "x86_64" 
+    
+    panda = join(join(join(panda_dir,"build"), "%s-softmmu" % arch), "panda-system-%s" % arch)
+    general_panda_args = " -m 1G -os linux-64-ubuntu:4.15.0-72-generic" 
+    rfpfx = join(replaydir, "%s-panda" % basename(inputfile))
+
+    plog_file = "%s/%s" % (os.getcwd(), plog_file_name)
+    panda_cmd = panda + general_panda_args + (" -replay %s" % rfpfx) \
+                + (" -pandalog %s" % plog_file) \
+                + " -panda asidstory" \
+                + (" -panda loaded_libs:program_name=%s" % cfg.target.name)  
+    print(panda_cmd)
+    sp.call(panda_cmd.split())
+    
+    #[asid, base_addr, modules] = ingest_log_for_asid(cfg, plog_file_name) 
+
+    [asid, modules] = ingest_log_for_asid(cfg, plog_file_name)
+    print(asid)
+    print(modules)
+    
+   # plugins.clear()
+   # plugins["tainted_instr"] = {}
+   # plugins["collect_code"] = {}
+   # plugins["tainted_branch"] = {} 
+   # plugins["file_taint"] = {"filename": "/root/copydir/"+basename(inputfile), "pos": "1"}
+   # run_replay(panda, plugins, "2" + plog_file_name, replayname) 
+    plog_file = "%s/%s" % (os.getcwd(), "2" + plog_file_name)
+    panda_cmd = panda + general_panda_args + (" -replay %s" % rfpfx) \
+                + (" -pandalog %s" % plog_file) \
+                + (" -panda tainted_instr") \
+                + (" -panda tainted_branch") \
+                + (" -panda collect_code") \
+                + (" -panda file_taint:filename=/root/copydir/%s,pos=1" % (basename(inputfile))) 
+    
+    print(panda_cmd)
+    sp.call(panda_cmd.split())
+    
+
+    fm = ingest_log_to_taint_obj(cfg, asid, modules, "2" + plog_file_name) 
     
     # Send the information over to the database 
     with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
