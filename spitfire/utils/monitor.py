@@ -77,11 +77,14 @@ def run(cfg):
             try:
                 print ("covg for inp %s" % (inp_id))
                 inp_edges[inp_id] = set([])
+                n = 0
                 for e in kbs.GetEdgeCoverageForInput(inp):
-                    et = tuple([(i.module,i.offset) for i in e])
+                    et = tuple([(i.module.uuid,i.offset) for i in e.address])
                     if not (et in edge_count): edge_count[et] = 0
                     edge_count[et] += 1
                     inp_edges[inp_id].add(et)
+                    n +=1
+                print("%d edges" % n)
             except Exception as e:
                 # XXX sometimes there's no covg?
                 print (str(e))
