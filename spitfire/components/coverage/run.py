@@ -300,7 +300,7 @@ def run(cfg):
     
     plugins.clear() 
     main_addr = int(cfg.target.main_addr, 0) 
-    plugins["edge_coverage"] = {"n" : "3", "main": "%x" % (main_addr + base_addr)} 
+    plugins["edge_coverage"] = {"n" : "%d" % cfg.coverage.n, "main": "%x" % (main_addr + base_addr)} 
     run_replay(panda, plugins, "2" + plog_file_name, replayname) 
     edges = ingest_log(cfg, asid, modules, "2" + plog_file_name)
     
