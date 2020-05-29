@@ -13,6 +13,7 @@ docker build -t target:xmllint -f spitfire/init/target/Dockerfile_target_xmllint
 docker build -t spitfire:v1 .
 docker build -t fuzz:v1 -f spitfire/components/mutfuzz/Dockerfile .
 docker build -t knowledge-base:v1 -f spitfire/knowledge_base/Dockerfile .
-docker pull pandare/panda 
+#docker pull pandare/panda 
+docker build -t spitfirepanda -f ./Dockerfile_panda .
 docker build -t taint:v1 -f spitfire/components/taint/panda/Dockerfile_taint .
 docker build -t coverage:v1 -f spitfire/components/coverage/Dockerfile .
