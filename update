@@ -1,0 +1,16 @@
+#!/bin/bash
+
+
+cd spitfire/protos && make clean && make && cd ../..
+docker build -t init:v1 -f spitfire/init/init/Dockerfile .
+docker build -t fm:v1 -f spitfire/fuzzing_manager/Dockerfile .
+docker build -t gtfo-source:v1 -f spitfire/tools/gtfo-source/Dockerfile .
+docker build -t seed-corpus:v1 -f spitfire/init/seed-corpus/Dockerfile .
+docker build -t target:xmllint -f spitfire/init/target/Dockerfile_target_xmllint .
+docker build -t spitfire:v1 .
+docker build -t fuzz:v1 -f spitfire/components/mutfuzz/Dockerfile .
+docker build -t knowledge-base:v1 -f spitfire/knowledge_base/Dockerfile .
+docker build -t --no-cache spitfirepanda -f ./Dockerfile_panda .
+docker build -t taint:v1 -f spitfire/components/taint/panda/Dockerfile_taint .
+docker build -t coverage:v1 -f spitfire/components/coverage/Dockerfile .
+
