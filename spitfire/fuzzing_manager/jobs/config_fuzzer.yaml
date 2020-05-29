@@ -13,8 +13,8 @@ spec:
       containers:
         - name: fuzz
           image: fuzz:v1
-          command: ["python3.6"] #["./infinite"] 
-          args: ["run.py"] #[""]
+          command: ["./infinite"] 
+          args: [""]
           volumeMounts:
             - name: target-instr-pv-storage
               mountPath: "/target"
