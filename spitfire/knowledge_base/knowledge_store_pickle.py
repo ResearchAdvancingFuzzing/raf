@@ -496,7 +496,7 @@ class KnowledgeStorePickle(KnowledgeStore):
             if not inp_uuid in self.inp2edge_coverage: 
                 self.inp2edge_coverage[inp_uuid] = []
             self.inp2edge_coverage[inp_uuid].append(e)
-            self.edge_coverage.add[e]
+            self.edge_coverage.add(e)
         return (was_new, e)      
     
     def add_module(self, module):
