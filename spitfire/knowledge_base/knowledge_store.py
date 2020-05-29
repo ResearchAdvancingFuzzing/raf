@@ -154,3 +154,13 @@ class KnowledgeStore(ABC):
         raise NotImplementedError
 
     
+
+    @abstractmethod
+    def get_edge_coverage_for_input(self, inp):
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_edge_coverage(self):
+        raise NotImplementedError
+
+    

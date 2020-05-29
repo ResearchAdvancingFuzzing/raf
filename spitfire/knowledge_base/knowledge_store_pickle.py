@@ -349,7 +349,7 @@ class KnowledgeStorePickle(KnowledgeStore):
         self.inp2edge_coverage = {}
         #self.edge_coverage = EdgeCoveragePickle() 
         self.mode = Mode.RUNNING
-        
+        self.edge_coverage = set([])
         
     def pause(self):
         self.mode = Mode.PAUSED
@@ -496,8 +496,9 @@ class KnowledgeStorePickle(KnowledgeStore):
             if not inp_uuid in self.inp2edge_coverage: 
                 self.inp2edge_coverage[inp_uuid] = []
             self.inp2edge_coverage[inp_uuid].append(e)
-        return (was_new, e)  
-
+            self.edge_coverage.add[e]
+        return (was_new, e)      
+    
     def add_module(self, module):
         return self.modules.add(module)
 
@@ -557,6 +558,8 @@ class KnowledgeStorePickle(KnowledgeStore):
             return None
         return self.inp2edge_coverage[inp.uuid]
 
+    def get_edge_coverage(self):
+        return list(self.edge_coverage)    
 
     # All the functions that need to iterate through inputs to get their results 
     def get_input_set(self, attrib, value): 

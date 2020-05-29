@@ -62,15 +62,59 @@ def run(cfg):
         ICV = {inp.uuid for inp in kbs.GetInputsWithoutCoverage(kbp.Empty())}
         T = {inp.uuid for inp in kbs.GetTaintInputs(kbp.Empty())}
 
-        
         print("%d seeds" % len(S))
         print("%d fuzzed" % len(F))
         print("%d seedsfuzzed" % (len(S & F)))
         print("%d coverage" % (len(C)))
         print("%d seedscoverage" % (len(S & C)))
         print("%d taint" % len(T))
-                
+
+        # count number of inputs that cover each edge
+        edge_count = {}
+        inp_edges = {}
+        for inp_id in C:
+            inp = kbs.GetInputById(kbp.id(uuid=inp_id))
+            covg = kbs.GetEdgeCoverageForInput(inp)
+            try:
+                print ("covg for inp %s" % (inp_id))
+                inp_edges[inp_id] = set([])
+                for e in covg:
+                    et = tuple([(i.module,i.offset) for i in e])
+                    if not (et in edge_count): edge_count[et] = 0
+                    edge_count[et] += 1
+                    inp_edges[inp_id].add(et)
+            except:
+                # XXX sometimes there's no covg?
+                print ("Actually no covg?")
+                pass
+
+        print("Total of %d edges for all inputs" % len(edge_count))
+
+        hist = {}
+        counts_obs = set([])
+        for et in edge_count.keys():
+            c = edge_count[et] # this edge has c inputs
+            counts_obs.add(c)
+            if not c in hist:
+                hist[c] = 0
+            hist[c] += 1       # number of edges with c inputs
+        list_counts_obs = list(counts_obs)
+        list_counts_obs.sort()
+        for c in list_counts_obs:
+            print("%d edges with %d inputs" % (hist[c], c))
         
+        # for each input in RC, (no covg measure), count number of
+        # rare edges (only a small number of inputs cover that edge)
+#        num_rare_edges = {}
+#        for inp_id in inp_edges.keys():
+#            num_rare_edges[inp_id] = 0
+#            for et in inp_edges[inp_id]:
+#                if edge_count[et] < RARE_EDGE_COUNT:
+#                    num_rare_edges[inp_id] += 1
+#
+#
+#        for inp_uuid in C:
+#            c = kbs.GetEdgeCoverageForInput(inp
 if __name__ == "__main__":
     logging.basicConfig()
     run()

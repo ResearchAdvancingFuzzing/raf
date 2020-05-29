@@ -240,7 +240,11 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
     def GetEdgeCoverageForInput(self, inp, context): 
         for ec in self.ks.get_edge_coverage_for_input(inp):
             yield ec
-    
+
+    def GetEdgeCoverage(self, emp, context):
+        for ec in self.ks.get_edge_coverage():
+            yield ec
+            
     def GetExecutionInputs(self, emp, context):
         for inp in self.ks.get_execution_inputs():
             yield inp

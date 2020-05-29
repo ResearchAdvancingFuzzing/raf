@@ -67,7 +67,9 @@ service KnowledgeBase {
     // Coverage
     rpc AddEdgeCoverage (stream EdgeCoverage) returns (stream EdgeCoverage);
     rpc GetEdgeCoverageForInput (Input) returns (stream EdgeCoverage);  
-    
+
+    rpc GetEdgeCoverage(Empty) returns (stream EdgeCoverage);
+
     // Return sets of input uuids for each of the following  
     rpc GetInputById (id) returns (Input) {} 
     rpc GetSeedInputs (Empty) returns (stream Input); 
