@@ -230,7 +230,7 @@ def ingest_log(cfg, asid, modules, plog_file_name):
     resolved_edges = []
     with plog.PLogReader(plog_file) as plr: 
         try: 
-            for log_entry in plr:
+            for i, log_entry in enumerate(plr):
                 if log_entry.HasField("edge_coverage"):
                     assert log_entry.HasField("asid")
                     if not (log_entry.asid == asid): 
