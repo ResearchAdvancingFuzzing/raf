@@ -496,7 +496,7 @@ class KnowledgeStorePickle(KnowledgeStore):
             if not inp_uuid in self.inp2edge_coverage: 
                 self.inp2edge_coverage[inp_uuid] = []
             self.inp2edge_coverage[inp_uuid].append(e)
-            self.edge_coverage.add(e)
+            self.edge_coverage.add(e.uuid)
         return (was_new, e)      
     
     def add_module(self, module):
@@ -559,7 +559,10 @@ class KnowledgeStorePickle(KnowledgeStore):
         return self.inp2edge_coverage[inp.uuid]
 
     def get_edge_coverage(self):
-        return list(self.edge_coverage)    
+        ec = []
+        for uuid in self.edge_coverage:
+            ec.append(self.edges.get_by_id(uuid))
+        return edges 
 
     # All the functions that need to iterate through inputs to get their results 
     def get_input_set(self, attrib, value): 
