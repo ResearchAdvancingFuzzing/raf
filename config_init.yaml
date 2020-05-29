@@ -29,6 +29,33 @@ roleRef: # what role they are getting
   apiGroup: rbac.authorization.k8s.io
 
 ---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: cluster-job-create
+  namespace: default
+rules: 
+- apiGroups: ["", "apps", "batch"]  
+  resources: ["configmaps", "persistentvolumeclaims", "pods", "services", "secrets", "deployments", "jobs", "cronjobs"] # what resources this Cluster Role applies to 
+  verbs: ["list", "get", "watch", "create", "update", "delete"] # what actions it can perform (right now just list things) 
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: cluster-create-jobs
+subjects:  # who this applies to: all serviceaccounts that are default (which is basically everything)
+- kind: ServiceAccount
+  name: default # default:default
+  #apiGroup: rbac.authorization.k8s.io
+  namespace: default
+roleRef: # what role they are getting  
+  kind: ClusterRole 
+  name: cluster-job-create
+  apiGroup: rbac.authorization.k8s.io
+
+---
+
 kind: ConfigMap
 apiVersion: v1
 metadata:

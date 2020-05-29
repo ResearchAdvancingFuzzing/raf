@@ -7,4 +7,4 @@ do
     echo $j
     kubectl delete job $j
 done
-k delete -f config_init.yaml
+kubectl delete -f config_init.yaml
