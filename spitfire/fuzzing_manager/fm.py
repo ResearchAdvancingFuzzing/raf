@@ -334,8 +334,12 @@ def run(cfg):
                 # Now we need to make some actual reccomendations to fuzzer
                 # in order that it can make use of taint info.
                 
-                # Consult knowledge base taint info to get Fbs for kb_inp
-                # that taint fewer than MAX_TAINT_OUT_DEGREE instructions
+                # Consult knowledge base taint info to get Fuzzable Byte Sets (Fbs)
+                # for kb_inp. These are contiguous byte ranges in the input file that
+                # were seen to taint some internal program quantity (like a branch or
+                # a pointer for a load or store, etc) for some program instruction.
+                # Further, we prefer Fbs that are *selective*, meaning they taint only
+                # a small number of instructions: fewer than MAX_TAINT_OUT_DEGREE
                 fbs_to_fuzz = []
                 for fbs in kbs.GetFuzzableByteSetsForTaintInput(kb_inp): 
                     tm_sum = sum(1 for tm in kbs.GetTaintMappingsForFuzzableByteSet(fbs))
@@ -343,9 +347,9 @@ def run(cfg):
                         fbs_to_fuzz.append(fbs)
                 
                 # so now, fbs_to_fuzz contains a number of Fuzzable byte sets to fuzz 
-                # that are maybe promising 
+                # that are maybe promising since they are all somewhat selective
                 
-                # Choose an fbs at random, for now
+                # Choose one of those fbs at random, for now
                 fbs = random.choice(fbs_to_fuzz)
                 fbs_len = len(fbs.label)
                 str_fbs = ','.join([str(f) for f in fbs.label])
