@@ -192,21 +192,7 @@ def create_recording(cfg, inputfile, plog_filename):
 
     return [panda, replayname] 
 
-'''
-    log.info("Running replay") 
     
-    # Now insert the plugins and run the replay
-    panda.set_pandalog(plog_filename)
-    panda.load_plugin("tainted_instr")
-    panda.load_plugin("asidstory")
-    panda.load_plugin("collect_code")
-    panda.load_plugin("tainted_branch")
-    panda.load_plugin("file_taint", 
-            args={"filename": "/root/copydir/"+basename(inputfile), "pos": "1"})
-    panda.load_plugin("loaded_libs")
-    panda.run_replay(replayname) 
-'''
-
 
 def run_replay(panda, plugins, plog_filename, replayname):
     # Now insert the plugins and run the replay
@@ -306,22 +292,6 @@ def ingest_log_for_asid(cfg, plog_file_name):
 
     return [the_asid, modules] 
 
-
-
-
-'''
-def analyze_asid(log_entry, program, asids, instr_intervals, first_instr, last_instr): 
-    ai = log_entry.asid_info
-    if ai.name == program:
-        asids.add(ai.asid)
-        instr_interval = [ai.start_instr, ai.end_instr]
-        instr_intervals.append(instr_interval)
-        if first_instr is None:
-            first_instr = ai.start_instr
-        last_instr = ai.end_instr
-
-    return [first_instr, last_instr]
-'''
 
 
 def collect_code(log_entry, basic_blocks): 
@@ -463,20 +433,11 @@ def make_taint_analysis(tainting_fbs, excluded_fbs, excluded_pcs, modules, basic
 def ingest_log_to_taint_obj(cfg, asid, modules, plog_filename):
     program = cfg.target.name # the name of the program 
     plog_file = "%s/%s" % (os.getcwd(), plog_filename) 
-    #plog_file = "/outputs/2020-05-29/02-40-24/2taint.plog"
-    #plog_file = "/working/outputs/2020-04-05/13-17-14/taint.plog"
     
     # Information to track 
-    #asids = set([])  #used to collect asids for the_program
-    #instr_intervals = [] # used to collect instr intervals for the_program
     basic_blocks = {}
     tainting_fbs = {} # fbs -> TaintedInstrValues, where fbs is fuzzable byte set
     
-    #first_instr_for_program = None
-    #last_instr_for_program = None
-    #last_instr = None
-    
-    #num_asid = 0
     num_bb = 0
     num_ti = 0
     
@@ -487,13 +448,6 @@ def ingest_log_to_taint_obj(cfg, asid, modules, plog_filename):
             for i, log_entry in enumerate(plr):
                 last_instr = log_entry.instr
 
-                # Collect asids and instruction intervals for the target  
-                #if log_entry.HasField("asid_info"):
-                #    num_asid += 1
-                #    [first_instr_for_program, last_instr_for_program] = \
-                #    analyze_asid(log_entry, program, asids, instr_intervals, 
-                #            first_instr_for_program, last_instr_for_program)
-                
                 # Collect basic block information for program counters and asids
                 if log_entry.HasField("basic_block"):
                     num_bb += 1
@@ -506,38 +460,7 @@ def ingest_log_to_taint_obj(cfg, asid, modules, plog_filename):
         
         except Exception as e: 
             print (str(e))
-            #break
 
-    #for asid in asids: 
-    #    print("Asid: " + str(asid)) 
-
-    '''
-    modules = {} 
-    with plog.PLogReader(plog_file) as plr:
-        try:
-            for i, log_entry in enumerate(plr): 
-                if log_entry.HasField("asid_libraries") and log_entry.asid in asids: #asid_libraries.asid in asids: #log_entry.asid
-                    for m in log_entry.asid_libraries.modules:
-                        mod = Module(m)
-                        if (mod.name == "[???]"):
-                            continue 
-                        if not (mod.name in modules): 
-                            modules[mod.name] = mod
-                        else: 
-                            if mod.base < modules[mod.name].base:
-                                modules[mod.name].base = mod.base
-                            if mod.end > modules[mod.name].end:
-                                modules[mod.name].end = mod.end 
-                       
-        except Exception as e:
-            print (str(e))
-    
-    for m in modules: 
-        print("Name %s: Base: %d End: %d" % (m, modules[m].base, modules[m].end))  
-    '''
-
-    #print("Total number of logs: %d" % i)
-    #print("Number of asid entries: %d" % num_asid)
     print("Number of bb entries: %d" % num_bb)
     print("Number of ti entries: %d" % num_ti)
     print ("Found %d tainting fuzzable byte sets (fbs)" % (len(tainting_fbs)))
@@ -545,19 +468,11 @@ def ingest_log_to_taint_obj(cfg, asid, modules, plog_filename):
     for fbs in tainting_fbs:
         sum_ti += len(tainting_fbs[fbs])
     print("Number of ti entires kept: %d" % sum_ti)
-    #print ("Number of asids for program: %d" % len(asids))
     print ("Number of basic blocks in program: %d" % len(basic_blocks))
-    #print ("Number of instruction intervals for program: %d" % len(instr_intervals))
 
     basic_block = basic_blocks[asid] #None
     print("Number of bb for asid: %d" % len(basic_block))
-    '''
-    for asid in basic_blocks:
-        if asid in asids:
-            basic_block = basic_blocks[asid]
-            break
-    assert (not (basic_block is None))
-    '''
+
     # Determine set of fbs and pcs to exclude.
     excluded_fbs = exclude_fbs(cfg, tainting_fbs) 
     excluded_pcs = exclude_pcs(cfg, tainting_fbs) 
@@ -585,14 +500,7 @@ def send_to_database(ta, kb_input, module_list, channel):
         (base_addr, size) = module_list[name]
         module = kbp.Module(name=name, base=base_addr, end=base_addr + size, filepath=name)
         modules.append(module) 
-    '''
-    modules = []
-    for i, name in enumerate(module_list):
-        value = module_list[name]
-        module = kbp.Module(name=name, base=value.base, end=value.end, filepath=value.filepath)
-        modules.append(module) 
-        #module_dict[name] = module
-    '''
+
     print("Sending %d modules" % len(modules))
     kb_modules = {r.name:r for r in stub.AddModules(iter(modules))} 
     
