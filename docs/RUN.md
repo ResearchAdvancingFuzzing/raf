@@ -43,9 +43,9 @@ cd raf
 ## Running RAF:
 After all the docker images are built, we are ready to deploy objects into the cluster. Start with the following to add the objects that will _initialize the cluster environment_, _start up the knowledge base grpc server_, and _start up the fuzzing manager_.
 ```
-kubectl apply -f config_init.yaml
+./start.sh
 ```
-This will create every Kubernetes yaml object defined in the `config_init.yaml` file, the `spitfire/init/init/config_server.yaml` file, and the `spitfire/init/init/config_fm.yaml` file. You should see the following output if done correctly. 
+This will create the initial Kubernetes yaml objects, defined in the `config_init.yaml` file (including the init job which will then start up the server and the fuzzing manager.)  You should see the following output if done correctly. 
 ```
 role.rbac.authorization.k8s.io/job-create created
 rolebinding.rbac.authorization.k8s.io/create-jobs created
@@ -87,7 +87,11 @@ In order to get a shell to a **running** container (useful for debugging and tes
 ```
 kubectl exec -it <pod-name> -- bash
 ```
-
+## Cleaning up
+In order to clean up all the kubernetes objects from the campaign, run the following:
+```
+./stop.sh
+```
 
 
 
