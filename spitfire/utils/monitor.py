@@ -77,13 +77,18 @@ def run(cfg):
         num_edges =0
         E = {e.uuid for e in kbs.GetEdges(kbp.Empty())}
         print("Total of %d edges for all inputs" % len(E))
-        num_inputs_per_edge = {}
+        num_inputs_per_edge = {}        
         for euuid in E:
             edge = kbs.GetEdgeById(kbp.id(uuid=euuid))
             num_edges += 1
             # should be number of inputs that cover this edge
             EI = {inp.uuid for inp in kbs.GetInputsForEdge(edge)}
             n = len(EI)
+            a0 = edge.address[0]
+            a1 = edge.address[1]
+#            print ("New edge %s,%s,%x -> %s,%s,%x" % \
+#                   (str(a0.module.uuid), a0.module.name, a0.offset,
+#                    str(a1.module.uuid), a1.module.name, a1.offset))
 #            print ("n=%d for edge %s,%x -> %s,%x" % \
 #                   (n, edge.address[0].module.name, edge.address[0].offset,
 #                    edge.address[1].module.name, edge.address[1].offset))
@@ -108,14 +113,20 @@ def run(cfg):
             nn = {}
             num_edges = 0
             for e in kbs.GetEdgesForInput(inp):
-                n = num_inputs_per_edge[str(e.uuid)]
-                if not (n in nn): nn[n] = 0
-                nn[n] += 1
-                num_edges += 1
+                if (str(e.uuid) in num_inputs_per_edge):
+                    n = num_inputs_per_edge[str(e.uuid)]
+                    if not (n in nn): nn[n] = 0
+                    nn[n] += 1
+                    num_edges += 1
             print ("input %s num_edges=%d " % (inp.filepath, num_edges))
-            for n in nn.keys():
-                print ("   -- %d edges with %d input " % (nn[n], n))
+            num_rare = 0
+            for n in range(1,6):
+                if n in nn:
+                    num_rare += nn[n]
+                    print("  -- %d edges with %d input " % (nn[n], n))
+            print ("  -- %d total rare edges" % num_rare)
             
+                
 if __name__ == "__main__":
     logging.basicConfig()
     run()

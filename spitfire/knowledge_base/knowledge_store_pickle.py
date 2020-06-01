@@ -228,11 +228,13 @@ class ModulePickle(ThingPickle):
         super().__init__("module")
 
     def check(self, module):
-        assert hasattr(module, "base")
-        assert hasattr(module, "end")
+        assert hasattr(module, "name")
+#        assert hasattr(module, "base")
+#        assert hasattr(module, "end")
 
     def hash(self, module):
-        return md5(str(module.base) + str(module.end))
+        return md5(module.name)
+#        return md5(str(module.base) + str(module.end))
         
 class AddressPickle(ThingPickle):
     def __init__(self):
