@@ -47,4 +47,4 @@ spec:
         - name: seed-corpus-pv-storage
           persistentVolumeClaim:
             claimName: seed-corpus-pv-claim
-      restartPolicy: OnFailure
+      restartPolicy: Never

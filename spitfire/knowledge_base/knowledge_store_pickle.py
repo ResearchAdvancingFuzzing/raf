@@ -306,18 +306,33 @@ class ExecutionPickle(ThingPickle):
         return md5(str(execution.input.uuid) + str(execution.target.uuid))
 
 
+class EdgePickle(ThingPickle):
+    def __init__(self):
+        super().__init__("edge")
+
+    def check(self, ec): 
+        assert hasattr(ec, "address")
+    
+    def hash(self, ec): 
+        uuid = []
+        for address in ec.address:
+            uuid.append(address.uuid) 
+        uuid = b"".join(uuid)
+        return md5(str(uuid))
+        
+    
 class EdgeCoveragePickle(ThingPickle): 
     def __init__(self):
         super().__init__("edge_coverage")
 
     def check(self, ec): 
         assert hasattr(ec, "hit_count")
-        assert hasattr(ec, "address")
+        assert hasattr(ec, "edge")
         assert hasattr(ec, "input")
     
     def hash(self, ec): 
         uuid = []
-        for address in ec.address:
+        for address in ec.edge.address:
             uuid.append(address.uuid) 
         uuid = b"".join(uuid)
         return md5(str(uuid))
@@ -342,14 +357,19 @@ class KnowledgeStorePickle(KnowledgeStore):
         self.fbs2taint_mappings = {}
         self.modules = ModulePickle()
         self.addresses = AddressPickle()
-        self.edges = EdgeCoveragePickle()
         self.corpora = CorpusPickle() 
         self.experiments = ExperimentPickle()
         self.executions = ExecutionPickle() 
         self.inp2edge_coverage = {}
         #self.edge_coverage = EdgeCoveragePickle() 
         self.mode = Mode.RUNNING
-        self.edge_coverage = set([])
+        # just the edges themselves
+        self.edges = EdgePickle()
+        # this is marginal coverage
+        self.edge_coverage = EdgeCoveragePickle()
+        # these are for cumulative covg
+        self.all_inp2edges = {}
+        self.all_edge2inputs = {}
         
     def pause(self):
         self.mode = Mode.PAUSED
@@ -408,7 +428,6 @@ class KnowledgeStorePickle(KnowledgeStore):
     def get_input(self, input):
         return self.inputs.get(input)
 
-    
     def analysis_tool_exists(self, tool):
         return self.analysis_tool.exists(tool)
 
@@ -488,16 +507,45 @@ class KnowledgeStorePickle(KnowledgeStore):
 
     def add_address(self, address):
         return self.addresses.add(address)
-    
-    def add_edge_coverage(self, edge):
-        (was_new, e) = self.edges.add(edge) 
+
+    def add_edge(self, edge):
+        return self.edges.add(edge)
+        
+    # note edge_covg.edge should have been added with self.add_edge(..)
+    def add_edge_coverage(self, edge_covg):
+        (was_new, edge_covg_new) = self.edge_coverage.add(edge_covg)         
+        iuuid = edge_covg.input.uuid
         if was_new:
-            inp_uuid = edge.input.uuid
-            if not inp_uuid in self.inp2edge_coverage: 
-                self.inp2edge_coverage[inp_uuid] = []
-            self.inp2edge_coverage[inp_uuid].append(e)
-            self.edge_coverage.add(e.uuid)
-        return (was_new, e)      
+            # this is a new edge across the corpus
+            if not iuuid in self.inp2edge_coverage: 
+                self.inp2edge_coverage[iuuid] = []
+            # keep list of edges just this input revealed
+            self.inp2edge_coverage[iuuid].append(edge_covg_new)
+        # cumulative coverage
+        # collect all inputs for each edge seen so far, as well as all edges
+        # for each input seen so far, all in terms of uuids
+        euuid = edge_covg.edge.uuid
+        if not iuuid in self.all_inp2edges: self.all_inp2edges[iuuid] = []
+        self.all_inp2edges[iuuid].append(euuid)
+        if not euuid in self.all_edge2inputs: self.all_edge2inputs[euuid] = []
+        self.all_edge2inputs[euuid].append(iuuid)
+        return (was_new, edge_covg_new)      
+
+    # returns list of all edges seen so far
+    def get_edges(self):
+        return [self.edges.get_by_id(euuid) for euuid in self.all_edge2inputs.keys()]
+
+    # returns set of uuids for edges for this input
+    def get_edges_for_input(self, inp):
+        if inp.uuid in self.all_inp2edges:
+            return [self.edges.get_by_id(euuid) for euuid in self.all_inp2edges[inp.uuid]]
+        return []
+
+    # returns set of uuids for inputs for this edge
+    def get_inputs_for_edge(self, edge):
+        if edge.uuid in self.all_edge2inputs:
+            return [self.inputs.get_by_id(iuid) for iuid in self.all_edge2inputs[edge.uuid]]
+        return []
     
     def add_module(self, module):
         return self.modules.add(module)
@@ -597,9 +645,12 @@ class KnowledgeStorePickle(KnowledgeStore):
         #return self.get_input_set("seed", 1) 
         return [self.inputs.get_by_id(uuid) for uuid in self.get_input_set("seed", 1)] 
 
-    def get_input_by_id(self, inp):
-        assert hasattr (inp, "uuid")
-        return self.inputs.get_by_id(inp.uuid)
+    def get_input_by_id(self, id):
+        assert hasattr (id, "uuid")
+        return self.inputs.get_by_id(id.uuid)
 
+    def get_edge_by_id(self, id):
+        assert hasattr (id, "uuid")
+        return self.edges.get_by_id(id.uuid)
 
 

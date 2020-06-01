@@ -61,43 +61,49 @@ service KnowledgeBase {
 
     // Memory APIs - all tools should store references to the target's memory as
     // a module + an offset which is represented in the address message
-    rpc AddModules (stream Module) returns (stream Module);
-    rpc AddAddresses (stream Address) returns (stream Address);
+    rpc AddModules (stream Module) returns (stream Module) {}
+    rpc AddAddresses (stream Address) returns (stream Address) {}
 
     // Coverage
-    rpc AddEdgeCoverage (stream EdgeCoverage) returns (stream EdgeCoverage);
-    rpc GetEdgeCoverageForInput (Input) returns (stream EdgeCoverage);  
+    rpc AddEdge(Edge) returns (Edge) {}
+    rpc AddEdgeCoverage (stream EdgeCoverage) returns (stream EdgeCoverage) {}
+    rpc GetEdgeCoverageForInput (Input) returns (stream EdgeCoverage) {}
 
-    rpc GetEdgeCoverage(Empty) returns (stream EdgeCoverage);
+    rpc GetEdgeCoverage(Empty) returns (stream EdgeCoverage) {}
+
+    rpc GetEdges(Empty) returns (stream Edge) {}
+    rpc GetEdgesForInput(Input) returns (stream Edge) {}
+    rpc GetInputsForEdge(Edge) returns (stream Input) {}
 
     // Return sets of input uuids for each of the following  
     rpc GetInputById (id) returns (Input) {} 
-    rpc GetSeedInputs (Empty) returns (stream Input); 
-    rpc GetExecutionInputs (Empty) returns (stream Input);
-    rpc GetInputsWithCoverage (Empty) returns (stream Input);  
-    rpc GetInputsWithoutCoverage (Empty) returns (stream Input);  
-    rpc GetTaintInputs(Empty) returns (stream Input);
- 
+    rpc GetEdgeById (id) returns (Edge) {}
+    rpc GetSeedInputs (Empty) returns (stream Input) {} 
+    rpc GetExecutionInputs (Empty) returns (stream Input) {}
+    rpc GetInputsWithCoverage (Empty) returns (stream Input) {}  
+    rpc GetInputsWithoutCoverage (Empty) returns (stream Input) {}  
+    rpc GetTaintInputs(Empty) returns (stream Input) {}
+
     // Add a bunch of fuzzable byte sets to the knowledge base  
     // If any were already there, we dont add twice
     // return value indicates success / error
-    rpc AddFuzzableByteSets (stream FuzzableByteSet) returns (stream FuzzableByteSet);  //KnowledgeBaseResult) {}
+    rpc AddFuzzableByteSets (stream FuzzableByteSet) returns (stream FuzzableByteSet) {}  //KnowledgeBaseResult) {}
 
     // Add a bunch of tainted instructions to the knowledge base
     // If any were already there, we dont add twice
-    rpc AddTaintedInstructions (stream TaintedInstruction) returns (stream TaintedInstruction); //(KnowledgeBaseResult) {}
+    rpc AddTaintedInstructions (stream TaintedInstruction) returns (stream TaintedInstruction) {} //(KnowledgeBaseResult) {}
 
     // Add a bunch of taint mappings to the knowledge base.
     // note that a TaintMapping refers to a FuzzableByteSet and a 
     // TaintedInstruction, but by uuid only.  So you have to have called 
     // AddFuzzableByteSet and AddTaintedInstruction on the corresponding 
     // items beforehand.
-    rpc AddTaintMappings (stream TaintMapping) returns (stream TaintMapping); //KnowledgeBaseResult) {}
+    rpc AddTaintMappings (stream TaintMapping) returns (stream TaintMapping) {} //KnowledgeBaseResult) {}
     
-    rpc GetFuzzableByteSetsForTaintInput(Input) returns (stream FuzzableByteSet); 
-    rpc GetTaintInputsForTaintedInstruction(TaintedInstruction) returns (stream Input);
-    rpc GetTaintedInstructionsForTaintInput(Input) returns (stream TaintedInstruction); 
-    rpc GetTaintMappingsForFuzzableByteSet(FuzzableByteSet) returns (stream TaintMapping);  
+    rpc GetFuzzableByteSetsForTaintInput(Input) returns (stream FuzzableByteSet) {} 
+    rpc GetTaintInputsForTaintedInstruction(TaintedInstruction) returns (stream Input) {}
+    rpc GetTaintedInstructionsForTaintInput(Input) returns (stream TaintedInstruction) {} 
+    rpc GetTaintMappingsForFuzzableByteSet(FuzzableByteSet) returns (stream TaintMapping) {}  
     // Returns set of TaintedInstructions discovered thus far by 
     // all taint analyses that have run.
     rpc GetTaintedInstructions(Empty) returns (stream TaintedInstruction) {}
@@ -285,11 +291,16 @@ message Address {
     map<string, string> additional_infomation = 16;
 }
 
+message Edge {
+    bytes uuid = 1;
+    repeated Address address = 2;
+}
+
 // The coverage of an edge for an input. NOTE: this supports n-edge coverage
 message EdgeCoverage {
     bytes uuid = 1; // This is a hash of the uuids of all the addresses 
     uint64 hit_count = 2;					// how many 
-    repeated Address address = 3;				// the edge represented as a series of addresses
+    Edge edge = 3;
     Input input = 4;					// (shallow)
     //Execution exeuction = 4;
     map<string, string> additional_infomation = 16;

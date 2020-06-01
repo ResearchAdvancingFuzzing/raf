@@ -149,7 +149,11 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
                 print("Edge added: " + str(e.uuid), flush=True)
                 #print(e, flush=True)
             yield e
-    
+
+    def AddEdge(self, edge, context):
+        (was_new, e) = self.ks.add_edge(edge)
+        return e            
+            
     def AddExecution(self, execution, context): 
         (was_new, te) = self.ks.add_execution(execution) 
         if was_new: 
@@ -244,6 +248,18 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
     def GetEdgeCoverage(self, emp, context):
         for ec in self.ks.get_edge_coverage():
             yield ec
+
+    def GetEdges(self, emp, context):
+        for edge in self.ks.get_edges():
+            yield edge
+
+    def GetEdgesForInput(self, inp, context):
+        for edge in self.ks.get_edges_for_input(inp):
+            yield edge
+
+    def GetInputsForEdge(self, edge, context):
+        for inp in self.ks.get_inputs_for_edge(edge):
+            yield inp            
             
     def GetExecutionInputs(self, emp, context):
         for inp in self.ks.get_execution_inputs():
@@ -264,6 +280,9 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
     def GetInputById(self, uuid, context):
         return self.ks.get_input_by_id(uuid) 
 
+    def GetEdgeById(self, uuid, context):
+        return self.ks.get_edge_by_id(uuid)
+    
 @hydra.main(config_path=fuzzing_config_dir + "/config.yaml")
 def serve(cfg):
     print(cfg.pretty(), flush=True)

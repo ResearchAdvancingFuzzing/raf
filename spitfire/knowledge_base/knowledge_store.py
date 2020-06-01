@@ -136,6 +136,11 @@ class KnowledgeStore(ABC):
     @abstractmethod
     def add_edge_coverage(self, cov):
         raise NotImplementedError
+
+    @abstractmethod
+    def add_edge(self, edge):
+        raise NotImplementedError
+    
     
     # iterator over inputs that tait this instruction
     def get_taint_inputs_for_tainted_instruction(self, ti):
@@ -163,4 +168,27 @@ class KnowledgeStore(ABC):
     def get_edge_coverage(self):
         raise NotImplementedError
 
+
+    @abstractmethod
+    def get_edges(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_edges_for_input(self, inp):
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_inputs_for_edge(self, edge):
+        raise NotImplementedError
     
+    @abstractmethod
+    def get_input_by_id(self, uuid):
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_edge_by_id(self, uuid):
+        raise NotImplementedError
+
+
+    
+

@@ -282,7 +282,8 @@ def send_to_database(edge_list, input_file, module_list, channel):
     for edge in edge_list:
         addrs = [kbp.Address(module=kbp_modules[a.module], offset=a.offset) for a in edge.addresses]
         kb_addrs = [r for r in stub.AddAddresses(iter(addrs))]
-        edges.append(kbp.EdgeCoverage(hit_count=edge.hit_count, address=kb_addrs, input=kb_input))
+        kb_edge = stub.AddEdge(kbp.Edge(address = kb_addrs))
+        edges.append(kbp.EdgeCoverage(hit_count=edge.hit_count, edge=kb_edge, input=kb_input))
     print(len(edges))
     for r in stub.AddEdgeCoverage(iter(edges)):
         pass
