@@ -22,6 +22,8 @@ assert (not (spitfire_dir is None))
 import spitfire.protos.knowledge_base_pb2 as kbp
 import spitfire.protos.knowledge_base_pb2_grpc as kbpg
 
+from spitfire.utils import coverage
+
 # some guess at how much time we'll spend on each of these
 P_SEED_MUTATIONAL_FUZZ = 0.3
 P_COVERAGE_FUZZ = 0.3
@@ -249,50 +251,11 @@ def run(cfg):
 
                 print ("Coverage-based fuzzing selected")
 
-                # Choose to fuzz next the input that *has* exposed the most new
-                # coverage wrt all other inputs for which we have measured coverage.
+                inp_score = coverage.rank_inputs(kbs)
 
-                # count number of inputs that cover each edge
-                edge_count = {}
-                inp_edges = {}
-                for inp_id in C:
-                    inp = kbs.GetInputById(kbp.id(uuid=inp_id))
-                    covg = kbs.GetEdgeCoverageForInput(inp)
-                    try:
-                        inp_edges[inp_id] = set([])
-                        for e in covg:
-                            et = tuple([(i.module,i.offset) for i in e])
-                            if not (et in edge_count): edge_count[et] = 0
-                            edge_count[et] += 1
-                            inp_edges[inp_id].add(et)
-                    except:
-                        # XXX sometimes there's no covg?
-                        pass
-
-                print("Total of %d edges for all inputs" % len(edge_count))
-
-                # for each input in RC, (no covg measure), count number of
-                # rare edges (only a small number of inputs cover that edge)
-                num_rare_edges = {}
-                for inp_id in inp_edges.keys():
-                    num_rare_edges[inp_id] = 0
-                    for et in inp_edges[inp_id]:
-                        if edge_count[et] < RARE_EDGE_COUNT:
-                            num_rare_edges[inp_id] += 1
-
-                # *** best input to fuzz next is the one with the most rare edges
-                best_inp = None
-                best_num_unc = 0
-                for inp_id in RC:
-                    if num_rare_edges[inp_id] > best_num_unc:
-                        best_num_unc = num_rare_edges[inp_id]
-                        best_inp = inp_id
-
-                if best_inp is None:
-                    continue
+                (best_inp, best_num_unc) = inp_score[0]
                 
                 print("Best input has %d uncommon edges" % best_num_unc)
-                best_inp = kbs.GetInputById(kbp.id(uuid=best_inp))
 
                 max_inp = best_inp
                 
