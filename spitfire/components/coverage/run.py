@@ -1,5 +1,5 @@
 #import drcov
-from os.path import join
+from os.path import join,getsize
 import subprocess as sp
 import logging
 import grpc
@@ -146,7 +146,7 @@ def ingest_log_for_asid(cfg, plog_file_name):
     base_addr = 0xffffffffffffffff
     program = cfg.target.name 
 
-    print("Ingesting pandalog") 
+    print("Ingesting pandalog with asids and libs -- %d bytes" % (getsize(plog_file)))
     with plog.PLogReader(plog_file) as plr:
         try:
             for i, log_entry in enumerate(plr):
@@ -232,6 +232,7 @@ def ingest_log(cfg, asid, modules, plog_file_name):
     #plog_file = "/working/outputs/2020-05-28/22-06-52/2coverage.plog" 
     edges = [] 
     resolved_edges = []
+    print("Ingesting pandalog with edge_coverage -- %d bytes" % (getsize(plog_file)))
     with plog.PLogReader(plog_file) as plr: 
         try: 
             for i, log_entry in enumerate(plr):
