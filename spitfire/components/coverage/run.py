@@ -73,12 +73,11 @@ def get_module_offset(pc, modules):
 
 
  
-def create_recording(cfg, inputfile, plog_filename): 
+def create_recording(cfg, inputfile): 
     
-    #log.info("Creating recording")
-
     # Copy directory needed to insert into panda recording
     # We need the inputfile and we need the target binary install directory
+    
     copydir = "./copydir"
     subdir = "install"
     if os.path.exists(copydir):
@@ -93,26 +92,22 @@ def create_recording(cfg, inputfile, plog_filename):
     qcf = "/qcows/%s" % qcowfile 
     assert(os.path.isfile(qcf))
 
-    # Create panda recording
+    # Create panda recording if it does not already exist
     replayname = "%s/%s" % (replay_dir, basename(inputfile) + "-panda") 
-    print("replay name = [%s]" % replayname)
+    print("Replay name = [%s]" % replayname)
 
-    # This needs to be changed
     args = cfg.coverage.args
     args = args.replace("file", "~/%s/%s" % (basename(copydir), basename(inputfile)), 1) 
-    print(args)
     cmd = "cd %s/%s/ && ./%s %s" % (basename(copydir), subdir, cfg.target.name, args)
     print(cmd)
+    
     exists_replay_name = ("%s%s" % (replayname, "-rr-snp")) 
     extra_args = ["-display", "none", "-nographic"] 
+    
     if (os.path.exists(exists_replay_name)): 
+        print("Recording %s exists" % exists_replay_name)
         extra_args.extend(["-loadvm", "root"]) 
-    #cmd = "cd copydir/install/ && ./%s ~/copydir/%s" % (cfg.target.name, basename(inputfile))
-    #print(cmd)
-    #return
-    #cmd = "cd copydir/install/libxml2/.libs && ./xmllint ~/copydir/"+basename(inputfile)
-    #print(cmd) 
-    #return
+
     panda = Panda(arch="x86_64", expect_prompt=rb"root@ubuntu:.*#", 
             qcow=qcf, mem="1G", extra_args="-display none -nographic ") 
 
@@ -124,9 +119,10 @@ def create_recording(cfg, inputfile, plog_filename):
 
     panda.set_os_name("linux-64-ubuntu:4.15.0-72-generic")
     if not os.path.exists(exists_replay_name): 
+        print("Recording does not exist. Creating recording.")
         panda.queue_async(take_recording)
         panda.run()
-    return [panda, replayname]
+    return replayname  
 
 def run_replay(panda, plugins, old_plugins, plog_filename, replayname):
     # Now insert the plugins and run the replay
@@ -138,9 +134,8 @@ def run_replay(panda, plugins, old_plugins, plog_filename, replayname):
     panda.run_replay(replayname)
 
 
-def ingest_log_for_asid(cfg, plog_file_name):
-    plog_file = "%s/%s" % (os.getcwd(), plog_file_name)
-    #plog_file = "/working/outputs/2020-05-28/22-00-48/coverage.plog"  
+def ingest_log_for_asid(cfg, plog_file):
+
     xm = None
     modules = {}
     base_addr = 0xffffffffffffffff
@@ -289,19 +284,13 @@ def send_to_database(edge_list, input_file, module_list, channel):
     for r in stub.AddEdgeCoverage(iter(edges)):
         pass
 
-
 @hydra.main(config_path=f"{spitfire_dir}/config/expt1/config.yaml")
 def run(cfg):    
     
     input_file = cfg.coverage.input_file 
     plog_file_name = cfg.coverage.plog_file_name
     
-    [_, replayname] = create_recording(cfg, input_file, plog_file_name) 
-    
-    #plugins = {} 
-    #plugins["asidstory"] = {} 
-    #plugins["loaded_libs"] = {"program_name": cfg.target.name}
-    #run_replay(panda, plugins, {}, plog_file_name, replayname) 
+    replayname = create_recording(cfg, input_file) 
     
     panda_dir = "/panda" 
     arch = "x86_64" 
@@ -317,8 +306,14 @@ def run(cfg):
                 + (" -panda loaded_libs:program_name=%s" % cfg.target.name)  
     print(panda_cmd)
     sp.call(panda_cmd.split())
-    
-    [asid, base_addr, modules] = ingest_log_for_asid(cfg, plog_file_name) 
+  
+    if os.path.getsize(plog_file) == 0: 
+        print("PLOG 1 IS 0") 
+        #delete_recording(plog_file)
+        #create_recording(cfg, input_file)
+    print("Size of plog file: %d" % os.path.getsize(plog_file))
+
+    [asid, base_addr, modules] = ingest_log_for_asid(cfg, plog_file) 
     plog_file = "%s/%s" % (os.getcwd(), "2" + plog_file_name)
     panda_cmd = panda + general_panda_args + (" -replay %s" % rfpfx) \
                 + (" -pandalog %s" % plog_file) \
@@ -328,12 +323,8 @@ def run(cfg):
     print(panda_cmd)
     sp.call(panda_cmd.split())
     
-    '''
-    plugins_ec = {}  
-    main_addr = int(cfg.target.main_addr, 0) 
-    plugins_ec["edge_coverage"] = {"n" : "%d" % cfg.coverage.n, "main": "%x" % (main_addr + base_addr)} 
-    run_replay(panda, plugins_ec, plugins, "2" + plog_file_name, replayname) 
-    '''
+    if os.path.getsize(plog_file) == 0: 
+        print("PLOG 2 IS 0") 
 
     edges = ingest_log(cfg, asid, modules, "2" + plog_file_name)
     
