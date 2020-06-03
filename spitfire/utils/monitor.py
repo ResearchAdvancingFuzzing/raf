@@ -34,21 +34,22 @@ def run(cfg):
     api_instance = client.CoreV1Api() # client.BatchV1Api()
 
     # peek at pods to see what's running / completed / etc
-    resp = api_instance.list_pod_for_all_namespaces()
-    count = {}
-    for i in resp.items:
-        pt = i.spec.containers[0].image
-        if not (("k8s" in pt) or ("gcr.io" in pt) or ("knowledge" in pt) or ("init" in pt)):
-            s = i.status.phase
-            if not (s in count):
-                count[s] = {}
-            if not (pt in count[s]):
-                count[s][pt] = 0
-            count[s][pt] += 1
-    for s in count.keys():
-        print ("Status=%s:" % s)
-        for pt in count[s].keys():
-            print("  %d %s" % (count[s][pt], pt))
+#    resp = api_instance.list_pod_for_all_namespaces()
+#    count = {}
+#    for i in resp.items:
+#        pt = i.spec.containers[0].image
+#        if not (("k8s" in pt) or ("gcr.io" in pt) or ("knowledge" in pt) or ("init" in pt)):
+#            s = i.status.phase
+#            if not (s in count):
+#                count[s] = {}
+#            if not (pt in count[s]):
+#                count[s][pt] = 0
+#            count[s][pt] += 1
+#    print("\nPods\n")
+#    for s in count.keys():
+#        print ("Status=%s:" % s)
+#        for pt in count[s].keys():
+#            print("  %d %s" % (count[s][pt], pt))
 #        print("\n")
     
     

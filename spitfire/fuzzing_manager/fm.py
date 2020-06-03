@@ -25,11 +25,11 @@ import spitfire.protos.knowledge_base_pb2_grpc as kbpg
 from spitfire.utils import coverage
 
 # some guess at how much time we'll spend on each of these
-fuzzing_dist = [("SEED_MUTATIONAL_FUZZ", 0.3), \
-                ("COVERAGE_FUZZ", 0.3), \
+fuzzing_dist = [("SEED_MUTATIONAL_FUZZ", 0.7), \
+                ("COVERAGE_FUZZ", 0.7), \
                 ("TAINT_FUZZ", 0.2), \
                 ("TAINT_ANALYSIS", 0.2), \
-                ("COVERAGE", 0.3)]
+                ("COVERAGE", 0.7)]
 
 MAX_TAINT_OUT_DEGREE = 16
 
@@ -173,8 +173,6 @@ def run(cfg):
         print ("A previous FM is still running -- exiting")
         return
 
-    if num_pending > 0:
-        print ("Some pods are Pending -- exiting")
     
     # Cleanup anything from before 
     for cj in batch_v1.list_namespaced_job(namespace=namespace, label_selector='tier=backend').items: 
@@ -256,6 +254,9 @@ def run(cfg):
 
             print("Under budget -- proceeding")
 
+            E = {e.uuid for e in kbs.GetEdges(kbp.Empty())}
+            print ("%d edges discovered so far" % len(E))
+            
             # Choose according to a distribution what fuzzing action to pursue
             fuzzing_choice = choose(fuzzing_dist)
 
@@ -364,7 +365,9 @@ def run(cfg):
                 # At random, for now (not ideal) 
                 t = random.choice(list(RT))
                 kb_inp = kbs.GetInputById(kbp.id(uuid=t))
-                print(kb_inp)
+                print("Input selected:")
+                print (kb_inp)
+
                 # Now we need to make some actual reccomendations to fuzzer
                 # in order that it can make use of taint info.
                 
@@ -375,11 +378,16 @@ def run(cfg):
                 # Further, we prefer Fbs that are *selective*, meaning they taint only
                 # a small number of instructions: fewer than MAX_TAINT_OUT_DEGREE
                 fbs_to_fuzz = []
-                for fbs in kbs.GetFuzzableByteSetsForTaintInput(kb_inp): 
+                num_fbs = 0
+                for fbs in kbs.GetFuzzableByteSetsForTaintInput(kb_inp):
+                    num_fbs += 1
                     tm_sum = sum(1 for tm in kbs.GetTaintMappingsForFuzzableByteSet(fbs))
                     if tm_sum < MAX_TAINT_OUT_DEGREE:
                         fbs_to_fuzz.append(fbs)
-                
+
+                print("Found %d Fbs for that input, of which %d are sufficiently selective for taint-based fuzzing" % \
+                      (num_fbs, len(fbs_to_fuzz)))
+                        
                 # so now, fbs_to_fuzz contains a number of Fuzzable byte sets to fuzz 
                 # that are maybe promising since they are all somewhat selective
                 
@@ -387,6 +395,9 @@ def run(cfg):
                 fbs = random.choice(fbs_to_fuzz)
                 fbs_len = len(fbs.label)
                 str_fbs = ','.join([str(f) for f in fbs.label])
+
+                print("Selected Fbs for fuzzing: %s" % str_fbs)
+
                 # Run fuzzer with this fbs 
                 job = jobs["fuzzer"]
                 job.update_count_by(1) 
