@@ -486,9 +486,13 @@ def byte_uuid(uuid):
     return bytes(uuid, 'utf-8')
 
 # Ta is the TaintAnalysis 
-def send_to_database(ta, kb_input, module_list, channel): 
+def send_to_database(ta, old_kb_input, module_list, channel): 
     stub = kbpg.KnowledgeBaseStub(channel) #spitire_pb2_grpc.SpitfireStub(kb_channel)
-     
+
+    old_kb_input.taint_analyzed = True
+    old_kb_input.pending_lock = False
+    kb_input = stub.AddInput(old_kb_input)
+
     taint_mappings = []
     fuzzable_byte_sets = [] 
     tainted_instructions = []
@@ -536,9 +540,8 @@ def send_to_database(ta, kb_input, module_list, channel):
     print(len(ta.tma))
  
 
-def check_analysis_complete(cfg, channel, inputfile):
+def check_analysis_complete(cfg, kbs, inputfile):
 
-    kbs = kbpg.KnowledgeBaseStub(channel)
 
     # get canonical representations for all of these things
     target_msg = kbp.Target(name=cfg.target.name, \
@@ -551,8 +554,7 @@ def check_analysis_complete(cfg, channel, inputfile):
     panda = kbs.AddAnalysisTool(panda_msg)
 
     print("input file is [%s]" % inputfile) 
-    input_msg = kbp.Input(filepath=inputfile, taint_analyzed=True) 
-    taint_input = kbs.AddInput(input_msg)
+    taint_input = kbs.GetInput(kbp.Input(filepath=inputfile))
 
     # if we have already performed this taint analysis, bail
     taint_analysis_msg = kbp.Analysis(tool=panda.uuid, \
@@ -589,9 +591,13 @@ def run(cfg):
         
         log.info("Connected to knowledge_base")
 
-        [complete, kb_input] = check_analysis_complete(cfg, channel, inputfile)
+        kbs = kbpg.KnowledgeBaseStub(channel)
+        
+        [complete, old_kb_input] = check_analysis_complete(cfg, kbs, inputfile)
         if complete:   
             return
+        old_kb_input.pending_lock = True
+        kb_input = kbs.AddInput(old_kb_input)
     
     # Get the plog filename 
     plog_file_name = cfg.taint.plog_filename
