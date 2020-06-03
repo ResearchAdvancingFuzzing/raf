@@ -72,11 +72,9 @@ def run(cfg):
 
         # Add the target, input, seed corpus, and experiment to the KB 
         kbs = kbpg.KnowledgeBaseStub(channel)
-        input_msg = kbp.Input(filepath=fcfg.input_file, fuzzed=True)
-        input_kb = kbs.AddInput(input_msg)
-        #input_kb = kbs.GetInput(input_msg)
+        input_kb = kbs.GetInput(kbp.Input(filepath=fcfg.input_file))
+
         target_msg = kbp.Target(name=cfg.target.name, source_hash=cfg.target.source_hash)
-        #target_kb = kbs.GetTarget(target_msg)
         target_kb = kbs.AddTarget(target_msg)
         execution_msg = kbp.Execution(input=input_kb, target=target_kb)
         execution_kb = kbs.AddExecution(execution_msg)
@@ -121,7 +119,11 @@ def run(cfg):
 
     with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
         kbs = kbpg.KnowledgeBaseStub(channel)
-        
+
+        input_kb.fuzzed = True
+        input_kb.pending_lock = False
+        kb_input = kbs.AddInput(input_kb)
+
         send_to_database(kbs, inputs) 
 
 if __name__ == '__main__':

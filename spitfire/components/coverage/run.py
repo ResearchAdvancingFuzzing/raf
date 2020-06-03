@@ -222,8 +222,8 @@ def ingest_log_for_asid(cfg, plog_file):
 
     return [the_asid, base_addr, modules] 
 
-def ingest_log(cfg, asid, modules, plog_file_name): 
-    plog_file = "%s/%s" % (os.getcwd(), plog_file_name)
+def ingest_log(cfg, asid, modules, plog_file):
+    #plog_file = "%s/%s" % (os.getcwd(), plog_file_name)
     #plog_file = "/working/outputs/2020-05-28/22-06-52/2coverage.plog" 
     edges = [] 
     resolved_edges = []
@@ -258,8 +258,9 @@ def ingest_log(cfg, asid, modules, plog_file_name):
 
 
 def send_to_database(edge_list, input_file, module_list, channel): 
+    
     stub = kbpg.KnowledgeBaseStub(channel) 
-
+    
     # Add the modules first 
     modules = []
     for name in module_list: 
@@ -270,9 +271,11 @@ def send_to_database(edge_list, input_file, module_list, channel):
     kbp_modules = {r.name:r for r in stub.AddModules(iter(modules))} 
 
     # Add our input next 
-    inp = kbp.Input(filepath=input_file, coverage_complete=True)
-    kb_input = stub.AddInput(inp)
-    
+    old_kb_input = stub.GetInput(kbp.Input(filepath=input_file)) 
+    old_kb_input.coverage_complete = True
+    old_kb_input.pending_lock = False 
+    kb_input = stub.AddInput(old_kb_input)
+
     edges = []
     addresses = []
     for edge in edge_list:
@@ -289,7 +292,7 @@ def run(cfg):
     
     input_file = cfg.coverage.input_file 
     plog_file_name = cfg.coverage.plog_file_name
-    
+
     replayname = create_recording(cfg, input_file) 
     
     panda_dir = "/panda" 
@@ -309,8 +312,6 @@ def run(cfg):
   
     if os.path.getsize(plog_file) == 0: 
         print("PLOG 1 IS 0") 
-        #delete_recording(plog_file)
-        #create_recording(cfg, input_file)
     print("Size of plog file: %d" % os.path.getsize(plog_file))
 
     [asid, base_addr, modules] = ingest_log_for_asid(cfg, plog_file) 
@@ -326,7 +327,7 @@ def run(cfg):
     if os.path.getsize(plog_file) == 0: 
         print("PLOG 2 IS 0") 
 
-    edges = ingest_log(cfg, asid, modules, "2" + plog_file_name)
+    edges = ingest_log(cfg, asid, modules, plog_file)
     
     with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
         print("here: connected");

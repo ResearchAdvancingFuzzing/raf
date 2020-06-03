@@ -100,7 +100,7 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
         (was_new, i) = self.ks.add_input(inp)
         if was_new:
             print("Input added: %s" % str(i.uuid), flush=True)
-            print(i)
+            print(i, flush=True)
         return i
 
     def AddCorpus(self, corpus, context):        
@@ -263,7 +263,18 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
     def GetInputsForEdge(self, edge, context):
         for inp in self.ks.get_inputs_for_edge(edge):
             yield inp            
-            
+           
+    def GetPendingInputs(self, emp, context): 
+        for inp in self.ks.get_pending_inputs(): 
+            yield inp
+
+    def MarkInputAsPending(self, inp, context): 
+        print("Marking input as pending", flush=True)
+        new_inp = self.ks.mark_input_as_pending(inp)
+        print(new_inp, flush=True) 
+        return new_inp
+        #return self.ks.mark_input_as_pending(inp) 
+
     def GetExecutionInputs(self, emp, context):
         for inp in self.ks.get_execution_inputs():
             yield inp

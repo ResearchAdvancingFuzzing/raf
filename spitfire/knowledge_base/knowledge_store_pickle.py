@@ -406,12 +406,20 @@ class KnowledgeStorePickle(KnowledgeStore):
     def input_exists(self, input):
         return self.inputs.exists(input)
 
+    # index just after the last occurrence of __ or _
+    # this could break if there is read-only attr after a __ or _
+    # the assumption is that there is not 
+    def start_index(self, l): 
+        for i in reversed(range(len(l))):
+            if l[i].startswith('__') or l[i].startswith('_'):
+                return i + 1 
+
     def update_input(self, old, new):
         updated = False
-        attrs = [attr for attr in dir(old) if not (attr[0].startswith('__') and attr[0].endswith('__'))] 
-        for attr in attrs: 
-            if hasattr(new, attr) and getattr(new, attr) == True and \
-                    hasattr(old, attr) and getattr(old, attr) == False: 
+        l = dir(old)
+        l = l[self.start_index(l):]
+        for attr in l: 
+            if getattr(new, attr) != getattr(old, attr): 
                 setattr(old, attr, getattr(new, attr)) 
                 updated = True
         return updated 
@@ -636,6 +644,13 @@ class KnowledgeStorePickle(KnowledgeStore):
     def get_execution_inputs(self):
         return [self.inputs.get_by_id(uuid) for uuid in self.get_input_set("fuzzed", 1)] 
 
+    def get_pending_inputs(self): 
+        return [self.inputs.get_by_id(uuid) for uuid in self.get_input_set("pending", 1)]
+
+    def mark_input_as_pending(self, inp): 
+        inp.pending_lock = True
+        (was_new, new_inp) = self.add_input(inp) 
+        return new_inp
 
     def get_inputs_with_coverage(self):
         return [self.inputs.get_by_id(uuid) for uuid in self.get_input_set("coverage_complete", 1)] 

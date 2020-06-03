@@ -81,6 +81,8 @@ service KnowledgeBase {
     rpc GetEdgeById (id) returns (Edge) {}
     rpc GetSeedInputs (Empty) returns (stream Input) {} 
     rpc GetExecutionInputs (Empty) returns (stream Input) {}
+    rpc GetPendingInputs(Empty) returns (stream Input) {} 
+    rpc MarkInputAsPending(Input) returns (Input) {}  
     rpc GetInputsWithCoverage (Empty) returns (stream Input) {}  
     rpc GetInputsWithoutCoverage (Empty) returns (stream Input) {}  
     rpc GetTaintInputs(Empty) returns (stream Input) {}
@@ -161,6 +163,7 @@ message Input {
     bool seed = 8;                      // was this a seed input
     bool taint_analyzed = 9;            // has taint been performed yet
     bool fuzzed = 10;                   // has it been fuzzed yet
+    bool pending_lock = 11;             // pending lock;
     map<string, string> additional_infomation = 16;
 }
 
