@@ -257,6 +257,9 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
         for edge in self.ks.get_edges_for_input(inp):
             yield edge
 
+    def GetNumInputsForEdge(self, edge, context):
+        return kbp.IntMessage(val=self.ks.get_num_inputs_for_edge(edge))
+            
     def GetInputsForEdge(self, edge, context):
         for inp in self.ks.get_inputs_for_edge(edge):
             yield inp            

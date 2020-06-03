@@ -548,6 +548,11 @@ class KnowledgeStorePickle(KnowledgeStore):
         if edge.uuid in self.all_edge2inputs:
             return [self.inputs.get_by_id(iuid) for iuid in self.all_edge2inputs[edge.uuid]]
         return []
+
+    def get_num_inputs_for_edge(self, edge):
+        if edge.uuid in self.all_edge2inputs:
+            return len (self.all_edge2inputs[edge.uuid])
+        return 0
     
     def add_module(self, module):
         return self.modules.add(module)

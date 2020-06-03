@@ -25,11 +25,12 @@ import spitfire.protos.knowledge_base_pb2_grpc as kbpg
 from spitfire.utils import coverage
 
 # some guess at how much time we'll spend on each of these
-P_SEED_MUTATIONAL_FUZZ = 0.3
-P_COVERAGE_FUZZ = 0.3
-P_TAINT_FUZZ = 0.05
-P_TAINT_ANALYSIS = 0.05
-P_COVERAGE = 0.3
+fuzzing_dist = [("SEED_MUTATIONAL_FUZZ", 0.3), \
+                ("COVERAGE_FUZZ", 0.3), \
+                ("TAINT_FUZZ", 0.2), \
+                ("TAINT_ANALYSIS", 0.2), \
+                ("COVERAGE", 0.3)]
+
 MAX_TAINT_OUT_DEGREE = 16
 
 RARE_EDGE_COUNT = 3
@@ -42,6 +43,28 @@ budget = 10
 # Get env
 corpus_dir = os.environ.get("CORPUS_DIR")
 counts_dir = os.environ.get("COUNTS_DIR") 
+
+
+
+# if you have a distribution such as
+# where 0.3 is probability of "a", etc
+# this function will choose according to the
+# distribution. NB: the distribution needn't
+# be normalized before hand.
+# dist = [("a", 0.3), ("b", 0.2), ("c", 0.5)]
+def choose(dist):
+    the_sum = 0
+    for item in dist:
+        (label, val) = item
+        the_sum += val
+    x = random.random()
+    prob_sum = 0.0
+    for item in dist:
+        (label, val) = item
+        prob_sum += val / the_sum        
+        if prob_sum > x:
+            return label
+
 
 def create_job_from_yaml(api_instance, num, arg, template_file, namespace): 
     commands = ["python3.6"]
@@ -131,12 +154,32 @@ def run(cfg):
     core_v1 = client.CoreV1Api() 
     namespace = "default"
 
-        
+    # are any fm.py still running?
+    # are any pods Pending?
+    resp = core_v1.list_pod_for_all_namespaces()
+    num_fm = 0
+    num_pending = 0
+    for i in resp.items:
+        pt = i.spec.containers[0].image
+        s = i.status.phase
+        # number of running or pending fuzzing managers
+        if (s=="Running" or s=="Pending") and "fm:" in pt:
+            num_fm += 1
+        if s=="Pending":
+            num_pending += 1
+    print ("num_fm = %d" % num_fm)
+
+    if num_fm > 1:
+        print ("A previous FM is still running -- exiting")
+        return
+
+    if num_pending > 0:
+        print ("Some pods are Pending -- exiting")
+    
     # Cleanup anything from before 
     for cj in batch_v1.list_namespaced_job(namespace=namespace, label_selector='tier=backend').items: 
         if not cj.status.active and cj.status.succeeded: 
             batch_v1.delete_namespaced_job(name=cj.metadata.name, namespace=namespace, propagation_policy="Background") 
-
 
     # Connect to the knowledge base 
     with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
@@ -153,13 +196,53 @@ def run(cfg):
         else:
             print ("Impossible mode?")
             assert (1==0)
+
+
+
+        # Get all sets of inputs 
+        # NB: Moved this outside of loop below, in which we launch potentially
+        # several jobs which could alter these sets. That's because we have to
+        # update the sets manually since the loop goes too fast for any of the
+        # jobs to have started up
+        
+        #S = set of original corpus seed inputs
+        S = {inp.uuid for inp in kbs.GetSeedInputs(kbp.Empty())} 
+        print("%d Seeds" % (len(S)))
             
+        #F = set of inputs we have done mutational fuzzing on so far
+        F = {inp.uuid for inp in kbs.GetExecutionInputs(kbp.Empty())}
+        print("%d Execution" % (len(F)))
         
+        #C = set of inputs for which we have measured coverage
+        C = {inp.uuid for inp in kbs.GetInputsWithCoverage(kbp.Empty())}
+        print("%d Inputs With Coverage" % (len(C)))
         
+        #ICV = set of interesting inputs that got marginal covg (increased covg)
+        ICV = {inp.uuid for inp in kbs.GetInputsWithoutCoverage(kbp.Empty())}
+        print("%d Inputs without Coverage" % (len(ICV)))
+        
+        #T = set of inputs for which we have done taint analysis
+        T = {inp.uuid for inp in kbs.GetTaintInputs(kbp.Empty())}
+        print("%d Taint Inputs" % (len(T)))
+
+        # set of inputs for which we have submitted jobs during this run
+        # and thus results are pending
+        # we need this so that we don't choose them again for analysis
+        P = set([])
+            
         jobs_created = 0
+
+        the_time = None
+
+        choice_succeeded = True
         
         while True:
 
+            if not (the_time is None) and choice_succeeded:
+                print ("Time to complete last round: %f seconds" % (time.time() - the_time))
+
+            the_time = time.time()
+                
             if jobs_created >= 5:
                 print("Created %d jobs -- exiting" % jobs_created)
                 return
@@ -172,48 +255,23 @@ def run(cfg):
                 return
 
             print("Under budget -- proceeding")
-            
-            # Get all sets of inputs 
 
-            #S = set of original corpus seed inputs
-            S = {inp.uuid for inp in kbs.GetSeedInputs(kbp.Empty())} 
-            print("%d Seeds" % (len(S)))
-#            for s in S: 
-#                print(s)
-            
-            #F = set of inputs we have done mutational fuzzing on so far
-            F = {inp.uuid for inp in kbs.GetExecutionInputs(kbp.Empty())}
-            print("%d Execution" % (len(F)))
-#            for f in F:
-#                print(f)
-            
-            #C = set of inputs for which we have measured coverage
-            C = {inp.uuid for inp in kbs.GetInputsWithCoverage(kbp.Empty())}
-            print("%d Inputs With Coverage" % (len(C)))
-#            for c in C:
-#                print(c)
-            
-            #ICV = set of interesting inputs that got marginal covg (increased covg)
-            ICV = {inp.uuid for inp in kbs.GetInputsWithoutCoverage(kbp.Empty())}
-            print("%d Inputs without Coverage" % (len(ICV)))
-#            for icv in ICV:
-#                print(icv)
-            
-            #T = set of inputs for which we have done taint analysis
-            T = {inp.uuid for inp in kbs.GetTaintInputs(kbp.Empty())}
-            print("%d Taint Inputs" % (len(T)))
-#            for t in T:
-#                print(t) 
+            # Choose according to a distribution what fuzzing action to pursue
+            fuzzing_choice = choose(fuzzing_dist)
 
-            # Generate a random number between 0 and 1 to see what we are doing 
-            p = random.uniform(0, 1) 
+            print ("fuzzing_choice = %s" % fuzzing_choice)
+            
+            choice_succeed = False
+            
+            if fuzzing_choice == "SEED_MUTATIONAL_FUZZ":
 
-            if p < P_SEED_MUTATIONAL_FUZZ:
-
-                # We want to just fuzz a seed (mutational)
+                # We want to just fuzz a seed (mutational fuzzing)
 
                 # Set of seed inputs we have not yet fuzzed
                 RS = S - F
+                # exclude pending
+                RS -= P
+
                 if len(RS) == 0:
                     # seed fuzzing not possible -- try something else 
                     continue
@@ -221,8 +279,8 @@ def run(cfg):
                 print ("Mutational fuzzing selected")
                                 
                 # Fuzz one of the remaining seeds chosen at random 
-                s = random.choice(list(RS))
-                kb_inp = kbs.GetInputById(kbp.id(uuid=s)) 
+                s_uuid = random.choice(list(RS))
+                kb_inp = kbs.GetInputById(kbp.id(uuid=s_uuid)) 
                 print(kb_inp)
                 
                 job = jobs["fuzzer"]
@@ -231,31 +289,42 @@ def run(cfg):
                 args = [f"gtfo.input_file={kb_inp.filepath}"]
                 try:
                     create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace)  
+                    print ("uuid for input is %s" % (str(s_uuid)))
+                    P.add(s_uuid)
                 except Exception as e:
                     print("Unable to create job exception = %s" % str(e))
                     # try again
                     continue
                 
                 jobs_created += 1
+                
+                choice_succeeded = True
                 continue
 
-            elif p < (P_SEED_MUTATIONAL_FUZZ + P_COVERAGE_FUZZ):
+            elif fuzzing_choice == "COVERAGE_FUZZ":
 
                 # We want to do covg-based fuzzing
                 
                 # Set of inputs for which we have coverage info but have not yet fuzzed
                 RC = C - F
+                # exclude pending
+                RC -= P
+
                 if len(RC) == 0:
                     # Covg based fuzzing not possible -- try something else 
                     continue
 
                 print ("Coverage-based fuzzing selected")
 
-                inp_score = coverage.rank_inputs(kbs)
+                # function that raks inputs, using coverage.
+                # Intent is that higher ranks inputs should be better choices
+                # for fuzzing in some sense (more likely to uncover new code,
+                # more likely to cause a crash
+                inp_score_list = coverage.rank_inputs(kbs)
 
-                (best_inp, best_num_unc) = inp_score[0]
+                (best_inp, score) = inp_score_list[0]
                 
-                print("Best input has %d uncommon edges" % best_num_unc)
+                print("Best input has score of %d" % score)
 
                 max_inp = best_inp
                 
@@ -264,25 +333,27 @@ def run(cfg):
                 args = [f"gtfo.input_file={max_inp.filepath}"] 
                 try:
                     create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace) 
+                    print ("uuid for input is %s" % (str(max_inp.uuid)))
+                    P.add(max_inp.uuid)
                 except Exception as e:
                     print("Unable to create job exception = %s" % str(e))
                     # try again
                     continue
                 
-                # NB: Better would be to choose with probability, where input that 
-                # exposes the most new coverage is most likely and the input that 
-                # exposes the least new coverage is least likely.
-
                 jobs_created += 1
+
+                choice_succeeded = True
                 continue
 
-
-            elif p < (P_SEED_MUTATIONAL_FUZZ + P_COVERAGE_FUZZ + P_TAINT_FUZZ):
+            elif fuzzing_choice == "TAINT_FUZZ":
 
                 # We want to do taint-based fuzzing
 
                 # Inputs for which we have taint info AND haven't yet fuzzed
                 RT = T - F
+                # exclude pending
+                RT -= P
+
                 if len(RT) == 0:
                     # Taint based fuzzing not possible -- try something else
                     continue
@@ -325,22 +396,27 @@ def run(cfg):
                 print(args)
                 try:
                     create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace) 
+                    print ("uuid for input is %s" % (str(kb_inp.uuid)))
+                    P.add(kb_inp.uuid)
                 except Exception as e:
                     print("Unable to create job exception = %s" % str(e))
                     # try again
                     continue
                     
                 jobs_created += 1
-                continue
-#                return
 
-            elif p < (P_SEED_MUTATIONAL_FUZZ + P_COVERAGE_FUZZ + P_TAINT_FUZZ + P_TAINT_ANALYSIS):
+                choice_succeeded = True                
+                continue
+
+            elif fuzzing_choice == "TAINT_ANALYSIS":
 
                 # We want to measure taint for some input
 
                 # Seed inputs and interesting inputs that increase coverage
                 # minus those for which we have measured taint already
-                IS = S | ICV - T
+                IS = (S | ICV) - T
+                # exclude pending
+                IS -= P
                 
                 if len(IS) == 0:
                     # Taint analysis not possible -- try something else
@@ -361,21 +437,28 @@ def run(cfg):
                 print(args)
                 try:
                     create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace)  
+                    print ("uuid for input is %s" % (str(kb_inp.uuid)))
+                    P.add(kb_inp.uuid)
                 except Exception as e:
                     print("Unable to create job exception = %s" % str(e))
                     # try again
                     continue
                     
                 jobs_created += 1
+
+                choice_succeeded = True                
                 continue
-#               return
 
             else: 
                 # Do some coverage 
 
                 # Inputs that need coverage run; so seed inputs if they don't already have coverage
                 # or new intersting inputs without coverage 
-                IC = S - C | ICV 
+#                IC = S - C | ICV
+                IC = (S | ICV) - C
+                # exclude pending
+                IC -= P
+                
                 if len(IC) == 0:
                     # Coverage not possible -- try something else
                     continue 
@@ -393,14 +476,18 @@ def run(cfg):
                 print(args)
                 try:
                     create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace) 
+                    print ("uuid for input is %s" % (str(kb_inp.uuid)))
+                    P.add(kb_inp.uuid)
                 except Exception as e:
                     print("Unable to create job exception = %s" % str(e))
                     # try again
                     continue
 
                 jobs_created += 1
+
+                choice_succeeded = True                
                 continue
-#                return           
+
 
 
 if __name__ == "__main__":

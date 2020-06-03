@@ -182,6 +182,10 @@ class KnowledgeStore(ABC):
         raise NotImplementedError
     
     @abstractmethod
+    def get_num_inputs_for_edge(self, edge):
+        raise NotImplementedError
+    
+    @abstractmethod
     def get_input_by_id(self, uuid):
         raise NotImplementedError
 

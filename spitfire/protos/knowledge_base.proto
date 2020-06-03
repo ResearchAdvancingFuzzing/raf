@@ -74,6 +74,7 @@ service KnowledgeBase {
     rpc GetEdges(Empty) returns (stream Edge) {}
     rpc GetEdgesForInput(Input) returns (stream Edge) {}
     rpc GetInputsForEdge(Edge) returns (stream Input) {}
+    rpc GetNumInputsForEdge(Edge) returns (IntMessage) {}
 
     // Return sets of input uuids for each of the following  
     rpc GetInputById (id) returns (Input) {} 
@@ -125,6 +126,9 @@ message id {
 message Empty {
 }
 
+message IntMessage {
+	uint64 val = 1;
+}
 
 message FuzzingManagerMode {
     enum ModeType {
