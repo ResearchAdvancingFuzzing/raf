@@ -228,7 +228,8 @@ def run(cfg):
         # set of inputs for which we have submitted jobs during this run
         # and thus results are pending
         # we need this so that we don't choose them again for analysis
-        P = set([])
+        P = {inp.uuid for inp in kbs.GetPendingInputs(kbp.Empty())} #set([])
+        print("%d Pending Inputs" % len(P))
             
         jobs_created = 0
 
