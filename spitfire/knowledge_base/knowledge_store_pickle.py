@@ -406,12 +406,20 @@ class KnowledgeStorePickle(KnowledgeStore):
     def input_exists(self, input):
         return self.inputs.exists(input)
 
+    # index just after the last occurrence of __ or _
+    # this could break if there is read-only attr after a __ or _
+    # the assumption is that there is not 
+    def start_index(self, l): 
+        for i in reversed(range(len(l))):
+            if l[i].startswith('__') or l[i].startswith('_'):
+                return i + 1 
+
     def update_input(self, old, new):
         updated = False
-        attrs = [attr for attr in dir(old) if not (attr[0].startswith('__') and attr[0].endswith('__'))] 
-        for attr in attrs: 
-            if hasattr(new, attr) and getattr(new, attr) == True and \
-                    hasattr(old, attr) and getattr(old, attr) == False: 
+        l = dir(old)
+        l = l[self.start_index(l):]
+        for attr in l: 
+            if getattr(new, attr) != getattr(old, attr): 
                 setattr(old, attr, getattr(new, attr)) 
                 updated = True
         return updated 

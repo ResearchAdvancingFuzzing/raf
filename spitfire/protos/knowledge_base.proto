@@ -161,6 +161,7 @@ message Input {
     bool seed = 8;                      // was this a seed input
     bool taint_analyzed = 9;            // has taint been performed yet
     bool fuzzed = 10;                   // has it been fuzzed yet
+    bool pending_lock = 11;             // pending lock;
     map<string, string> additional_infomation = 16;
 }
 
