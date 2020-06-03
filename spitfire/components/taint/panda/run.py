@@ -593,11 +593,9 @@ def run(cfg):
 
         kbs = kbpg.KnowledgeBaseStub(channel)
         
-        [complete, old_kb_input] = check_analysis_complete(cfg, kbs, inputfile)
+        [complete, kb_input] = check_analysis_complete(cfg, kbs, inputfile)
         if complete:   
             return
-        old_kb_input.pending_lock = True
-        kb_input = kbs.AddInput(old_kb_input)
     
     # Get the plog filename 
     plog_file_name = cfg.taint.plog_filename

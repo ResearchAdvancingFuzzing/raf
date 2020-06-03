@@ -644,6 +644,13 @@ class KnowledgeStorePickle(KnowledgeStore):
     def get_execution_inputs(self):
         return [self.inputs.get_by_id(uuid) for uuid in self.get_input_set("fuzzed", 1)] 
 
+    def get_pending_inputs(self): 
+        return [self.inputs.get_by_id(uuid) for uuid in self.get_input_set("pending", 1)]
+
+    def mark_input_as_pending(self, inp): 
+        inp.pending_lock = True
+        (was_new, new_inp) = self.add_input(inp) 
+        return new_inp
 
     def get_inputs_with_coverage(self):
         return [self.inputs.get_by_id(uuid) for uuid in self.get_input_set("coverage_complete", 1)] 

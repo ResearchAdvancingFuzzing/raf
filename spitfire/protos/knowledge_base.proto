@@ -81,6 +81,8 @@ service KnowledgeBase {
     rpc GetEdgeById (id) returns (Edge) {}
     rpc GetSeedInputs (Empty) returns (stream Input) {} 
     rpc GetExecutionInputs (Empty) returns (stream Input) {}
+    rpc GetPendingInputs(Empty) returns (stream Input) {} 
+    rpc MarkInputAsPending(Input) returns (Input) {}  
     rpc GetInputsWithCoverage (Empty) returns (stream Input) {}  
     rpc GetInputsWithoutCoverage (Empty) returns (stream Input) {}  
     rpc GetTaintInputs(Empty) returns (stream Input) {}

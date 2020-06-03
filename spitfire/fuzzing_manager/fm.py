@@ -288,9 +288,9 @@ def run(cfg):
                 
                 args = [f"gtfo.input_file={kb_inp.filepath}"]
                 try:
+                    kbs.MarkInputAsPending(kb_inp)
                     create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace)  
                     print ("uuid for input is %s" % (str(s_uuid)))
-                    P.add(s_uuid)
                 except Exception as e:
                     print("Unable to create job exception = %s" % str(e))
                     # try again
@@ -332,9 +332,9 @@ def run(cfg):
                 job.update_count_by(1) 
                 args = [f"gtfo.input_file={max_inp.filepath}"] 
                 try:
+                    kbs.MarkInputAsPending(kb_inp)
                     create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace) 
                     print ("uuid for input is %s" % (str(max_inp.uuid)))
-                    P.add(max_inp.uuid)
                 except Exception as e:
                     print("Unable to create job exception = %s" % str(e))
                     # try again
@@ -395,9 +395,9 @@ def run(cfg):
                         OOZE_LABELS={str_fbs} OOZE_LABELS_SIZE={fbs_len} OOZE_MODULE_NAME=afl_havoc.so'"] 
                 print(args)
                 try:
+                    kbs.MarkInputAsPending(kb_inp)
                     create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace) 
                     print ("uuid for input is %s" % (str(kb_inp.uuid)))
-                    P.add(kb_inp.uuid)
                 except Exception as e:
                     print("Unable to create job exception = %s" % str(e))
                     # try again
@@ -436,9 +436,9 @@ def run(cfg):
                 args = [f"taint.input_file={kb_inp.filepath}"]
                 print(args)
                 try:
+                    kbs.MarkInputAsPending(kb_inp)
                     create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace)  
                     print ("uuid for input is %s" % (str(kb_inp.uuid)))
-                    P.add(kb_inp.uuid)
                 except Exception as e:
                     print("Unable to create job exception = %s" % str(e))
                     # try again
@@ -475,9 +475,9 @@ def run(cfg):
                 args = [f"coverage.input_file={kb_inp.filepath}"] 
                 print(args)
                 try:
+                    kbs.MarkInputAsPending(kb_inp)
                     create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace) 
                     print ("uuid for input is %s" % (str(kb_inp.uuid)))
-                    P.add(kb_inp.uuid)
                 except Exception as e:
                     print("Unable to create job exception = %s" % str(e))
                     # try again

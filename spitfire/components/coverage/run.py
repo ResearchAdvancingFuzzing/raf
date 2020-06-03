@@ -293,13 +293,6 @@ def run(cfg):
     input_file = cfg.coverage.input_file 
     plog_file_name = cfg.coverage.plog_file_name
 
-    # Update the pending lock  
-    with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
-        stub = kbpg.KnowledgeBaseStub(channel) 
-        old_kb_input = stub.GetInput(kbp.Input(filepath=input_file)) 
-        old_kb_input.pending_lock = True
-        kb_input = stub.AddInput(old_kb_input)
-    
     replayname = create_recording(cfg, input_file) 
     
     panda_dir = "/panda" 
@@ -319,8 +312,6 @@ def run(cfg):
   
     if os.path.getsize(plog_file) == 0: 
         print("PLOG 1 IS 0") 
-        #delete_recording(plog_file)
-        #create_recording(cfg, input_file)
     print("Size of plog file: %d" % os.path.getsize(plog_file))
 
     [asid, base_addr, modules] = ingest_log_for_asid(cfg, plog_file) 
