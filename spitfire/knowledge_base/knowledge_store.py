@@ -194,5 +194,12 @@ class KnowledgeStore(ABC):
         raise NotImplementedError
 
 
-    
+    @abstractmethod
+    def add_fuzzing_event(self, fuzzing_event):
+        raise NotImplementedError
 
+    @abstractmethod
+    def get_all_fuzzing_events(self): 
+        raise NotImplementedError
+    
+    

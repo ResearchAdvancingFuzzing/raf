@@ -296,6 +296,44 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
 
     def GetEdgeById(self, uuid, context):
         return self.ks.get_edge_by_id(uuid)
+
+    def AddFuzzingEvent(self, event, context):
+        self.ks.add_fuzzing_event(event)
+        return kbp.Empty()
+        
+#    def AddFuzzingEvents(self, fuzzing_events_iterator, context):
+#        for fe in fuzzing_events_iterator:
+#            self.ks.add_fuzzing_event(fe)
+#        return kbp.Empty()
+
+    def GetFuzzingEvents(self, fuzzing_event_filter, context):
+        start_time = None
+        end_time = None
+        if fuzzing_event_filter.HasField("begin"):
+            start_time = fuzzing_event_filter.start.ToDatetime()
+        if fuzzing_event_filter.HasField("end"):
+            end_time = fuzzing_event_filter.end.ToDatetime()
+        for fe in self.ks.get_all_fuzzing_events():
+            filtered = False
+            t = fe.timestamp.ToDatetime()
+            # event is outside time window specified
+            if not (start_time is None) and (t < start_time):
+                filtered |= True
+            if not (end_time is None) and (t > end_time):
+                filtered |= True
+            # the event type for this fuzzing event
+            typ = fe.WhichOneof("event_type")
+            assert (not (typ is None))
+            # filtering decision exists for this event type 
+            # and True means filter it (discard)
+#            print ("typ = %s" % typ)
+            if hasattr(fuzzing_event_filter,typ) and getattr(fuzzing_event_filter,typ) == True:
+                filtered |= True
+            if not filtered:
+                yield fe
+    
+
+    
     
 @hydra.main(config_path=fuzzing_config_dir + "/config.yaml")
 def serve(cfg):

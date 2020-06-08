@@ -78,6 +78,14 @@ def run(cfg):
         target_kb = kbs.AddTarget(target_msg)
         execution_msg = kbp.Execution(input=input_kb, target=target_kb)
         execution_kb = kbs.AddExecution(execution_msg)
+
+        # TODO: Really we need for mutfuzz run.py to have the Experiment and Analysis
+        # to add them to this fuzzing event
+        te =  kbp.TimingEvent(type=kbp.TimingEvent.Type.ANALYSIS,
+                              event=kbp.TimingEvent.Event.BEGIN)        
+        kbs.AddFuzzingEvent(
+            kbp.FuzzingEvent(input=input_kb.uuid,
+                             timing_event=te))
         
     # Now let's fuzz
 
@@ -123,8 +131,15 @@ def run(cfg):
         input_kb.fuzzed = True
         input_kb.pending_lock = False
         kb_input = kbs.AddInput(input_kb)
-
+        
         send_to_database(kbs, inputs) 
+
+        te =  kbp.TimingEvent(type=kbp.TimingEvent.Type.ANALYSIS,
+                              event=kbp.TimingEvent.Event.END)        
+        kbs.AddFuzzingEvent(
+            kbp.FuzzingEvent(input=kb_input.uuid,
+                             timing_event=te))
+
 
 if __name__ == '__main__':
     logging.basicConfig()

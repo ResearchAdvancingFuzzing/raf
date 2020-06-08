@@ -9,6 +9,9 @@ import os
 import sys
 import queue
 from enum import Enum
+from bisect import bisect_left
+
+from google.protobuf.timestamp_pb2 import Timestamp
 
 class Mode(Enum):
     RUNNING = 1
@@ -372,7 +375,9 @@ class KnowledgeStorePickle(KnowledgeStore):
         # these are for cumulative covg
         self.all_inp2edges = {}
         self.all_edge2inputs = {}
-        
+        self.fuzzing_events_timestamps = []
+        self.fuzzing_events = []
+
     def pause(self):
         self.mode = Mode.PAUSED
         return True
@@ -675,4 +680,25 @@ class KnowledgeStorePickle(KnowledgeStore):
         assert hasattr (id, "uuid")
         return self.edges.get_by_id(id.uuid)
 
+        
+    def add_fuzzing_event(self, event):
+        # TODO: These really should be required
+        # but we dont yet have them available where we need them
+        #        assert hasattr(event, "experiment")
+        #        assert hasattr(event, "analysis")
+        assert hasattr(event, "input")
+        # create the time stamp
+        event.timestamp.GetCurrentTime()
+        current_time = event.timestamp.ToDatetime()
+        # insert event into log maintaining time order
+        index = bisect_left(self.fuzzing_events_timestamps, current_time)
+        self.fuzzing_events_timestamps.insert(index, current_time)
+        self.fuzzing_events.insert(index, event)
 
+    def get_all_fuzzing_events(self):
+        for fe in self.fuzzing_events:
+            yield fe
+            
+            
+
+            

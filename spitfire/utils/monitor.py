@@ -73,8 +73,15 @@ def run(cfg):
         print("%d seedscoverage" % (len(S & C)))
         print("%d taint" % len(T))
 
-        x = coverage.rank_inputs(kbs)
-
+        cl = coverage.rank_inputs(kbs)
+        for p in cl:
+            (inp, score) = p
+            print ("score=%d inp=%s" % (score, inp.filepath))
+            
+#        for event in kbs.GetFuzzingEvents(kbp.FuzzingEventFilter()):
+#            print("------------------------")
+#            print(str(event))
+        
         return
         
             
