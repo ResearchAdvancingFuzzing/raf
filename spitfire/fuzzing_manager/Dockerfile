@@ -25,5 +25,5 @@ COPY $SOURCE_DIR/jobs/config_fuzzer.yaml ./
 COPY $SOURCE_DIR/jobs/config_coverage.yaml ./
 COPY infinite ./
 #CMD ./infinite
-CMD python3.6 fm.py 
+CMD python3.6 spitfire.py 
 
