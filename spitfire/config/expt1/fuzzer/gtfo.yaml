@@ -5,7 +5,7 @@ gtfo:
     name: afl_bitmap_analysis.so
   jig:
     name: afl_jig.so
-    target_arg: "fuzzfile" #"-c jpeg fuzzfile /dev/null"
+    target_arg: "--nowarning fuzzfile" #"-c jpeg fuzzfile /dev/null"
   ooze:
     name: afl_havoc.so #restrict_bytes.so #afl_havoc.so #rand_byte_replace.so #afl_havoc.so
   extra_args: "JIG_MAP_SIZE=65536 ANALYSIS_SIZE=65536" 
