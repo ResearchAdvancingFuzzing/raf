@@ -1,4 +1,6 @@
 gtfo:
+  name: gtfo
+  source_string: "git clone -b spitfire_0 https://github.com/ResearchAdvancingFuzzing/gtfo.git"
   analysis:
     name: afl_bitmap_analysis.so
   jig:

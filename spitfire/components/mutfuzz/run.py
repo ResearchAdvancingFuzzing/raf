@@ -1,3 +1,4 @@
+import filecmp
 import logging
 import grpc
 import hydra
@@ -17,6 +18,9 @@ import subprocess
 import shutil
 import hashlib
 import struct 
+from google.protobuf import text_format 
+
+log = logging.getLogger(__name__)
 
 # Get the environment
 work_dir = os.environ.get("WORK_DIR")
@@ -46,10 +50,13 @@ def process_file(file_name, src, dest, attrb, value):
             inputs[file_name] = kb_input
         setattr(inputs[file_name], attrb, value)
 
-def process_files(src, dest, attrb, value): 
+def process_files(input_file, src, dest, attrb, value): 
     if (os.path.isdir(src)): 
         src_files = os.listdir(src) 
         for i, file_name in enumerate(src_files):
+            ret = filecmp.cmp(input_file, os.path.join(src, file_name))
+            if ret: 
+                continue
             process_file(file_name, src, dest, attrb, value)
 
 
@@ -60,25 +67,79 @@ def send_to_database(kbs, inputs):
     for kb_input in kb_inputs:
         kbs.AddInput(kb_input) 
 
+
+
+def check_analysis_complete(cfg, kbs, inputfile):
+
+
+    # get canonical representations for all of these things
+    target_msg = kbp.Target(name=cfg.target.name, \
+                            source_hash=cfg.target.source_hash)
+    target = kbs.GetTarget(target_msg)
+    
+    gtfo_msg = kbp.AnalysisTool(name=cfg.gtfo.name, \
+                               source_string=cfg.gtfo.source_string,
+                               type=kbp.AnalysisTool.AnalysisType.MUTATION_FUZZER)
+    gtfo     = kbs.AddAnalysisTool(gtfo_msg)
+
+    print("input file is [%s]" % inputfile) 
+    fuzzer_input = kbs.GetInput(kbp.Input(filepath=inputfile))
+
+    # if we have already performed this coverage analysis, bail
+    fuzzer_analysis_msg = kbp.Analysis(tool=gtfo.uuid, \
+                                      target=target.uuid, \
+                                      input=fuzzer_input.uuid)
+    fuzzer_analysis = kbs.AddAnalysis(fuzzer_analysis_msg)
+
+
+    msg_end =  "\ntool[%s]\ntarget[%s]\ninput[%s]" \
+          % (text_format.MessageToString(gtfo), \
+             text_format.MessageToString(target), \
+             text_format.MessageToString(fuzzer_input))
+    
+    if fuzzer_analysis.complete:
+        log.info("Fuzzer analysis already performed for %s" % msg_end)
+        return [True, None]
+    
+    log.info("Fuzzer analysis proceeding for %s" % msg_end)
+    return [False, fuzzer_input] 
+
+
+
+
+
+
+
+
+
 @hydra.main(config_path=f"{spitfire_dir}/config/expt1/config.yaml")
 def run(cfg):    
     
     target = "%s/%s" % (target_dir, cfg.target.name)
     fcfg = cfg.gtfo 
+    inputfile = fcfg.input_file
 
     with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
         
         print("here: connected")
 
-        # Add the target, input, seed corpus, and experiment to the KB 
+        # Get the input
         kbs = kbpg.KnowledgeBaseStub(channel)
         input_kb = kbs.GetInput(kbp.Input(filepath=fcfg.input_file))
 
+        # Get the target
         target_msg = kbp.Target(name=cfg.target.name, source_hash=cfg.target.source_hash)
-        target_kb = kbs.AddTarget(target_msg)
+        target_kb = kbs.GetTarget(target_msg)
+        
+        # Add the execution
         execution_msg = kbp.Execution(input=input_kb, target=target_kb)
         execution_kb = kbs.AddExecution(execution_msg)
 
+        # Check if the analysis has already been performed
+        [complete, kb_input] = check_analysis_complete(cfg, kbs, inputfile)
+        if complete:   
+            return
+        
         # TODO: Really we need for mutfuzz run.py to have the Experiment and Analysis
         # to add them to this fuzzing event
         te =  kbp.TimingEvent(type=kbp.TimingEvent.Type.ANALYSIS,
@@ -122,8 +183,8 @@ def run(cfg):
     proc = subprocess.run(args=cmd, env=env)
     exit_code = proc.returncode
 
-    process_files(coverage_dir, input_dir, "increased_coverage", 1)
-    process_files(interesting_dir, input_dir, "crash", 1) 
+    process_files(fcfg.input_file, coverage_dir, input_dir, "increased_coverage", 1)
+    process_files(fcfg.input_file, interesting_dir, input_dir, "crash", 1) 
 
     with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
         kbs = kbpg.KnowledgeBaseStub(channel)

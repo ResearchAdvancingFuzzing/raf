@@ -140,8 +140,8 @@ class InputPickle(ThingPickle):
     def check(self, inp):
         assert(hasattr(inp,"filepath"))
 
-    def hash(self, inp):
-        with open(inp.filepath, 'rb') as inp:
+    def hash(self, inp_f):
+        with open(inp_f.filepath, 'rb') as inp:
             f = inp.read() 
             return md5(f)
 
@@ -433,7 +433,7 @@ class KnowledgeStorePickle(KnowledgeStore):
         # We need to update the fields that aren't present if there are any 
         updated = False 
         if self.input_exists(input):
-            kb_input = self.get_input(input) 
+            kb_input = self.get_input(input) # MAKE SURE TO SEND IN THE INP WITH UUID 
             updated = self.update_input(kb_input, input)
         (was_new, inp) = self.inputs.add(input)
         if updated:

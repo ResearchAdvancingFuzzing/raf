@@ -1,5 +1,8 @@
 coverage:
+  source_string: "git clone -b spitfire_0 https://github.com/panda-re/panda.git"
+  panda_container: panda
   input_file: "/seed-corpus/slashdot.xml"
   plog_file_name: "coverage.plog"
   args: "file"
   n: 3
+  qcow: "http://panda-re.mit.edu/qcows/linux/ubuntu/1804/bionic-server-cloudimg-amd64.qcow2"

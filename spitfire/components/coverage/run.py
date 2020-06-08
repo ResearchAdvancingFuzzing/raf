@@ -21,6 +21,9 @@ import subprocess
 import shutil
 from panda import Panda, blocking
 from panda import * 
+from google.protobuf import text_format 
+
+log = logging.getLogger(__name__)
 
 # Get the environment
 input_dir = os.environ.get("INPUTS_DIR")
@@ -87,7 +90,7 @@ def create_recording(cfg, inputfile):
     shutil.copytree(target_dir, "%s/%s" % (copydir, subdir)) 
 
     # Get the qcow file 
-    qcow = cfg.taint.qcow;
+    qcow = cfg.coverage.qcow;
     qcowfile = basename(qcow)
     qcf = "/qcows/%s" % qcowfile 
     assert(os.path.isfile(qcf))
@@ -287,12 +290,75 @@ def send_to_database(edge_list, input_file, module_list, channel):
     for r in stub.AddEdgeCoverage(iter(edges)):
         pass
 
+
+
+
+
+
+def check_analysis_complete(cfg, kbs, inputfile):
+
+
+    # get canonical representations for all of these things
+    target_msg = kbp.Target(name=cfg.target.name, \
+                            source_hash=cfg.target.source_hash)
+    target = kbs.AddTarget(target_msg)
+    
+    panda_msg = kbp.AnalysisTool(name=cfg.coverage.panda_container, \
+                               source_string=cfg.coverage.source_string,
+                               type=kbp.AnalysisTool.AnalysisType.COVERAGE)
+    panda = kbs.AddAnalysisTool(panda_msg)
+
+    print("input file is [%s]" % inputfile) 
+    coverage_input = kbs.GetInput(kbp.Input(filepath=inputfile))
+
+    # if we have already performed this coverage analysis, bail
+    coverage_analysis_msg = kbp.Analysis(tool=panda.uuid, \
+                                      target=target.uuid, \
+                                      input=coverage_input.uuid)
+    coverage_analysis = kbs.AddAnalysis(coverage_analysis_msg)
+
+
+    msg_end =  "\ntool[%s]\ntarget[%s]\ninput[%s]" \
+          % (text_format.MessageToString(panda), \
+             text_format.MessageToString(target), \
+             text_format.MessageToString(coverage_input))
+    
+    if coverage_analysis.complete:
+        log.info("Coverage analysis already performed for %s" % msg_end)
+        return [True, None]
+    
+    log.info("Coverage analysis proceeding for %s" % msg_end)
+    return [False, coverage_input] 
+
+
+
+
+
+
+
 @hydra.main(config_path=f"{spitfire_dir}/config/expt1/config.yaml")
 def run(cfg):    
     
+    # Get the input file
     input_file = cfg.coverage.input_file 
+
+    # Add the analysis 
+    with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
+        
+        log.info("Connected to knowledge_base")
+
+        kbs = kbpg.KnowledgeBaseStub(channel)
+        
+        [complete, kb_input] = check_analysis_complete(cfg, kbs, input_file)
+        if complete:   
+            return
+ 
+    
+    
+    # Get the plog file
     plog_file_name = cfg.coverage.plog_file_name
 
+    # Create the recording
     replayname = create_recording(cfg, input_file) 
     
     panda_dir = "/panda" 

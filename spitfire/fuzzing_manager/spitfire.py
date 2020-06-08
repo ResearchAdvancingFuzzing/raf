@@ -324,6 +324,10 @@ def run(cfg):
                 # more likely to cause a crash
                 inp_score_list = coverage.rank_inputs(kbs)
 
+                if len(inp_score_list) == 0:
+                    # We shouldn't be here
+                    continue 
+
                 (best_inp, score) = inp_score_list[0]
                 
                 print("Best input has score of %d" % score)

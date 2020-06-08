@@ -214,6 +214,7 @@ message AnalysisTool {
         MUTATION_FUZZER = 0;
         TAINT = 1;
         SYMBOLIC_EXECUTION = 2;
+        COVERAGE = 3;
     }
     AnalysisType type = 4;
 }
