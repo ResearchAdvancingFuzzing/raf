@@ -423,7 +423,9 @@ class KnowledgeStorePickle(KnowledgeStore):
         updated = False
         l = dir(old)
         l = l[self.start_index(l):]
-        for attr in l: 
+        for attr in l:
+            if attr == "uuid":
+                continue 
             if getattr(new, attr) != getattr(old, attr): 
                 setattr(old, attr, getattr(new, attr)) 
                 updated = True
@@ -431,7 +433,7 @@ class KnowledgeStorePickle(KnowledgeStore):
 
     def add_input(self, input):
         # We need to update the fields that aren't present if there are any 
-        updated = False 
+        updated = False
         if self.input_exists(input):
             kb_input = self.get_input(input) # MAKE SURE TO SEND IN THE INP WITH UUID 
             updated = self.update_input(kb_input, input)
