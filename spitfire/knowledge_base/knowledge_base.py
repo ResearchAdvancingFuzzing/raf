@@ -153,7 +153,11 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
     def AddEdge(self, edge, context):
         (was_new, e) = self.ks.add_edge(edge)
         return e            
-            
+    
+    def EdgeExists(self, edge, context): 
+        return kbp.KnowledgeBaseResult(success=self.ks.edge_exists(edge), \
+                                       message="None")
+
     def AddExecution(self, execution, context): 
         (was_new, te) = self.ks.add_execution(execution) 
         if was_new: 
@@ -198,7 +202,10 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
             if was_new:
                 print("Ti added: " + str(ti.uuid), flush=True)
             yield ti
-   
+    
+    def TaintedInstructionExists(self, ti, context): 
+        return kbp.KnowledgeBaseResult(
+                success=self.ks.tainted_instruction_exists(ti), message="None")
     # Returns KnowledgeBaseResult
     def AddTaintMappings(self, tm_iterator, context):
         for t in tm_iterator:

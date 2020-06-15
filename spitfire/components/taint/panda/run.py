@@ -486,8 +486,7 @@ def byte_uuid(uuid):
     return bytes(uuid, 'utf-8')
 
 # Ta is the TaintAnalysis 
-def send_to_database(ta, old_kb_input, module_list, channel): 
-    stub = kbpg.KnowledgeBaseStub(channel) #spitire_pb2_grpc.SpitfireStub(kb_channel)
+def send_to_database(kb_analysis, ta, old_kb_input, module_list, stub): 
 
     old_kb_input.taint_analyzed = True
     old_kb_input.pending_lock = False
@@ -519,11 +518,22 @@ def send_to_database(ta, old_kb_input, module_list, channel):
     kb_addresses = [r for r in stub.AddAddresses(iter(addresses))]
     print("Added %d addresses" % len(kb_addresses))
 
-    ti = [kbp.TaintedInstruction(address=kb_addresses[i], type=tm.ti.type, instruction_bytes=bytes(tm.ti.bytes)) 
+    tis = [kbp.TaintedInstruction(address=kb_addresses[i], type=tm.ti.type, instruction_bytes=bytes(tm.ti.bytes)) 
             for i,tm in enumerate(ta.tma)]
-    kb_ti = [r for r in stub.AddTaintedInstructions(iter(ti))]
-    print("Added %d tainted instructions" % len(kb_ti))
+    # Before we add the Tainted Instructions lets see if they already exist
+    ti_exists = [(stub.TaintedInstructionExists(ti)).success for ti in tis]
+    kb_ti = [r for r in stub.AddTaintedInstructions(iter(tis))]
+    #print("Added %d tainted instructions" % len(kb_ti))
+    new_ti = 0
+    for i, exists in enumerate(ti_exists): 
+        if not exists: 
+            new_ti += 1
+            # Found a new TI
+            te = kbp.NewTaintedInstructionEvent(instruction=tis[i]) 
+            stub.AddFuzzingEvent(kbp.FuzzingEvent(analysis=kb_analysis.uuid, 
+                input=kb_input.uuid, new_tainted_instruction_event=te))
 
+    print("Added %d new ti out of %d tainted instructions" % (new_ti, len(kb_ti)))
     fbs = [kbp.FuzzableByteSet(label=tm.fbs.labels) for tm in ta.tma]
     kb_fbs = [r for r in stub.AddFuzzableByteSets(iter(fbs))]
     print("Added %d fbs" % len(kb_fbs))
@@ -570,10 +580,10 @@ def check_analysis_complete(cfg, kbs, inputfile):
     
     if taint_analysis.complete:
         log.info("Taint analysis already performed for %s" % msg_end)
-        return [True, None]
+        return [True, None, taint_analysis]
     
     log.info("Taint analysis proceeding for %s" % msg_end)
-    return [False, taint_input] 
+    return [False, taint_input, taint_analysis] 
 
 
 @hydra.main(config_path=fuzzing_config_dir + "/config.yaml")
@@ -593,9 +603,14 @@ def run(cfg):
 
         kbs = kbpg.KnowledgeBaseStub(channel)
         
-        [complete, kb_input] = check_analysis_complete(cfg, kbs, inputfile)
+        [complete, kb_input, kb_analysis] = check_analysis_complete(cfg, kbs, inputfile)
         if complete:   
             return
+
+        te =  kbp.TimingEvent(type=kbp.TimingEvent.Type.ANALYSIS,
+                event=kbp.TimingEvent.Event.BEGIN)
+        kbs.AddFuzzingEvent(kbp.FuzzingEvent(analysis=kb_analysis.uuid,
+                input=kb_input.uuid,timing_event=te))
     
     # Get the plog filename 
     plog_file_name = cfg.taint.plog_filename
@@ -651,7 +666,17 @@ def run(cfg):
     
     # Send the information over to the database 
     with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
-        send_to_database(fm, kb_input, modules, channel) 
+    
+        stub = kbpg.KnowledgeBaseStub(channel) #spitire_pb2_grpc.SpitfireStub(kb_channel)
+        
+        send_to_database(kb_analysis, fm, kb_input, modules, stub)
+        
+        te =  kbp.TimingEvent(type=kbp.TimingEvent.Type.ANALYSIS,
+                              event=kbp.TimingEvent.Event.END)        
+        stub.AddFuzzingEvent(
+            kbp.FuzzingEvent(analysis=kb_analysis.uuid, 
+                input=kb_input.uuid,
+                             timing_event=te))
     
     print("%d seconds" % tock()) 
 

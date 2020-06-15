@@ -47,8 +47,8 @@ def process_file(file_name, src, dest, attrb, value):
         if not file_name in inputs: 
             shutil.copy(full_file_name, dest) 
             kb_input = kbp.Input(filepath = "%s/%s" % (dest, file_name))
-            inputs[file_name] = kb_input
-        setattr(inputs[file_name], attrb, value)
+            inputs[full_file_name] = kb_input
+        setattr(inputs[full_file_name], attrb, value)
 
 def process_files(input_file, src, dest, attrb, value): 
     if (os.path.isdir(src)): 
@@ -60,12 +60,46 @@ def process_files(input_file, src, dest, attrb, value):
             process_file(file_name, src, dest, attrb, value)
 
 
-def send_to_database(kbs, inputs):
+def send_to_database(kbs, inputs, kb_analysis):
     # Inputs is a dictionary of inputs to their kb_input 
-    kb_inputs = inputs.values()
-    print("Sending %d new inputs to the database" % len(kb_inputs))
-    for kb_input in kb_inputs:
-        kbs.AddInput(kb_input) 
+    #kb_inputs = inputs.values()
+    #print(inputs) 
+    #return
+
+    num_inc_covg = 0
+    num_crash = 0
+    for inp_path in inputs:
+        inp = inputs[inp_path]
+
+        # Add the input
+        # Check if the input exists: 
+        result = kbs.InputExists(inp)
+        print(inp_path)
+        print(result.success)
+        if not result.success: # Input did not exist before
+            kb_input = kbs.AddInput(inp)
+            # Add the fuzzing events
+            if os.path.dirname(inp_path) == coverage_dir: # inc coverage
+                num_inc_covg += 1
+                te =  kbp.IncreasedCoverageEvent()        
+                kbs.AddFuzzingEvent(kbp.FuzzingEvent(
+                    analysis=kb_analysis.uuid, input=kb_input.uuid,
+                    increased_coverage_event=te))
+            if os.path.dirname(inp_path) == interesting_dir: # crashes
+                num_crash += 1
+                te = kbp.CrashEvent() 
+                kbs.AddFuzzingEvent(kbp.FuzzingEvent(
+                    analysis=kb_analysis.uuid, input=kb_input.uuid, 
+                    crash_event=te))
+        else: 
+            kb_input = kbs.AddInput(inp)
+
+    print("%d inputs that increased coverage" % num_inc_covg) 
+    print("%d inputs that crashed" % num_crash) 
+    print("Sent %d new inputs out of %d to the database" % 
+            ((num_inc_covg+num_crash), len(inputs)))
+    #for kb_input in kb_inputs:
+    #    kbs.AddInput(kb_input) 
 
 
 
@@ -99,10 +133,10 @@ def check_analysis_complete(cfg, kbs, inputfile):
     
     if fuzzer_analysis.complete:
         log.info("Fuzzer analysis already performed for %s" % msg_end)
-        return [True, None]
+        return [True, None, fuzzer_analysis]
     
     log.info("Fuzzer analysis proceeding for %s" % msg_end)
-    return [False, fuzzer_input] 
+    return [False, fuzzer_input, fuzzer_analysis] 
 
 
 
@@ -136,7 +170,7 @@ def run(cfg):
         execution_kb = kbs.AddExecution(execution_msg)
 
         # Check if the analysis has already been performed
-        [complete, kb_input] = check_analysis_complete(cfg, kbs, inputfile)
+        [complete, kb_input, kb_analysis] = check_analysis_complete(cfg, kbs, inputfile)
         if complete:   
             return
         
@@ -145,7 +179,9 @@ def run(cfg):
         te =  kbp.TimingEvent(type=kbp.TimingEvent.Type.ANALYSIS,
                               event=kbp.TimingEvent.Event.BEGIN)        
         kbs.AddFuzzingEvent(
-            kbp.FuzzingEvent(input=input_kb.uuid,
+            kbp.FuzzingEvent(
+                analysis=kb_analysis.uuid,
+                input=input_kb.uuid,
                              timing_event=te))
         
     # Now let's fuzz
@@ -193,12 +229,13 @@ def run(cfg):
         input_kb.pending_lock = False
         kb_input = kbs.AddInput(input_kb)
         
-        send_to_database(kbs, inputs) 
+        send_to_database(kbs, inputs, kb_analysis) 
 
         te =  kbp.TimingEvent(type=kbp.TimingEvent.Type.ANALYSIS,
                               event=kbp.TimingEvent.Event.END)        
         kbs.AddFuzzingEvent(
-            kbp.FuzzingEvent(input=kb_input.uuid,
+            kbp.FuzzingEvent(analysis=kb_analysis.uuid, 
+                input=kb_input.uuid,
                              timing_event=te))
 
 

@@ -527,7 +527,10 @@ class KnowledgeStorePickle(KnowledgeStore):
 
     def add_edge(self, edge):
         return self.edges.add(edge)
-        
+    
+    def edge_exists(self, edge): 
+        return self.edges.exists(edge) 
+
     # note edge_covg.edge should have been added with self.add_edge(..)
     def add_edge_coverage(self, edge_covg):
         (was_new, edge_covg_new) = self.edge_coverage.add(edge_covg)         
@@ -687,7 +690,7 @@ class KnowledgeStorePickle(KnowledgeStore):
         # TODO: These really should be required
         # but we dont yet have them available where we need them
         #        assert hasattr(event, "experiment")
-        #        assert hasattr(event, "analysis")
+        assert hasattr(event, "analysis")
         assert hasattr(event, "input")
         # create the time stamp
         event.timestamp.GetCurrentTime()

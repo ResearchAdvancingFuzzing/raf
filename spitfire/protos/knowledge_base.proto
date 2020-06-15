@@ -66,6 +66,7 @@ service KnowledgeBase {
 
     // Coverage
     rpc AddEdge(Edge) returns (Edge) {}
+    rpc EdgeExists(Edge) returns (KnowledgeBaseResult) {} 
     rpc AddEdgeCoverage (stream EdgeCoverage) returns (stream EdgeCoverage) {}
     rpc GetEdgeCoverageForInput (Input) returns (stream EdgeCoverage) {}
 
@@ -95,7 +96,7 @@ service KnowledgeBase {
     // Add a bunch of tainted instructions to the knowledge base
     // If any were already there, we dont add twice
     rpc AddTaintedInstructions (stream TaintedInstruction) returns (stream TaintedInstruction) {} //(KnowledgeBaseResult) {}
-
+    rpc TaintedInstructionExists (TaintedInstruction) returns (KnowledgeBaseResult) {}
     // Add a bunch of taint mappings to the knowledge base.
     // note that a TaintMapping refers to a FuzzableByteSet and a 
     // TaintedInstruction, but by uuid only.  So you have to have called 

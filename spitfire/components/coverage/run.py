@@ -260,9 +260,8 @@ def ingest_log(cfg, asid, modules, plog_file):
     return resolved_edges
 
 
-def send_to_database(edge_list, input_file, module_list, channel): 
+def send_to_database(kb_analysis, edge_list, input_file, module_list, stub): 
     
-    stub = kbpg.KnowledgeBaseStub(channel) 
     
     # Add the modules first 
     modules = []
@@ -281,15 +280,30 @@ def send_to_database(edge_list, input_file, module_list, channel):
 
     edges = []
     addresses = []
+    new_edges = 0
     for edge in edge_list:
         addrs = [kbp.Address(module=kbp_modules[a.module], offset=a.offset) for a in edge.addresses]
         kb_addrs = [r for r in stub.AddAddresses(iter(addrs))]
-        kb_edge = stub.AddEdge(kbp.Edge(address = kb_addrs))
+        # Does the edge exist? 
+        kb_edge = None
+        kbp_edge = kbp.Edge(address=kb_addrs)
+        result = stub.EdgeExists(kbp_edge)
+        if not result.success: # Does not exist
+            # New Edge Event Found
+            new_edges += 1
+            kb_edge = stub.AddEdge(kbp_edge)
+            te = kbp.NewEdgeEvent(edge=kb_edge) 
+            stub.AddFuzzingEvent(kbp.FuzzingEvent(
+                analysis=kb_analysis.uuid, input=kb_input.uuid, 
+                new_edge_event=te))
+        else:
+            kb_edge = stub.AddEdge(kbp_edge)
+
         edges.append(kbp.EdgeCoverage(hit_count=edge.hit_count, edge=kb_edge, input=kb_input))
-    print(len(edges))
     for r in stub.AddEdgeCoverage(iter(edges)):
         pass
 
+    print("%d new edges out of %d edges found" % (new_edges, len(edges)))
 
 
 
@@ -325,10 +339,10 @@ def check_analysis_complete(cfg, kbs, inputfile):
     
     if coverage_analysis.complete:
         log.info("Coverage analysis already performed for %s" % msg_end)
-        return [True, None]
+        return [True, None, coverage_analysis]
     
     log.info("Coverage analysis proceeding for %s" % msg_end)
-    return [False, coverage_input] 
+    return [False, coverage_input, coverage_analysis] 
 
 
 
@@ -349,11 +363,15 @@ def run(cfg):
 
         kbs = kbpg.KnowledgeBaseStub(channel)
         
-        [complete, kb_input] = check_analysis_complete(cfg, kbs, input_file)
+        [complete, kb_input, kb_analysis] = check_analysis_complete(cfg, kbs, input_file)
         if complete:   
             return
- 
-    
+
+        # Add the timing event 
+        te = kbp.TimingEvent(type=kbp.TimingEvent.Type.ANALYSIS, 
+            event=kbp.TimingEvent.Event.BEGIN) 
+        kbs.AddFuzzingEvent(kbp.FuzzingEvent(analysis=kb_analysis.uuid, 
+            input=kb_input.uuid, timing_event=te)) 
     
     # Get the plog file
     plog_file_name = cfg.coverage.plog_file_name
@@ -397,7 +415,14 @@ def run(cfg):
     
     with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
         print("here: connected");
-        send_to_database(edges, input_file, modules, channel) 
+        
+        stub = kbpg.KnowledgeBaseStub(channel) 
+        send_to_database(kb_analysis, edges, input_file, modules, stub) 
+
+        te =  kbp.TimingEvent(type=kbp.TimingEvent.Type.ANALYSIS, 
+                event=kbp.TimingEvent.Event.END) 
+        stub.AddFuzzingEvent(kbp.FuzzingEvent(analysis=kb_analysis.uuid, 
+            input=kb_input.uuid, timing_event=te))
 
             
 if __name__ == '__main__':
