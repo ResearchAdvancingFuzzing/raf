@@ -10,6 +10,7 @@ import hydra
 import logging
 import matplotlib
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 from pprint import pprint
 from kubernetes import client, utils, config
 
@@ -98,11 +99,14 @@ def run(cfg):
             print ("score=%d inp=%s" % (score, inp.filepath))
         '''
 
+        fig, axs = plt.subplots(2, 2)
+        
         # Display Edges vs Time
         edge_coord = {} 
         num, bt = 0, 0
         for event in kbs.GetFuzzingEvents(kbp.FuzzingEventFilter(new_edge_event=True)):
             [num, bt] = update_map(edge_coord, event, num, bt)
+        display_map(edge_coord, axs[1,1], "edges")
         
         # Display Tainted Instrs vs Time
         ti_coord = {}
@@ -110,11 +114,13 @@ def run(cfg):
         for event in kbs.GetFuzzingEvents(kbp.FuzzingEventFilter(
             new_tainted_instruction_event=True)):
             [num, bt] = update_map(ti_coord, event, num, bt)
+        display_map(ti_coord, axs[0,1], "tis")
         
-        # Display all Timing Events  
+        # Display all Timing Events 
+        total_te_types = 3
+        color_chart = ['C{}'.format(i) for i in range(total_te_types)] 
         intervals = {} # key is analysis + input bytes; value is (start, end) 
         colors = [] 
-        color = ['C{}'.format(i) for i in range(3)] 
         for event in kbs.GetFuzzingEvents(kbp.FuzzingEventFilter(timing_event=True)):
             key = str(event.analysis) + str(event.input)
             time = event.timestamp.seconds
@@ -122,7 +128,7 @@ def run(cfg):
             te_event = event.timing_event.event 
             if not key in intervals:
                 intervals[key] = [0,0]
-                colors.append(color[te_type])
+                colors.append(color_chart[te_type])
             if te_event == 0: # BEGIN
                 intervals[key][0] = time
             elif te_event == 1: # END
@@ -132,60 +138,40 @@ def run(cfg):
         end = [i[1] for i in intervals.values()]
         length = list(np.array(end) - np.array(begin)) 
         
-        # positions are meaningless? give each a y position (0, 24)
-        positions = [[i] for i in np.arange(len(begin))] 
+        # positions are meaningless? give each a discrete y position
         # line offsets are the x values 
         # line lengths represnts durations 
-        #print(begin)
-        #print(length)
-        #print(colors) 
-        #print(positions)
-        #print(len(begin))
-        #print(len(length))
-        #print(len(colors))
-        fig, axs = plt.subplots(2, 2)
-        axs[0, 0].eventplot(positions=positions, linelengths=length, lineoffsets=begin) 
-        axs[0, 0].set_xlabel("Event number") 
-        axs[0, 0].set_ylabel("Time (seconds)") 
+        positions = [[i] for i in np.arange(len(begin))] 
+        axs[1, 0].eventplot(positions=positions, linelengths=length, lineoffsets=begin) 
+        axs[1, 0].set_xlabel("Event number") 
+        axs[1, 0].set_ylabel("Time (seconds)") 
         
-        # Dot plot with x axis as time; y axis as number; color as type 
+        # Display all Fuzzing Manager Events 
         coords = []
         fme_total_types = 5
-        #color = [i**2 for i in range(5)] 
-        color = ['C{}'.format(i) for i in range(fme_total_types)] 
+        color_chart = ['C{}'.format(i) for i in range(fme_total_types)] 
         for event in kbs.GetFuzzingEvents(kbp.FuzzingEventFilter(fuzzing_manager_event=True)):
             time = event.timestamp.seconds
             fme_type = event.fuzzing_manager_event.type
             number = event.fuzzing_manager_event.number
-            #if not time in times: 
-            #    times[time] = [] #[0, 0] # [color, number] 
-            coords.append([time, color[fme_type], number + 1])
+            coords.append([time, color_chart[fme_type], number + 1])
         
-        # x should be time, y should be number, type should be color
-        print(coords)
         times = [i[0] for i in coords]
+        positions = [[i] for i in times] # Treat each one individually
         colors = [i[1] for i in coords]
-        numbers = [i[2] for i in coords]
-        
-        plots = []
-        for c in color: 
-            time_x = [times[i] for i in range(0, len(colors)) if colors[i] == c]
-            number_y = [numbers[i] for i in range(0, len(colors)) if colors[i] == c]
-            scatter = axs[1,0].scatter(time_x, number_y, color=c)
-            plots.append(scatter) 
+        numbers = [i[2] for i in coords] 
 
-        axs[1,0].legend((plots[0], plots[1], plots[2], plots[3], plots[4]), \
-                    ('SeedFuzz', 'CoverageFuzz', 'TaintFuzz', 'Taint', 'Coverage'), \
-           scatterpoints=1, loc='lower right', ncol=2, fontsize=8)
-        axs[1,0].set_xlabel("Time (seconds)") 
-        axs[1,0].set_ylabel("Round number") 
+        # Create the event plot for FuzzingManagerEvents 
+        labels = ["SeedFuzz", "CoverageFuzz", "TaintFuzz", "Taint", "Coverage"]
+        axs[0,0].eventplot(positions, colors=colors, lineoffsets=numbers, 
+                linelengths=0.5, label=labels)
+        custom_lines = [Line2D([0], [0], color=c, lw=2) for c in color_chart]
+        axs[0,0].legend(custom_lines, labels, bbox_to_anchor=(0., 1.0, 1., .10), 
+                loc=3,ncol=3, mode="expand", borderaxespad=0.)
+        axs[0,0].set_xlabel("Time (seconds)") 
+        axs[0,0].set_ylabel("Round number") 
+
         
-        #legend = axs[1,0].legend(*scatter.legend_elements(),
-        #                            loc="lower right", title="Events")
-        #axs[1,0].add_artist(legend)
-        
-        display_map(edge_coord, axs[1,1], "edges")
-        display_map(ti_coord, axs[0,1], "tis")
         plt.show()
     return
 

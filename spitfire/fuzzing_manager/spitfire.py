@@ -267,9 +267,6 @@ def run(cfg):
             
             if fuzzing_choice == "SEED_MUTATIONAL_FUZZ":
 
-                fme = kbp.FuzzingManagerEvent(number=jobs_created, type=
-                        kbp.FuzzingManagerEvent.Type.SEED_MUTATIONAL_FUZZ)
-                kbs.AddFuzzingEvent(kbp.FuzzingEvent(fuzzing_manager_event=fme))
                 # We want to just fuzz a seed (mutational fuzzing)
 
                 # Set of seed inputs we have not yet fuzzed
@@ -293,6 +290,11 @@ def run(cfg):
                 
                 args = [f"gtfo.input_file={kb_inp.filepath}"]
                 try:
+                    
+                    fme = kbp.FuzzingManagerEvent(number=jobs_created, type=
+                            kbp.FuzzingManagerEvent.Type.SEED_MUTATIONAL_FUZZ)
+                    kbs.AddFuzzingEvent(kbp.FuzzingEvent(fuzzing_manager_event=fme))
+                    
                     kbs.MarkInputAsPending(kb_inp)
                     create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace)  
                     print ("uuid for input is %s" % (str(s_uuid)))
@@ -308,9 +310,6 @@ def run(cfg):
 
             elif fuzzing_choice == "COVERAGE_FUZZ":
 
-                fme = kbp.FuzzingManagerEvent(number=jobs_created, type=
-                        kbp.FuzzingManagerEvent.Type.COVERAGE_FUZZ)
-                kbs.AddFuzzingEvent(kbp.FuzzingEvent(fuzzing_manager_event=fme))
                 
                 # We want to do covg-based fuzzing
                 
@@ -345,6 +344,11 @@ def run(cfg):
                 job.update_count_by(1) 
                 args = [f"gtfo.input_file={max_inp.filepath}"] 
                 try:
+               
+                    fme = kbp.FuzzingManagerEvent(number=jobs_created, type=
+                            kbp.FuzzingManagerEvent.Type.COVERAGE_FUZZ)
+                    
+                    kbs.AddFuzzingEvent(kbp.FuzzingEvent(fuzzing_manager_event=fme))
                     kbs.MarkInputAsPending(kb_inp)
                     create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace) 
                     print ("uuid for input is %s" % (str(max_inp.uuid)))
@@ -360,9 +364,6 @@ def run(cfg):
 
             elif fuzzing_choice == "TAINT_FUZZ":
 
-                fme = kbp.FuzzingManagerEvent(number=jobs_created, type=
-                        kbp.FuzzingManagerEvent.Type.TAINT_FUZZ)
-                kbs.AddFuzzingEvent(kbp.FuzzingEvent(fuzzing_manager_event=fme))
                 # We want to do taint-based fuzzing
 
                 # Inputs for which we have taint info AND haven't yet fuzzed
@@ -421,6 +422,9 @@ def run(cfg):
                         OOZE_LABELS={str_fbs} OOZE_LABELS_SIZE={fbs_len} OOZE_MODULE_NAME=afl_havoc.so'"] 
                 print(args)
                 try:
+                    fme = kbp.FuzzingManagerEvent(number=jobs_created, type=
+                            kbp.FuzzingManagerEvent.Type.TAINT_FUZZ)
+                    kbs.AddFuzzingEvent(kbp.FuzzingEvent(fuzzing_manager_event=fme))
                     kbs.MarkInputAsPending(kb_inp)
                     create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace) 
                     print ("uuid for input is %s" % (str(kb_inp.uuid)))
@@ -436,9 +440,6 @@ def run(cfg):
 
             elif fuzzing_choice == "TAINT_ANALYSIS":
 
-                fme = kbp.FuzzingManagerEvent(number=jobs_created, type=
-                        kbp.FuzzingManagerEvent.Type.TAINT_ANALYSIS)
-                kbs.AddFuzzingEvent(kbp.FuzzingEvent(fuzzing_manager_event=fme))
                 # We want to measure taint for some input
 
                 # Seed inputs and interesting inputs that increase coverage
@@ -465,6 +466,9 @@ def run(cfg):
                 args = [f"taint.input_file={kb_inp.filepath}"]
                 print(args)
                 try:
+                    fme = kbp.FuzzingManagerEvent(number=jobs_created, type=
+                            kbp.FuzzingManagerEvent.Type.TAINT_ANALYSIS)
+                    kbs.AddFuzzingEvent(kbp.FuzzingEvent(fuzzing_manager_event=fme))
                     kbs.MarkInputAsPending(kb_inp)
                     create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace)  
                     print ("uuid for input is %s" % (str(kb_inp.uuid)))
@@ -481,9 +485,6 @@ def run(cfg):
             else: 
                 # Do some coverage 
 
-                fme = kbp.FuzzingManagerEvent(number=jobs_created, type=
-                        kbp.FuzzingManagerEvent.Type.COVERAGE_ANALYSIS)
-                kbs.AddFuzzingEvent(kbp.FuzzingEvent(fuzzing_manager_event=fme))
                 # Inputs that need coverage run; so seed inputs if they don't already have coverage
                 # or new intersting inputs without coverage 
 #                IC = S - C | ICV
@@ -507,6 +508,9 @@ def run(cfg):
                 args = [f"coverage.input_file={kb_inp.filepath}"] 
                 print(args)
                 try:
+                    fme = kbp.FuzzingManagerEvent(number=jobs_created, type=
+                            kbp.FuzzingManagerEvent.Type.COVERAGE_ANALYSIS)
+                    kbs.AddFuzzingEvent(kbp.FuzzingEvent(fuzzing_manager_event=fme))
                     kbs.MarkInputAsPending(kb_inp)
                     create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace) 
                     print ("uuid for input is %s" % (str(kb_inp.uuid)))
