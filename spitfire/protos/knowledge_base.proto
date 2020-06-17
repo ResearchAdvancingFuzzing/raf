@@ -343,13 +343,16 @@ message FuzzingEvent {
   }
 }
 
+// True if you want it displayed (easier since everything defaults to False) 
 message FuzzingEventFilter {
   google.protobuf.Timestamp begin = 1;
   google.protobuf.Timestamp end = 2;
   bool timing_event = 3;
-  bool crash_event = 4;
-  bool new_edge_event = 5;
-  bool new_tainted_instruction_event = 6;  
+  bool fuzzing_manager_event = 4;
+  bool increased_coverage_event = 5;
+  bool crash_event = 6;
+  bool new_edge_event = 7;
+  bool new_tainted_instruction_event = 8; 
 }
 
 // just log begin / stop of something

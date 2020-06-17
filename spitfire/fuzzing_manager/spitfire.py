@@ -267,6 +267,9 @@ def run(cfg):
             
             if fuzzing_choice == "SEED_MUTATIONAL_FUZZ":
 
+                fme = kbp.FuzzingManagerEvent(number=jobs_created, type=
+                        kbp.FuzzingManagerEvent.Type.SEED_MUTATIONAL_FUZZ)
+                kbs.AddFuzzingEvent(kbp.FuzzingEvent(fuzzing_manager_event=fme))
                 # We want to just fuzz a seed (mutational fuzzing)
 
                 # Set of seed inputs we have not yet fuzzed
@@ -305,6 +308,10 @@ def run(cfg):
 
             elif fuzzing_choice == "COVERAGE_FUZZ":
 
+                fme = kbp.FuzzingManagerEvent(number=jobs_created, type=
+                        kbp.FuzzingManagerEvent.Type.COVERAGE_FUZZ)
+                kbs.AddFuzzingEvent(kbp.FuzzingEvent(fuzzing_manager_event=fme))
+                
                 # We want to do covg-based fuzzing
                 
                 # Set of inputs for which we have coverage info but have not yet fuzzed
@@ -353,6 +360,9 @@ def run(cfg):
 
             elif fuzzing_choice == "TAINT_FUZZ":
 
+                fme = kbp.FuzzingManagerEvent(number=jobs_created, type=
+                        kbp.FuzzingManagerEvent.Type.TAINT_FUZZ)
+                kbs.AddFuzzingEvent(kbp.FuzzingEvent(fuzzing_manager_event=fme))
                 # We want to do taint-based fuzzing
 
                 # Inputs for which we have taint info AND haven't yet fuzzed
@@ -426,6 +436,9 @@ def run(cfg):
 
             elif fuzzing_choice == "TAINT_ANALYSIS":
 
+                fme = kbp.FuzzingManagerEvent(number=jobs_created, type=
+                        kbp.FuzzingManagerEvent.Type.TAINT_ANALYSIS)
+                kbs.AddFuzzingEvent(kbp.FuzzingEvent(fuzzing_manager_event=fme))
                 # We want to measure taint for some input
 
                 # Seed inputs and interesting inputs that increase coverage
@@ -468,6 +481,9 @@ def run(cfg):
             else: 
                 # Do some coverage 
 
+                fme = kbp.FuzzingManagerEvent(number=jobs_created, type=
+                        kbp.FuzzingManagerEvent.Type.COVERAGE_ANALYSIS)
+                kbs.AddFuzzingEvent(kbp.FuzzingEvent(fuzzing_manager_event=fme))
                 # Inputs that need coverage run; so seed inputs if they don't already have coverage
                 # or new intersting inputs without coverage 
 #                IC = S - C | ICV

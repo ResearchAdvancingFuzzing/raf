@@ -334,7 +334,7 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
             # filtering decision exists for this event type 
             # and True means filter it (discard)
 #            print ("typ = %s" % typ)
-            if hasattr(fuzzing_event_filter,typ) and getattr(fuzzing_event_filter,typ) == True:
+            if hasattr(fuzzing_event_filter,typ) and getattr(fuzzing_event_filter,typ) == False:
                 filtered |= True
             if not filtered:
                 yield fe
