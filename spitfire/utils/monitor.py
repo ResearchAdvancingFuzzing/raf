@@ -15,7 +15,6 @@ from pprint import pprint
 from kubernetes import client, utils, config
 
 spitfire_dir = os.environ.get("SPITFIRE")
-spitfire_dir = "/home/hpreslier/raf/spitfire"
 sys.path.append("/")
 sys.path.append(spitfire_dir)
 sys.path.append(os.path.realpath(os.path.join(spitfire_dir, "..")))
@@ -171,6 +170,16 @@ def run(cfg):
         axs[0,0].set_xlabel("Time (seconds)") 
         axs[0,0].set_ylabel("Round number") 
 
+        plt.show() 
+
+        # Display number of inputs increasing coverage over time 
+        fig, axs = plt.subplots(1,1)
+        coord = {} 
+        num, bt = 0, 0
+        for event in kbs.GetFuzzingEvents(
+                kbp.FuzzingEventFilter(increased_coverage_event=True)):
+            [num, bt] = update_map(coord, event, num, bt)
+        display_map(coord, axs, "inputs increasing coverage")
         
         plt.show()
     return
