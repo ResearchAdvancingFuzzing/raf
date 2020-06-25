@@ -61,49 +61,66 @@ service KnowledgeBase {
 
     // Memory APIs - all tools should store references to the target's memory as
     // a module + an offset which is represented in the address message
-    rpc AddModules (stream Module) returns (stream Module);
-    rpc AddAddresses (stream Address) returns (stream Address);
+    rpc AddModules (stream Module) returns (stream Module) {}
+    rpc AddAddresses (stream Address) returns (stream Address) {}
 
     // Coverage
-    rpc AddEdgeCoverage (stream EdgeCoverage) returns (stream EdgeCoverage);
-    rpc GetEdgeCoverageForInput (Input) returns (stream EdgeCoverage);  
+    rpc AddEdge(Edge) returns (Edge) {}
+    rpc EdgeExists(Edge) returns (KnowledgeBaseResult) {} 
+    rpc AddEdgeCoverage (stream EdgeCoverage) returns (stream EdgeCoverage) {}
+    rpc GetEdgeCoverageForInput (Input) returns (stream EdgeCoverage) {}
 
-    rpc GetEdgeCoverage(Empty) returns (stream EdgeCoverage);
+    rpc GetEdgeCoverage(Empty) returns (stream EdgeCoverage) {}
+
+    rpc GetEdges(Empty) returns (stream Edge) {}
+    rpc GetEdgesForInput(Input) returns (stream Edge) {}
+    rpc GetInputsForEdge(Edge) returns (stream Input) {}
+    rpc GetNumInputsForEdge(Edge) returns (IntMessage) {}
 
     // Return sets of input uuids for each of the following  
     rpc GetInputById (id) returns (Input) {} 
-    rpc GetSeedInputs (Empty) returns (stream Input); 
-    rpc GetExecutionInputs (Empty) returns (stream Input);
-    rpc GetInputsWithCoverage (Empty) returns (stream Input);  
-    rpc GetInputsWithoutCoverage (Empty) returns (stream Input);  
-    rpc GetTaintInputs(Empty) returns (stream Input);
- 
+    rpc GetEdgeById (id) returns (Edge) {}
+    rpc GetSeedInputs (Empty) returns (stream Input) {} 
+    rpc GetExecutionInputs (Empty) returns (stream Input) {}
+    rpc GetPendingInputs(Empty) returns (stream Input) {} 
+    rpc MarkInputAsPending(Input) returns (Input) {}  
+    rpc GetInputsWithCoverage (Empty) returns (stream Input) {}  
+    rpc GetInputsWithoutCoverage (Empty) returns (stream Input) {}  
+    rpc GetTaintInputs(Empty) returns (stream Input) {}
+
     // Add a bunch of fuzzable byte sets to the knowledge base  
     // If any were already there, we dont add twice
     // return value indicates success / error
-    rpc AddFuzzableByteSets (stream FuzzableByteSet) returns (stream FuzzableByteSet);  //KnowledgeBaseResult) {}
+    rpc AddFuzzableByteSets (stream FuzzableByteSet) returns (stream FuzzableByteSet) {}  //KnowledgeBaseResult) {}
 
     // Add a bunch of tainted instructions to the knowledge base
     // If any were already there, we dont add twice
-    rpc AddTaintedInstructions (stream TaintedInstruction) returns (stream TaintedInstruction); //(KnowledgeBaseResult) {}
-
+    rpc AddTaintedInstructions (stream TaintedInstruction) returns (stream TaintedInstruction) {} //(KnowledgeBaseResult) {}
+    rpc TaintedInstructionExists (TaintedInstruction) returns (KnowledgeBaseResult) {}
     // Add a bunch of taint mappings to the knowledge base.
     // note that a TaintMapping refers to a FuzzableByteSet and a 
     // TaintedInstruction, but by uuid only.  So you have to have called 
     // AddFuzzableByteSet and AddTaintedInstruction on the corresponding 
     // items beforehand.
-    rpc AddTaintMappings (stream TaintMapping) returns (stream TaintMapping); //KnowledgeBaseResult) {}
+    rpc AddTaintMappings (stream TaintMapping) returns (stream TaintMapping) {} //KnowledgeBaseResult) {}
     
-    rpc GetFuzzableByteSetsForTaintInput(Input) returns (stream FuzzableByteSet); 
-    rpc GetTaintInputsForTaintedInstruction(TaintedInstruction) returns (stream Input);
-    rpc GetTaintedInstructionsForTaintInput(Input) returns (stream TaintedInstruction); 
-    rpc GetTaintMappingsForFuzzableByteSet(FuzzableByteSet) returns (stream TaintMapping);  
+    rpc GetFuzzableByteSetsForTaintInput(Input) returns (stream FuzzableByteSet) {} 
+    rpc GetTaintInputsForTaintedInstruction(TaintedInstruction) returns (stream Input) {}
+    rpc GetTaintedInstructionsForTaintInput(Input) returns (stream TaintedInstruction) {} 
+    rpc GetTaintMappingsForFuzzableByteSet(FuzzableByteSet) returns (stream TaintMapping) {}  
     // Returns set of TaintedInstructions discovered thus far by 
     // all taint analyses that have run.
     rpc GetTaintedInstructions(Empty) returns (stream TaintedInstruction) {}
 
     // Returns set of Inputs turns set of TaintMappings from this Input+FuzzableByteSet to this TaintedInstruction
     rpc GetTaintMappings(TaintMappingKey) returns (stream TaintMapping) {}    
+
+    // log some event in the fuzzing campaign
+    rpc AddFuzzingEvent(FuzzingEvent) returns (Empty) {}
+    //    rpc AddFuzzingEvents(stream FuzzingEvent) returns (Empty) {}
+
+    // retrieve logging events
+    rpc GetFuzzingEvents(FuzzingEventFilter) returns (stream FuzzingEvent) {}
 
 }
 
@@ -119,6 +136,9 @@ message id {
 message Empty {
 }
 
+message IntMessage {
+	uint64 val = 1;
+}
 
 message FuzzingManagerMode {
     enum ModeType {
@@ -151,6 +171,7 @@ message Input {
     bool seed = 8;                      // was this a seed input
     bool taint_analyzed = 9;            // has taint been performed yet
     bool fuzzed = 10;                   // has it been fuzzed yet
+    bool pending_lock = 11;             // pending lock;
     map<string, string> additional_infomation = 16;
 }
 
@@ -165,7 +186,7 @@ message Corpus {
 // A fuzzing experiment 
 message Experiment {
     bytes uuid = 1;                       // Note: knowledge base assigned
-    google.protobuf.Timestamp start = 2;  // start time of experiment (Note: knowledge base assigned)
+    google.protobuf.Timestamp begin = 2;  // begin time of experiment (Note: knowledge base assigned)
     google.protobuf.Timestamp end = 3;    // end time of experiment (Note: knowledge base assigned)
     string description = 4;               // description of this experiment
     Target target = 5;                    // the program fuzzed (shallow)
@@ -194,6 +215,7 @@ message AnalysisTool {
         MUTATION_FUZZER = 0;
         TAINT = 1;
         SYMBOLIC_EXECUTION = 2;
+        COVERAGE = 3;
     }
     AnalysisType type = 4;
 }
@@ -285,12 +307,100 @@ message Address {
     map<string, string> additional_infomation = 16;
 }
 
+message Edge {
+    bytes uuid = 1;
+    repeated Address address = 2;
+}
+
 // The coverage of an edge for an input. NOTE: this supports n-edge coverage
 message EdgeCoverage {
     bytes uuid = 1; // This is a hash of the uuids of all the addresses 
     uint64 hit_count = 2;					// how many 
-    repeated Address address = 3;				// the edge represented as a series of addresses
+    Edge edge = 3;
     Input input = 4;					// (shallow)
     //Execution exeuction = 4;
     map<string, string> additional_infomation = 16;
 }
+
+
+
+// Events during a fuzzing campaign    
+message FuzzingEvent {
+  google.protobuf.Timestamp timestamp = 1;          
+  bytes experiment = 2;                        // what experiment event relates to (shallow)
+  bytes analysis = 3;                          // event came from this analysis (shallow)
+                                               // (NB: analysis includes input)
+			                       // (NB: optional since event might be
+					       // experiment-level)
+  bytes input = 4;   // what input this relates to (XXX should not be necessary once analysis works)
+  oneof event_type {
+    TimingEvent timing_event = 5;                                 // begin/end of experiment/analysis/etc
+    FuzzingManagerEvent fuzzing_manager_event = 6;
+    IncreasedCoverageEvent increased_coverage_event = 7;          // input that increased coverage
+    CrashEvent crash_event = 8;                                   // crash observed for this input     
+    NewEdgeEvent new_edge_event = 9;                              // new edge discovered
+    NewTaintedInstructionEvent new_tainted_instruction_event = 10; // first discovery of taint for this instruction
+  }
+}
+
+// True if you want it displayed (easier since everything defaults to False) 
+message FuzzingEventFilter {
+  google.protobuf.Timestamp begin = 1;
+  google.protobuf.Timestamp end = 2;
+  bool timing_event = 3;
+  bool fuzzing_manager_event = 4;
+  bool increased_coverage_event = 5;
+  bool crash_event = 6;
+  bool new_edge_event = 7;
+  bool new_tainted_instruction_event = 8; 
+}
+
+// just log begin / stop of something
+message TimingEvent {
+  enum Type {
+    EXPERIMENT = 0;
+    FUZZING_MANAGER = 1;
+    ANALYSIS = 2;
+  }
+  enum Event {
+    BEGIN = 0;
+    END = 1;
+  }
+  Type type = 1;
+  Event event = 2;
+}
+
+
+message FuzzingManagerEvent {
+  uint32 number = 1;             // round number
+  enum Type {
+    SEED_MUTATIONAL_FUZZ = 0;
+    COVERAGE_FUZZ = 1;
+    TAINT_FUZZ = 2;
+    TAINT_ANALYSIS = 3;
+    COVERAGE_ANALYSIS = 4;
+  }
+  Type type = 2;
+}
+
+
+
+// these two come from mutational fuzzer when it exits
+message IncreasedCoverageEvent { }
+
+// crash observed for input
+message CrashEvent {
+  int32 exit_code = 1; 
+  string output = 2;  // if there is output 
+}
+
+// This comes from coverage analysis
+message NewEdgeEvent {
+  Edge edge = 1;   
+}
+
+// This comes from a taint analysis
+message NewTaintedInstructionEvent {
+  TaintedInstruction instruction = 1;
+}
+

@@ -1,5 +1,5 @@
 #import drcov
-from os.path import join
+from os.path import join,getsize
 import subprocess as sp
 import logging
 import grpc
@@ -21,6 +21,9 @@ import subprocess
 import shutil
 from panda import Panda, blocking
 from panda import * 
+from google.protobuf import text_format 
+
+log = logging.getLogger(__name__)
 
 # Get the environment
 input_dir = os.environ.get("INPUTS_DIR")
@@ -73,12 +76,11 @@ def get_module_offset(pc, modules):
 
 
  
-def create_recording(cfg, inputfile, plog_filename): 
+def create_recording(cfg, inputfile): 
     
-    #log.info("Creating recording")
-
     # Copy directory needed to insert into panda recording
     # We need the inputfile and we need the target binary install directory
+    
     copydir = "./copydir"
     subdir = "install"
     if os.path.exists(copydir):
@@ -88,31 +90,27 @@ def create_recording(cfg, inputfile, plog_filename):
     shutil.copytree(target_dir, "%s/%s" % (copydir, subdir)) 
 
     # Get the qcow file 
-    qcow = cfg.taint.qcow;
+    qcow = cfg.coverage.qcow;
     qcowfile = basename(qcow)
     qcf = "/qcows/%s" % qcowfile 
     assert(os.path.isfile(qcf))
 
-    # Create panda recording
+    # Create panda recording if it does not already exist
     replayname = "%s/%s" % (replay_dir, basename(inputfile) + "-panda") 
-    print("replay name = [%s]" % replayname)
+    print("Replay name = [%s]" % replayname)
 
-    # This needs to be changed
     args = cfg.coverage.args
     args = args.replace("file", "~/%s/%s" % (basename(copydir), basename(inputfile)), 1) 
-    print(args)
     cmd = "cd %s/%s/ && ./%s %s" % (basename(copydir), subdir, cfg.target.name, args)
     print(cmd)
+    
     exists_replay_name = ("%s%s" % (replayname, "-rr-snp")) 
     extra_args = ["-display", "none", "-nographic"] 
+    
     if (os.path.exists(exists_replay_name)): 
+        print("Recording %s exists" % exists_replay_name)
         extra_args.extend(["-loadvm", "root"]) 
-    #cmd = "cd copydir/install/ && ./%s ~/copydir/%s" % (cfg.target.name, basename(inputfile))
-    #print(cmd)
-    #return
-    #cmd = "cd copydir/install/libxml2/.libs && ./xmllint ~/copydir/"+basename(inputfile)
-    #print(cmd) 
-    #return
+
     panda = Panda(arch="x86_64", expect_prompt=rb"root@ubuntu:.*#", 
             qcow=qcf, mem="1G", extra_args="-display none -nographic ") 
 
@@ -124,9 +122,10 @@ def create_recording(cfg, inputfile, plog_filename):
 
     panda.set_os_name("linux-64-ubuntu:4.15.0-72-generic")
     if not os.path.exists(exists_replay_name): 
+        print("Recording does not exist. Creating recording.")
         panda.queue_async(take_recording)
         panda.run()
-    return [panda, replayname]
+    return replayname  
 
 def run_replay(panda, plugins, old_plugins, plog_filename, replayname):
     # Now insert the plugins and run the replay
@@ -138,15 +137,14 @@ def run_replay(panda, plugins, old_plugins, plog_filename, replayname):
     panda.run_replay(replayname)
 
 
-def ingest_log_for_asid(cfg, plog_file_name):
-    plog_file = "%s/%s" % (os.getcwd(), plog_file_name)
-    #plog_file = "/working/outputs/2020-05-28/22-00-48/coverage.plog"  
+def ingest_log_for_asid(cfg, plog_file):
+
     xm = None
     modules = {}
     base_addr = 0xffffffffffffffff
     program = cfg.target.name 
 
-    print("Ingesting pandalog") 
+    print("Ingesting pandalog with asids and libs -- %d bytes" % (getsize(plog_file)))
     with plog.PLogReader(plog_file) as plr:
         try:
             for i, log_entry in enumerate(plr):
@@ -227,11 +225,12 @@ def ingest_log_for_asid(cfg, plog_file_name):
 
     return [the_asid, base_addr, modules] 
 
-def ingest_log(cfg, asid, modules, plog_file_name): 
-    plog_file = "%s/%s" % (os.getcwd(), plog_file_name)
+def ingest_log(cfg, asid, modules, plog_file):
+    #plog_file = "%s/%s" % (os.getcwd(), plog_file_name)
     #plog_file = "/working/outputs/2020-05-28/22-06-52/2coverage.plog" 
     edges = [] 
     resolved_edges = []
+    print("Ingesting pandalog with edge_coverage -- %d bytes" % (getsize(plog_file)))
     with plog.PLogReader(plog_file) as plr: 
         try: 
             for i, log_entry in enumerate(plr):
@@ -261,9 +260,9 @@ def ingest_log(cfg, asid, modules, plog_file_name):
     return resolved_edges
 
 
-def send_to_database(edge_list, input_file, module_list, channel): 
-    stub = kbpg.KnowledgeBaseStub(channel) 
-
+def send_to_database(kb_analysis, edge_list, input_file, module_list, stub): 
+    
+    
     # Add the modules first 
     modules = []
     for name in module_list: 
@@ -274,32 +273,111 @@ def send_to_database(edge_list, input_file, module_list, channel):
     kbp_modules = {r.name:r for r in stub.AddModules(iter(modules))} 
 
     # Add our input next 
-    inp = kbp.Input(filepath=input_file, coverage_complete=True)
-    kb_input = stub.AddInput(inp)
-    
+    old_kb_input = stub.GetInput(kbp.Input(filepath=input_file)) 
+    old_kb_input.coverage_complete = True
+    old_kb_input.pending_lock = False 
+    kb_input = stub.AddInput(old_kb_input)
+
     edges = []
     addresses = []
+    new_edges = 0
     for edge in edge_list:
         addrs = [kbp.Address(module=kbp_modules[a.module], offset=a.offset) for a in edge.addresses]
         kb_addrs = [r for r in stub.AddAddresses(iter(addrs))]
-        edges.append(kbp.EdgeCoverage(hit_count=edge.hit_count, address=kb_addrs, input=kb_input))
-    print(len(edges))
+        # Does the edge exist? 
+        kb_edge = None
+        kbp_edge = kbp.Edge(address=kb_addrs)
+        result = stub.EdgeExists(kbp_edge)
+        if not result.success: # Does not exist
+            # New Edge Event Found
+            new_edges += 1
+            kb_edge = stub.AddEdge(kbp_edge)
+            te = kbp.NewEdgeEvent(edge=kb_edge) 
+            stub.AddFuzzingEvent(kbp.FuzzingEvent(
+                analysis=kb_analysis.uuid, input=kb_input.uuid, 
+                new_edge_event=te))
+        else:
+            kb_edge = stub.AddEdge(kbp_edge)
+
+        edges.append(kbp.EdgeCoverage(hit_count=edge.hit_count, edge=kb_edge, input=kb_input))
     for r in stub.AddEdgeCoverage(iter(edges)):
         pass
+
+    print("%d new edges out of %d edges found" % (new_edges, len(edges)))
+
+
+
+
+
+def check_analysis_complete(cfg, kbs, inputfile):
+
+
+    # get canonical representations for all of these things
+    target_msg = kbp.Target(name=cfg.target.name, \
+                            source_hash=cfg.target.source_hash)
+    target = kbs.AddTarget(target_msg)
+    
+    panda_msg = kbp.AnalysisTool(name=cfg.coverage.panda_container, \
+                               source_string=cfg.coverage.source_string,
+                               type=kbp.AnalysisTool.AnalysisType.COVERAGE)
+    panda = kbs.AddAnalysisTool(panda_msg)
+
+    print("input file is [%s]" % inputfile) 
+    coverage_input = kbs.GetInput(kbp.Input(filepath=inputfile))
+
+    # if we have already performed this coverage analysis, bail
+    coverage_analysis_msg = kbp.Analysis(tool=panda.uuid, \
+                                      target=target.uuid, \
+                                      input=coverage_input.uuid)
+    coverage_analysis = kbs.AddAnalysis(coverage_analysis_msg)
+
+
+    msg_end =  "\ntool[%s]\ntarget[%s]\ninput[%s]" \
+          % (text_format.MessageToString(panda), \
+             text_format.MessageToString(target), \
+             text_format.MessageToString(coverage_input))
+    
+    if coverage_analysis.complete:
+        log.info("Coverage analysis already performed for %s" % msg_end)
+        return [True, None, coverage_analysis]
+    
+    log.info("Coverage analysis proceeding for %s" % msg_end)
+    return [False, coverage_input, coverage_analysis] 
+
+
+
+
+
 
 
 @hydra.main(config_path=f"{spitfire_dir}/config/expt1/config.yaml")
 def run(cfg):    
     
+    # Get the input file
     input_file = cfg.coverage.input_file 
+
+    # Add the analysis 
+    with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
+        
+        log.info("Connected to knowledge_base")
+
+        kbs = kbpg.KnowledgeBaseStub(channel)
+        
+        [complete, kb_input, kb_analysis] = check_analysis_complete(cfg, kbs, input_file)
+        if complete:   
+            return
+
+        # Add the timing event 
+        te = kbp.TimingEvent(type=kbp.TimingEvent.Type.ANALYSIS, 
+            event=kbp.TimingEvent.Event.BEGIN) 
+        kbs.AddFuzzingEvent(kbp.FuzzingEvent(analysis=kb_analysis.uuid, 
+            input=kb_input.uuid, timing_event=te)) 
+    
+    # Get the plog file
     plog_file_name = cfg.coverage.plog_file_name
-    
-    [_, replayname] = create_recording(cfg, input_file, plog_file_name) 
-    
-    #plugins = {} 
-    #plugins["asidstory"] = {} 
-    #plugins["loaded_libs"] = {"program_name": cfg.target.name}
-    #run_replay(panda, plugins, {}, plog_file_name, replayname) 
+
+    # Create the recording
+    replayname = create_recording(cfg, input_file) 
     
     panda_dir = "/panda" 
     arch = "x86_64" 
@@ -315,8 +393,12 @@ def run(cfg):
                 + (" -panda loaded_libs:program_name=%s" % cfg.target.name)  
     print(panda_cmd)
     sp.call(panda_cmd.split())
-    
-    [asid, base_addr, modules] = ingest_log_for_asid(cfg, plog_file_name) 
+  
+    if os.path.getsize(plog_file) == 0: 
+        print("PLOG 1 IS 0") 
+    print("Size of plog file: %d" % os.path.getsize(plog_file))
+
+    [asid, base_addr, modules] = ingest_log_for_asid(cfg, plog_file) 
     plog_file = "%s/%s" % (os.getcwd(), "2" + plog_file_name)
     panda_cmd = panda + general_panda_args + (" -replay %s" % rfpfx) \
                 + (" -pandalog %s" % plog_file) \
@@ -326,18 +408,21 @@ def run(cfg):
     print(panda_cmd)
     sp.call(panda_cmd.split())
     
-    '''
-    plugins_ec = {}  
-    main_addr = int(cfg.target.main_addr, 0) 
-    plugins_ec["edge_coverage"] = {"n" : "%d" % cfg.coverage.n, "main": "%x" % (main_addr + base_addr)} 
-    run_replay(panda, plugins_ec, plugins, "2" + plog_file_name, replayname) 
-    '''
+    if os.path.getsize(plog_file) == 0: 
+        print("PLOG 2 IS 0") 
 
-    edges = ingest_log(cfg, asid, modules, "2" + plog_file_name)
+    edges = ingest_log(cfg, asid, modules, plog_file)
     
     with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
         print("here: connected");
-        send_to_database(edges, input_file, modules, channel) 
+        
+        stub = kbpg.KnowledgeBaseStub(channel) 
+        send_to_database(kb_analysis, edges, input_file, modules, stub) 
+
+        te =  kbp.TimingEvent(type=kbp.TimingEvent.Type.ANALYSIS, 
+                event=kbp.TimingEvent.Event.END) 
+        stub.AddFuzzingEvent(kbp.FuzzingEvent(analysis=kb_analysis.uuid, 
+            input=kb_input.uuid, timing_event=te))
 
             
 if __name__ == '__main__':

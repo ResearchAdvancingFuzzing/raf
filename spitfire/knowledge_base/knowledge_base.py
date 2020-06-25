@@ -100,7 +100,7 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
         (was_new, i) = self.ks.add_input(inp)
         if was_new:
             print("Input added: %s" % str(i.uuid), flush=True)
-            print(i)
+            print(i, flush=True)
         return i
 
     def AddCorpus(self, corpus, context):        
@@ -149,7 +149,15 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
                 print("Edge added: " + str(e.uuid), flush=True)
                 #print(e, flush=True)
             yield e
+
+    def AddEdge(self, edge, context):
+        (was_new, e) = self.ks.add_edge(edge)
+        return e            
     
+    def EdgeExists(self, edge, context): 
+        return kbp.KnowledgeBaseResult(success=self.ks.edge_exists(edge), \
+                                       message="None")
+
     def AddExecution(self, execution, context): 
         (was_new, te) = self.ks.add_execution(execution) 
         if was_new: 
@@ -194,7 +202,10 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
             if was_new:
                 print("Ti added: " + str(ti.uuid), flush=True)
             yield ti
-   
+    
+    def TaintedInstructionExists(self, ti, context): 
+        return kbp.KnowledgeBaseResult(
+                success=self.ks.tainted_instruction_exists(ti), message="None")
     # Returns KnowledgeBaseResult
     def AddTaintMappings(self, tm_iterator, context):
         for t in tm_iterator:
@@ -244,7 +255,33 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
     def GetEdgeCoverage(self, emp, context):
         for ec in self.ks.get_edge_coverage():
             yield ec
+
+    def GetEdges(self, emp, context):
+        for edge in self.ks.get_edges():
+            yield edge
+
+    def GetEdgesForInput(self, inp, context):
+        for edge in self.ks.get_edges_for_input(inp):
+            yield edge
+
+    def GetNumInputsForEdge(self, edge, context):
+        return kbp.IntMessage(val=self.ks.get_num_inputs_for_edge(edge))
             
+    def GetInputsForEdge(self, edge, context):
+        for inp in self.ks.get_inputs_for_edge(edge):
+            yield inp            
+           
+    def GetPendingInputs(self, emp, context): 
+        for inp in self.ks.get_pending_inputs(): 
+            yield inp
+
+    def MarkInputAsPending(self, inp, context): 
+        print("Marking input as pending", flush=True)
+        new_inp = self.ks.mark_input_as_pending(inp)
+        print(new_inp, flush=True) 
+        return new_inp
+        #return self.ks.mark_input_as_pending(inp) 
+
     def GetExecutionInputs(self, emp, context):
         for inp in self.ks.get_execution_inputs():
             yield inp
@@ -264,6 +301,47 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
     def GetInputById(self, uuid, context):
         return self.ks.get_input_by_id(uuid) 
 
+    def GetEdgeById(self, uuid, context):
+        return self.ks.get_edge_by_id(uuid)
+
+    def AddFuzzingEvent(self, event, context):
+        self.ks.add_fuzzing_event(event)
+        return kbp.Empty()
+        
+#    def AddFuzzingEvents(self, fuzzing_events_iterator, context):
+#        for fe in fuzzing_events_iterator:
+#            self.ks.add_fuzzing_event(fe)
+#        return kbp.Empty()
+
+    def GetFuzzingEvents(self, fuzzing_event_filter, context):
+        start_time = None
+        end_time = None
+        if fuzzing_event_filter.HasField("begin"):
+            start_time = fuzzing_event_filter.start.ToDatetime()
+        if fuzzing_event_filter.HasField("end"):
+            end_time = fuzzing_event_filter.end.ToDatetime()
+        for fe in self.ks.get_all_fuzzing_events():
+            filtered = False
+            t = fe.timestamp.ToDatetime()
+            # event is outside time window specified
+            if not (start_time is None) and (t < start_time):
+                filtered |= True
+            if not (end_time is None) and (t > end_time):
+                filtered |= True
+            # the event type for this fuzzing event
+            typ = fe.WhichOneof("event_type")
+            assert (not (typ is None))
+            # filtering decision exists for this event type 
+            # and True means filter it (discard)
+#            print ("typ = %s" % typ)
+            if hasattr(fuzzing_event_filter,typ) and getattr(fuzzing_event_filter,typ) == False:
+                filtered |= True
+            if not filtered:
+                yield fe
+    
+
+    
+    
 @hydra.main(config_path=fuzzing_config_dir + "/config.yaml")
 def serve(cfg):
     print(cfg.pretty(), flush=True)
