@@ -1,7 +1,7 @@
 # RAF Setup
 
 ## Installation: 
-Follow the instructions at https://kubernetes.io/docs/tasks/tools/install-minikube/ to install minikube, kubectl, and optionally (see below) a hypervisor (e.g. virtualbox). The instructions for linux are reproduced below for convenience: 
+Follow the instructions at https://kubernetes.io/docs/tasks/tools/install-minikube/ to install minikube, kubectl, and optionally (see below) a hypervisor (e.g. virtualbox). The instructions to install minikube and kubectl for linux are reproduced below for convenience: 
 ```
 curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64 \
   && chmod +x minikube
@@ -16,11 +16,13 @@ sudo apt-get install -y kubectl
 ```
 ## Setup Env: 
 #### gRPC setup
-On your host computer, you need to have python3.6 installed as well as the following python packages in order to make the grpcio python files from the .proto file in the run script.
+On your host computer, you need to have python3.6 and pip already installed. 
 ```
-sudo apt-get install python3-pip
-sudo python3.6 -m pip install grpcio
-sudo python3.6 -m pip install grpcio-tools
+sudo apt-get install python3.6 python3-pip
+```
+You then need to install the the following python packages in order to make the grpcio python files from the .proto file in the run script.
+```
+sudo python3.6 -m pip install grpcio  grpcio-tools
 ```
 #### Minikube setup
 Run **one** of the following sets of commands to setup the single-node Kubernetes cluster: 
@@ -35,15 +37,17 @@ If you have a linux environment you can use the following to set the cluster up 
 ```
 sudo apt-get update
 sudo apt-get install conntrack docker.io
-sudo groupadd docker # Note this group may already be added
+sudo groupadd docker # Note this group may already be added; that is ok
 sudo usermod -aG docker $USER 
 sudo minikube start --vm-driver=none
 sudo chown -R $USER $HOME/.minikube
+sudo chown -R $USER $HOME/.kube
 ```
 **NOTE**: You need to log out and log back in for the docker permissions to take effect.
 ## Setup RAF:
 After cloning this repository, run the `run` script in order to pull the gtfo repo, create the docker images, and make the grpc proto files. 
-```
+``
+git clone <this_repo> 
 cd raf
 ./run
 ```
@@ -69,8 +73,28 @@ job.batch/init created
 ## Monitoring RAF:
 After this init job has completed, the fuzzing manager cron job will be left to run the individual (fuzzing, taint, coverage) jobs. Their object specifications are found in their respective `spitfire/fuzzing-manager/jobs/config-{job_type}.yaml` file. 
 
-#### Monitoring Kubernetes Pods
-In order to debug / get status updates about the pods that are running, run any of the following:
+#### Monitoring Cluster with Script
+Under `spitfire/utils` we have included a sample monitoring script, `monitor.py`, that will display statistics and graphs regarding the fuzzing events that have occurred throughout the fuzzing campaign in the cluster. To run, you first need to make sure the following python packages are installed: 
+```
+pip3 install grpcio grpcio-tools hydra-core
+pip3 install pyyaml 
+pip3 install google-api-python-client protobuf 
+pip3 install google-auth
+
+git clone --recursive https://github.com/kubernetes-client/python.git
+cd python
+sudo python3.6 setup.py install 
+```
+You also need to make sure you have a way of displaying these graphs if you are running the cluster inside a non-GUI host (X11 forwarding with ssh is a good option). You then can run the `monitor.py`. 
+```
+python3.6 monitor.py
+```
+#### Monitoring Cluster Manually
+To suspend, you can simply run the following script to patch and suspend the fuzzing manager cron job that drives the campaign. 
+```
+./suspend.sh
+``` 
+To debug or get status updates about the pods that are running, run any of the following:
 ```
 kubectl get pods
 kubectl describe pod <pod-name>
