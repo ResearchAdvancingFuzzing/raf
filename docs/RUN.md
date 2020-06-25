@@ -10,7 +10,7 @@ sudo install minikube /usr/local/bin/
 ```
 ## Setup Env: 
 #### gRPC setup
-On your host computer, you need to have python3.6 and pip installed as well as the following python packages in order to make the grpcio python files from the .proto file in the run script.
+On your host computer, you need to have python3.6 installed as well as the following python packages in order to make the grpcio python files from the .proto file in the run script.
 ```
 sudo apt-get install python3-pip
 sudo python3.6 -m pip install grpcio
@@ -28,10 +28,9 @@ eval $(minikube docker-env)
 If you have a linux environment you can use the following to set the cluster up on your **host**.
 ```
 sudo apt-get update
-sudo apt install docker.io
-sudo groupadd docker
-sudo usermod -aG docker $USER
-sudo apt-get install conntrack
+sudo apt-get install conntrack docker.io
+sudo groupadd docker # Note this group may already be added
+sudo usermod -aG docker $USER 
 sudo minikube start --vm-driver=none
 sudo chown -R $USER $HOME/.minikube
 ```
