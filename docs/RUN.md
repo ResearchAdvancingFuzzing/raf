@@ -10,8 +10,9 @@ sudo install minikube /usr/local/bin/
 ```
 ## Setup Env: 
 #### gRPC setup
-On your host computer, you need to have python3.6 installed as well as the following in order to make the grpcio python files from the .proto file in the run script.
+On your host computer, you need to have python3.6 and pip installed as well as the following python packages in order to make the grpcio python files from the .proto file in the run script.
 ```
+sudo apt-get install python3-pip
 sudo python3.6 -m pip install grpcio
 sudo python3.6 -m pip install grpcio-tools
 ```
