@@ -31,6 +31,7 @@ sudo apt-get update
 sudo apt install docker.io
 sudo groupadd docker
 sudo usermod -aG docker $USER
+sudo apt-get install conntrack
 sudo minikube start --vm-driver=none
 sudo chown -R $USER $HOME/.minikube
 ```
