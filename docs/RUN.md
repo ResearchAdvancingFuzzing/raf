@@ -46,7 +46,7 @@ sudo chown -R $USER $HOME/.kube
 **NOTE**: You need to log out and log back in for the docker permissions to take effect.
 ## Setup RAF:
 After cloning this repository, run the `run` script in order to pull the gtfo repo, create the docker images, and make the grpc proto files. 
-``
+```
 git clone <this_repo> 
 cd raf
 ./run
