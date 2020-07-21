@@ -2,7 +2,7 @@
 
 ## Goal: We want to run multiple experiments/campaigns at once.
 
-###What we need: 
+### What we need: 
 - Different parameters for the config
 - Different versions of tools
 - Different driver scripts 
@@ -19,9 +19,9 @@
 
 # Tim's ideas for how expts could work.
 
-Here are some of the experimental support I'd like in RAF.
+Here is some of the experimental support I'd like in RAF.
 
-1. Starting from scratch, i.e. clone the repo and build docker containers
+## Starting from scratch, i.e. clone the repo and build docker containers
 
     % cd ~
     % git clone https://github.com/ResearchAdvancingFuzzing/raf
@@ -33,8 +33,7 @@ Here are some of the experimental support I'd like in RAF.
 
 Note that our prompt is [raf].  More on that later.
 
-
-2. Get a listing of the available experiments checked in and labeled in
+## Get a listing of the available experiments checked in and labeled in
 the repo
 
     [raf]% cd ~/raf
@@ -53,7 +52,7 @@ the repo
     ...
     
 
-2. Reproduce someone else's (or your) experiment that is checked in to
+## Reproduce someone else's (or your) experiment that is checked in to
 the raf repo.
 
 First, we have to "check out" that experiment meaning get all code and config for that.
@@ -78,7 +77,7 @@ Thus, the prompt was
 just [raf]. When we checked out tcn1, the prompt changed to indicate the
 current experiment.
 
-Now we can run the current experiment.
+Now that we have the experiment checked out, we can run the current experiment.
 
     [raf-tcn1]% raf-run
     RAF kicking off 1 run of experiment tcn1.
