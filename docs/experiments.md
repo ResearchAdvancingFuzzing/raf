@@ -39,16 +39,16 @@ the repo
     [raf]% cd ~/raf
     [raf]% raf-list-expts
     RAF listing available experiments.
-    Label	Comment			Creation Date		Creator		Git commit
-    expt1      	[Initial experiment...]	07-12-2020 10:12:12	hpreslier	ec0c395698a0e46881c6ddd24a245b9ee0ff6fdc
-    e-3-covg	[3-edges test to se...]	07-13-2020 09:18:01	tleek		a1f34a148e7e15678112f1673126f2b6b820d242
-    tcn1	[taint computute nu...] 08-12-2020 14:45:21	hpreslier	589be92e13038f3aa192ea6e0fde5a77f89be8ff
+    Label       Comment			Creation Date		Creator		Git commit
+    expt1       [Initial experiment...]	07-12-2020 10:12:12	hpreslier	ec0c395698a0e46881c6ddd24a245b9ee0ff6fdc
+    e-3-covg    [3-edges test to se...]	07-13-2020 09:18:01	tleek		a1f34a148e7e15678112f1673126f2b6b820d242
+    tcn1        [taint computute nu...] 08-12-2020 14:45:21	hpreslier	589be92e13038f3aa192ea6e0fde5a77f89be8ff
     ...
     [raf]% raf-list-expt e-3-covg
     RAF listing experiment details.
     Comment: 		   3-edges test to see if collecting more state (bb1->bb2->bb3 here) helps
-    Creation date: 	   07-13-2020 09:18:01
-    Git commit: 	   a1f34a148e7e15678112f1673126f2b6b820d242
+    Creation date:	   07-13-2020 09:18:01
+    Git commit:		   a1f34a148e7e15678112f1673126f2b6b820d242
     ...
     
 
