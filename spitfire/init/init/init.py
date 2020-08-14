@@ -39,7 +39,7 @@ def container(namespace, name, image, command, args, port):
 @hydra.main(config_path=f"{spitfire_dir}/config/expt1/config.yaml")
 def setup(cfg):
 
-    namespace = "default" #cfg.campaign.id 
+    namespace = cfg.campaign.id 
 
     # Setup access to cluster 
     config.load_incluster_config() 

@@ -1,3 +1,4 @@
 FROM ubuntu
 COPY spitfire/init/seed-corpus/corpus /data/seeds
-CMD mv /data/seeds /default
+WORKDIR /
+CMD mv /data/seeds $NAMESPACE
