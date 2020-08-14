@@ -1,4 +1,5 @@
 #!/bin/bash
+
 namespace=$1
 
 if [ -z "$namespace" ]
@@ -6,7 +7,6 @@ then
     echo "Usage: ./stop.sh <namespace>"
     exit 1
 fi
-
 
 kubectl delete cronjob fm -n $namespace
 kubectl delete job init -n $namespace
