@@ -1,13 +1,25 @@
 #!/bin/bash
-kubectl delete service grpc-server && kubectl delete deployment grpc-server
-kubectl delete configmap dir-config
-kubectl delete job init
-kubectl delete cronjob fm
+namespace=$1
+
+if [ -z "$namespace" ]
+then 
+    echo "Usage: ./stop.sh <namespace>"
+    exit 1
+fi
+
+
+kubectl delete cronjob fm -n $namespace
+kubectl delete job init -n $namespace
+kubectl delete service grpc-server -n $namespace
+kubectl delete deployment grpc-server -n $namespace
+kubectl delete configmap dir-config -n $namespace
 
 kjobs=`kubectl get jobs | grep -v NAME | awk '{print $1}'`
 for j in $kjobs
 do
     echo $j
-    kubectl delete job $j
+    kubectl delete job $j -n $namespace
 done
-kubectl delete pvc default
+
+kubectl delete pvc $namespace
+
