@@ -45,7 +45,7 @@ def display_map(coord, axs, label):
     axs.set_xlabel("Time (seconds)")
     axs.set_ylabel("Number of %s" % label) 
 
-@hydra.main(config_path=f"{spitfire_dir}/config/expt1/config.yaml")
+@hydra.main(config_path=f"{spitfire_dir}/config/config.yaml")
 def run(cfg):
 
     # Setup access to cluster 

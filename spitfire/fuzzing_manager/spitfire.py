@@ -157,7 +157,7 @@ def take_stock(core_v1):
     return rp
 
 
-@hydra.main(config_path=f"{spitfire_dir}/config/expt1/config.yaml")
+@hydra.main(config_path=f"{spitfire_dir}/config/config.yaml")
 def run(cfg):
 
     # Setup job information

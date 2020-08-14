@@ -24,7 +24,7 @@ import spitfire.protos.knowledge_base_pb2 as kbp
 import spitfire.protos.knowledge_base_pb2_grpc as kbpg
 
 
-@hydra.main(config_path=f"{spitfire_dir}/config/expt1/config.yaml")
+@hydra.main(config_path=f"{spitfire_dir}/config/config.yaml")
 def run(cfg):
 
     # Connect to the knowledge base 

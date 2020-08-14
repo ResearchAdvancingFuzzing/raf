@@ -140,7 +140,7 @@ import shutil
 log = logging.getLogger(__name__)
 
 # this should really be argv[1]
-fuzzing_config_dir = "%s/config/expt1" % spitfire_dir  # Can you send this in as an argument? 
+fuzzing_config_dir = "%s/config" % spitfire_dir  # Can you send this in as an argument? 
 
 
 def create_recording(cfg, inputfile, plog_filename): 

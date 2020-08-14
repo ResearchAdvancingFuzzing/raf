@@ -31,7 +31,7 @@ import knowledge_base_pb2_grpc as kbpg
 #import spitfire.protos.knowledge_base_pb2 as kbp
 #import spitfire.protos.knowledge_base_pb2_grpc as kbpg
 
-fuzzing_config_dir = f"{spitfire_dir}/config/expt1"
+fuzzing_config_dir = f"{spitfire_dir}/config"
 
 class KnowledgeBase(kbpg.KnowledgeBaseServicer):
     

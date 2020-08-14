@@ -354,7 +354,7 @@ def check_analysis_complete(cfg, kbs, inputfile):
 
 
 
-@hydra.main(config_path=f"{spitfire_dir}/config/expt1/config.yaml")
+@hydra.main(config_path=f"{spitfire_dir}/config/config.yaml")
 def run(cfg):    
     
     # Get the input file
