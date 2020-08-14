@@ -152,9 +152,9 @@ def run(cfg):
                 ("TAINT_ANALYSIS", int(cfg.manager.taint_analysis)), \
                 ("COVERAGE", int(cfg.manager.coverage))]
 
-    MAX_TAINT_OUT_DEGREE = cfg.manager.max_taint_out_degree
+    MAX_TAINT_OUT_DEGREE = int(cfg.manager.max_taint_out_degree)
 
-    RARE_EDGE_COUNT = cfg.manager.rare_edge_count
+    RARE_EDGE_COUNT = int(cfg.manager.rare_edge_count)
 
     # Compute budget 
     # so, like 10 cores or nodes or whatever
