@@ -32,29 +32,6 @@ import knowledge_base_pb2 as kbp
 import knowledge_base_pb2_grpc as kbpg
 import coverage
 
-# Make sure the counts, inputs, replays directory exists
-if not os.path.exists(counts_dir): 
-    os.mkdir(counts_dir) 
-if not os.path.exists(inputs_dir): 
-    os.mkdir(inputs_dir) 
-if not os.path.exists(replays_dir): 
-    os.mkdir(replays_dir)
-
-# some guess at how much time we'll spend on each of these
-fuzzing_dist = [("SEED_MUTATIONAL_FUZZ", 0.7), \
-                ("COVERAGE_FUZZ", 0.7), \
-                ("TAINT_FUZZ", 0.2), \
-                ("TAINT_ANALYSIS", 0.2), \
-                ("COVERAGE", 0.7)]
-
-MAX_TAINT_OUT_DEGREE = 16
-
-RARE_EDGE_COUNT = 3
-
-# Compute budget 
-# so, like 10 cores or nodes or whatever
-budget = 10 
-
 
 # if you have a distribution such as
 # where 0.3 is probability of "a", etc
@@ -159,6 +136,30 @@ def take_stock(core_v1):
 
 @hydra.main(config_path=f"{spitfire_dir}/config/config.yaml")
 def run(cfg):
+
+    # Make sure the counts, inputs, replays directory exists
+    if not os.path.exists(counts_dir): 
+        os.mkdir(counts_dir) 
+    if not os.path.exists(inputs_dir): 
+        os.mkdir(inputs_dir) 
+    if not os.path.exists(replays_dir): 
+        os.mkdir(replays_dir)
+
+    # some guess at how much time we'll spend on each of these
+    fuzzing_dist = [("SEED_MUTATIONAL_FUZZ", int(cfg.manager.seed_mutational_fuzz)), \
+                ("COVERAGE_FUZZ", int(cfg.manager.coverage_fuzz)), \
+                ("TAINT_FUZZ", int(cfg.manager.taint_fuzz)), \
+                ("TAINT_ANALYSIS", int(cfg.manager.taint_analysis)), \
+                ("COVERAGE", int(cfg.manager.coverage))]
+
+    MAX_TAINT_OUT_DEGREE = cfg.manager.max_taint_out_degree
+
+    RARE_EDGE_COUNT = cfg.manager.rare_edge_count
+
+    # Compute budget 
+    # so, like 10 cores or nodes or whatever
+    budget = cfg.manager.budget
+
 
     # Setup job information
     job_names = ["taint", "coverage", "fuzzer"]

@@ -22,4 +22,5 @@ do
 done
 
 kubectl delete pvc $namespace
+kubectl delete namespace $namespace
 

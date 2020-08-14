@@ -4,6 +4,5 @@
 target: 
     name: "xmllint"
     image: "target:xmllint"
-    corpus_image: "seed-corpus:v1" 
     main_addr: "0x51e0"
     source_hash: "3e7e75bed2cf2853b0d42d635d36676b3330d475"
