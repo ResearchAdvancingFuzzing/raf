@@ -13,26 +13,19 @@ from bisect import bisect_left
 
 from google.protobuf.timestamp_pb2 import Timestamp
 
-class Mode(Enum):
-    RUNNING = 1
-    PAUSED = 2
-        
+namespace = os.environ.get("NAMESPACE")
+spitfire_dir = "/%s%s" % (namespace, os.environ.get("SPITFIRE_DIR"))
 
-# walk up the path to find 'spitfire' and add that to python path
-# at most 10 levels up?
-p = os.path.abspath(__file__)
-for i in range(10):
-    (hd, tl) = os.path.split(p)
-    if tl == "spitfire":
-        sys.path.append(p)
-        sys.path.append(hd)
-        break
-    p = hd
-
+sys.path.append("/")
+sys.path.append(spitfire_dir) 
 
 from knowledge_store import KnowledgeStore
 
 import hashlib
+
+class Mode(Enum):
+    RUNNING = 1
+    PAUSED = 2
 
 def md5(strToMd5):
     encrptedMd5 = ""

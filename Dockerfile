@@ -1,8 +1,9 @@
 FROM ubuntu
 
-COPY spitfire /tmp
+COPY spitfire /spitfire
 WORKDIR /
-CMD cp -r /tmp/* /spitfire 
+CMD mv spitfire default 
+#CMD cp -r /tmp/* /spitfire 
 #CMD mkdir /shared/spitfire && cp -r /tmp/* /shared/spitfire
 #$SPITFIRE
 #&& cp -r /tmp/* /shared/spitfire

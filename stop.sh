@@ -1,10 +1,13 @@
 #!/bin/bash
-kubectl delete -f spitfire/init/init/config_fm.yaml
-kubectl delete -f spitfire/init/init/config_server.yaml
+kubectl delete service grpc-server && kubectl delete deployment grpc-server
+kubectl delete configmap dir-config
+kubectl delete job init
+kubectl delete cronjob fm
+
 kjobs=`kubectl get jobs | grep -v NAME | awk '{print $1}'`
 for j in $kjobs
 do
     echo $j
     kubectl delete job $j
 done
-kubectl delete -f config_init.yaml
+kubectl delete pvc default

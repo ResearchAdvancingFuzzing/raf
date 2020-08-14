@@ -11,8 +11,7 @@ WORKDIR python
 RUN python setup.py install 
 
 ENV SOURCE_DIR spitfire/init/init
+
 WORKDIR /
 COPY $SOURCE_DIR/init.py ./
-COPY $SOURCE_DIR/config_server.yaml ./ 
-COPY $SOURCE_DIR/config_fm.yaml ./
 COPY infinite ./

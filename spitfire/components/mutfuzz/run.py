@@ -6,13 +6,22 @@ import os
 import os.path
 import sys
 from collections import Counter
-spitfire_dir= os.environ.get('SPITFIRE') #"/spitfire" # Env variable
+
+# Env variables
+namespace = os.environ.get("NAMESPACE") 
+spitfire_dir = "/%s%s" % (namespace, os.environ.get('SPITFIRE_DIR')) 
+input_dir = "/%s%s" % (namespace, os.environ.get('INPUTS_DIR'))
+target_dir = "/%s%s" % (namespace, os.environ.get('TARGET_INSTR_DIR'))
+corpus_dir = "/%s%s" % (namespace, os.environ.get('CORPUS_DIR'))
+gtfo_dir = "/gtfo" #"/%s%s" % (namespace, os.environ.get('GTFO_DIR'))
+
+# Add to path 
 sys.path.append("/")
 sys.path.append(spitfire_dir) # this will be an env at some point 
 sys.path.append(spitfire_dir + "/protos")
-assert (not (spitfire_dir is None)) 
-import spitfire.protos.knowledge_base_pb2 as kbp
-import spitfire.protos.knowledge_base_pb2_grpc as kbpg
+
+import knowledge_base_pb2 as kbp
+import knowledge_base_pb2_grpc as kbpg
 import google.protobuf.json_format
 import subprocess
 import shutil
@@ -22,26 +31,12 @@ from google.protobuf import text_format
 
 log = logging.getLogger(__name__)
 
-# Get the environment
-work_dir = os.environ.get("WORK_DIR")
-input_dir = os.environ.get("INPUTS_DIR")
-gtfo_dir = os.environ.get("GTFO_DIR")
-target_dir = os.environ.get("TARGET_DIR") 
-spitfire_dir = os.environ.get("SPITFIRE")
-corpus_dir = os.environ.get("CORPUS_DIR")
-interesting_dir = "%s/interesting/crash/" % work_dir 
-coverage_dir = "%s/coverage" % work_dir
-
-
 inputs = {} 
 
 # Copy files from src to dest
 # Add the attrb and value to that file 
 def process_file(file_name, src, dest, attrb, value): 
     full_file_name = os.path.join(src, file_name) 
-    # Anything we need to get from results?
-    #if os.path.isfile(full_file_name) and full_file_name.endswith(".results"): 
-    #    f = open(full_file_name, "rb").read()
     if os.path.isfile(full_file_name) and full_file_name.endswith(".input"):
         kb_input = None
         if not file_name in inputs: 
@@ -52,7 +47,7 @@ def process_file(file_name, src, dest, attrb, value):
 
 def process_files(input_file, src, dest, attrb, value): 
     if (os.path.isdir(src)): 
-        src_files = os.listdir(src) 
+        src_files = os.listdir(src)
         for i, file_name in enumerate(src_files):
             ret = filecmp.cmp(input_file, os.path.join(src, file_name))
             if ret: 
@@ -60,22 +55,14 @@ def process_files(input_file, src, dest, attrb, value):
             process_file(file_name, src, dest, attrb, value)
 
 
-def send_to_database(kbs, inputs, kb_analysis):
+def send_to_database(kbs, inputs, kb_analysis, coverage_dir, interesting_dir):
     # Inputs is a dictionary of inputs to their kb_input 
-    #kb_inputs = inputs.values()
-    #print(inputs) 
-    #return
-
     num_inc_covg = 0
     num_crash = 0
     for inp_path in inputs:
         inp = inputs[inp_path]
-
-        # Add the input
-        # Check if the input exists: 
         result = kbs.InputExists(inp)
-        print(inp_path)
-        print(result.success)
+        #print(result.success)
         if not result.success: # Input did not exist before
             kb_input = kbs.AddInput(inp)
             # Add the fuzzing events
@@ -98,21 +85,18 @@ def send_to_database(kbs, inputs, kb_analysis):
     print("%d inputs that crashed" % num_crash) 
     print("Sent %d new inputs out of %d to the database" % 
             ((num_inc_covg+num_crash), len(inputs)))
-    #for kb_input in kb_inputs:
-    #    kbs.AddInput(kb_input) 
 
 
 
 def check_analysis_complete(cfg, kbs, inputfile):
-
 
     # get canonical representations for all of these things
     target_msg = kbp.Target(name=cfg.target.name, \
                             source_hash=cfg.target.source_hash)
     target = kbs.GetTarget(target_msg)
     
-    gtfo_msg = kbp.AnalysisTool(name=cfg.gtfo.name, \
-                               source_string=cfg.gtfo.source_string,
+    gtfo_msg = kbp.AnalysisTool(name=cfg.fuzzer.name, \
+                               source_string=cfg.fuzzer.source_string,
                                type=kbp.AnalysisTool.AnalysisType.MUTATION_FUZZER)
     gtfo     = kbs.AddAnalysisTool(gtfo_msg)
 
@@ -139,18 +123,11 @@ def check_analysis_complete(cfg, kbs, inputfile):
     return [False, fuzzer_input, fuzzer_analysis] 
 
 
-
-
-
-
-
-
-
 @hydra.main(config_path=f"{spitfire_dir}/config/expt1/config.yaml")
 def run(cfg):    
     
     target = "%s/%s" % (target_dir, cfg.target.name)
-    fcfg = cfg.gtfo 
+    fcfg = cfg.fuzzer
     inputfile = fcfg.input_file
 
     with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
@@ -185,14 +162,11 @@ def run(cfg):
                              timing_event=te))
         
     # Now let's fuzz
-
-    # Move to the working directory  
-    os.mkdir(work_dir)
-    os.chdir(work_dir)
    
     # Get Config Information 
     env = os.environ.copy()
-    env["LD_LIBRARY_PATH"] = f"{gtfo_dir}/gtfo/lib"
+    env["LD_LIBRARY_PATH"] = f"{gtfo_dir}/lib"
+    print(target)
     env["JIG_TARGET"] = f"{target}"
     env["JIG_TARGET_ARGV"] = fcfg.jig.target_arg
     extra_args = fcfg.extra_args.split() 
@@ -203,22 +177,25 @@ def run(cfg):
     ooze_env_mod_name = "OOZE_MODULE_NAME"
     if ooze_env_mod_name in env:
         mod_name = env[ooze_env_mod_name]
-        mod_name = f"{gtfo_dir}/gtfo/gtfo/ooze/{mod_name}" 
+        mod_name = f"{gtfo_dir}/gtfo/ooze/{mod_name}" 
         env[ooze_env_mod_name] = mod_name
     
     # Make the gtfo command 
-    cmd = f'{gtfo_dir}/gtfo/bin/the_fuzz -S {gtfo_dir}/gtfo/gtfo/analysis/%s -O {gtfo_dir}/gtfo/gtfo/ooze/%s \
-            -J {gtfo_dir}/gtfo/gtfo/the_fuzz/%s -i %s -n %d -x %d -c %s' % \
+    cmd = f'{gtfo_dir}/bin/the_fuzz -S {gtfo_dir}/gtfo/analysis/%s -O {gtfo_dir}/gtfo/ooze/%s \
+            -J {gtfo_dir}/gtfo/the_fuzz/%s -i %s -n %d -x %d -c %s' % \
             (fcfg.analysis.name, fcfg.ooze.name, fcfg.jig.name, fcfg.input_file, fcfg.iteration_count, \
             fcfg.max_input_size, fcfg.analysis_load_file) 
     cmd = cmd.split()
     cmd += ["-s", fcfg.ooze_seed] 
     print(cmd) 
-    #return 
+
     # Run fuzzer 
     proc = subprocess.run(args=cmd, env=env)
     exit_code = proc.returncode
-
+    
+    interesting_dir = "%s/interesting/crash/" % os.getcwd()
+    coverage_dir = "%s/coverage" % os.getcwd() 
+    
     process_files(fcfg.input_file, coverage_dir, input_dir, "increased_coverage", 1)
     process_files(fcfg.input_file, interesting_dir, input_dir, "crash", 1) 
 
@@ -229,7 +206,7 @@ def run(cfg):
         input_kb.pending_lock = False
         kb_input = kbs.AddInput(input_kb)
         
-        send_to_database(kbs, inputs, kb_analysis) 
+        send_to_database(kbs, inputs, kb_analysis, coverage_dir, interesting_dir) 
 
         te =  kbp.TimingEvent(type=kbp.TimingEvent.Type.ANALYSIS,
                               event=kbp.TimingEvent.Event.END)        

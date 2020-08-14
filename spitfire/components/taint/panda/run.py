@@ -22,22 +22,25 @@ from panda import Panda, blocking
 from panda import * 
 import time
 import itertools
-spitfire_dir= os.environ.get('SPITFIRE') #"/spitfire" # Env variable
+
+namespace = os.environ.get("NAMESPACE") 
+spitfire_dir = "/%s%s" % (namespace, os.environ.get('SPITFIRE_DIR')) #"/spitfire" # Env variable
+replaydir = "/%s%s" % (namespace, os.environ.get('REPLAY_DIR')) # make this env variable 
+targetdir = "/%s%s" % (namespace, os.environ.get('TARGET_DIR')) # "/install" # Env variable  
+
 sys.path.append("/")
 sys.path.append(spitfire_dir) # this will be an env at some point 
 sys.path.append(spitfire_dir + "/protos")
+
 assert (not (spitfire_dir is None)) 
-import spitfire.protos.knowledge_base_pb2 as kbp 
-import spitfire.protos.knowledge_base_pb2_grpc as kbpg
+import knowledge_base_pb2 as kbp 
+import knowledge_base_pb2_grpc as kbpg
 import knowledge_base
 import plog_pb2
 from taint_analysis import * 
 from google.protobuf import text_format 
 from capstone import * 
 # Get the environment
-
-replaydir = os.environ.get('REPLAY_DIR') # make this env variable 
-targetdir = os.environ.get('TARGET_DIR') # "/install" # Env variable  
 
 # Functions
 
@@ -551,7 +554,6 @@ def send_to_database(kb_analysis, ta, old_kb_input, module_list, stub):
  
 
 def check_analysis_complete(cfg, kbs, inputfile):
-
 
     # get canonical representations for all of these things
     target_msg = kbp.Target(name=cfg.target.name, \
