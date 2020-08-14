@@ -6,4 +6,4 @@ defaults:
     - fuzzer: gtfo
 campaign:
   id: heather 
-  storage: 2Gi
+  storage: 8Gi

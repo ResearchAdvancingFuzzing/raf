@@ -47,7 +47,6 @@ RUN cp /target_source/.libs/xmllint /target
 RUN cp -r /instrumented/xmllint /target-instr/xmllint
 
 #RUN echo "$NAMESPACE"
-COPY infinite /
-CMD mv target default && mv target-instr default
-#CMD mv target ${NAMESPACE}  && mv target-instr ${NAMESPACE}
+#COPY infinite /
+CMD mv target $NAMESPACE && mv target-instr $NAMESPACE
 
