@@ -10,28 +10,27 @@ from concurrent import futures
 
 # walk up the path to find 'spitfire' and add that to python path 
 # at most 10 levels up?  
-p = os.path.abspath(__file__)
-for i in range(10):
-    (hd, tl) = os.path.split(p)
-    if tl == "spitfire":
-        print("adding path " + p)
-        print("adding path " + hd)
-        sys.path.append(p)
-        sys.path.append(hd)
-        sys.path.append(p + "/protos")
-        break
-    p = hd
-
-
 
 import knowledge_store_pickle as ks
 #import protos.knowledge_base_pb2 as kbp
 #import protos.knowledge_base_pb2_grpc as kbpg
-import knowledge_base_pb2 as kbp
-import knowledge_base_pb2_grpc as kbpg 
 
-spitfire_dir = os.environ.get("SPITFIRE")
-print(spitfire_dir, flush=True)
+namespace = os.environ.get("NAMESPACE")
+print(namespace)
+spitfire_subdir = os.environ.get("SPITFIRE_DIR")
+print(spitfire_subdir)
+#sys.path.append("/")
+spitfire_dir = "/%s%s" % (namespace, spitfire_subdir)
+#spitfire_dir = "/home/hpreslier/raf/spitfire"
+#print(spitfire_dir)
+sys.path.append(spitfire_dir)
+sys.path.append(spitfire_dir + "/protos") 
+#assert (not (spitfire_dir is None))
+import knowledge_base_pb2 as kbp
+import knowledge_base_pb2_grpc as kbpg
+#import spitfire.protos.knowledge_base_pb2 as kbp
+#import spitfire.protos.knowledge_base_pb2_grpc as kbpg
+
 fuzzing_config_dir = f"{spitfire_dir}/config/expt1"
 
 class KnowledgeBase(kbpg.KnowledgeBaseServicer):
@@ -348,6 +347,7 @@ def serve(cfg):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=1000), maximum_concurrent_rpcs=16)
     kbpg.add_KnowledgeBaseServicer_to_server(KnowledgeBase(cfg), server)
     server.add_insecure_port("[::]:%d" % cfg.knowledge_base.port)
+    print(cfg.knowledge_base.port)
     server.start()
     server.wait_for_termination()
 

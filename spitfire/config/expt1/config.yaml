@@ -4,3 +4,6 @@ defaults:
     - knowledge_base: pickle
     - coverage: panda 
     - fuzzer: gtfo
+campaign:
+  id: heather 
+  storage: 2Gi

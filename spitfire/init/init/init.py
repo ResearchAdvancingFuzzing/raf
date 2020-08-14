@@ -6,46 +6,81 @@ import grpc
 import sys
 import hydra
 import time 
-spitfire_dir = os.environ.get("SPITFIRE") 
-sys.path.append("/")
-print(spitfire_dir) 
-sys.path.append(spitfire_dir)
-sys.path.append(spitfire_dir + "/protos")
-assert (not (spitfire_dir is None))
-import spitfire.protos.knowledge_base_pb2 as kbp
-import spitfire.protos.knowledge_base_pb2_grpc as kbpg 
 
-corpus_dir = os.environ.get("CORPUS_DIR") 
+# Setup env variables
+namespace = os.environ.get("NAMESPACE") 
+corpus_dir = "/%s%s" % (namespace, os.environ.get("CORPUS_DIR")) 
+spitfire_dir = "/%s%s" % (namespace, os.environ.get("SPITFIRE_DIR")) 
+
+# Add to path 
+sys.path.append(spitfire_dir + "/protos")
+sys.path.append(spitfire_dir + "/utils")
+
+# Import 
+import knowledge_base_pb2 as kbp
+import knowledge_base_pb2_grpc as kbpg 
+import coverage 
+
 # This requires the config_server.yaml file named accordingly and the yaml deployment 
 # specified first and the yaml service second 
-def create_kb_from_yaml(cfg, client, namespace):
-    print("Starting server") 
-    core_v1 = client.CoreV1Api()
-    apps_v1 = client.AppsV1Api()
-    
-    with open("/config_server.yaml") as f:
-        kb = yaml.safe_load_all(f) 
-        kb_deployment = next(kb) 
-        kb_service = next(kb)
-        assert (kb_deployment["spec"]["template"]["spec"]["containers"][0]["ports"][0]["name"] == \
-                kb_service["spec"]["ports"][0]["targetPort"]) 
-        kb_service["spec"]["clusterIP"] = cfg.knowledge_base.host
-        kb_service["spec"]["ports"][0]["port"] = cfg.knowledge_base.port
-        apps_v1.create_namespaced_deployment(body=kb_deployment, namespace=namespace)
-        core_v1.create_namespaced_service(body=kb_service, namespace=namespace) 
-    
-    # Wait for the server to start running 
-    time.sleep(10)
+
+# <name> container in <namespace> with volume mounts and env configured
+# command and args are a list or None
+# port is a port # or None
+def container(namespace, name, image, command, args, port): 
+        return client.V1Container(
+            name=name, command=command, args=args, image=image, 
+            volume_mounts=[client.V1VolumeMount(
+                name="%s-storage" % namespace, mount_path="/%s" % namespace)],
+            env_from=[client.V1EnvFromSource(
+                client.V1ConfigMapEnvSource(name="dir-config"))],
+            ports=None if not port else [client.V1ContainerPort(container_port=port)])
 
 @hydra.main(config_path=f"{spitfire_dir}/config/expt1/config.yaml")
 def setup(cfg):
-    
+
+    namespace = "default" #cfg.campaign.id 
+
     # Setup access to cluster 
     config.load_incluster_config() 
-    k_client = client.ApiClient()
-    
-    # Create the kb server and check the status  
-    create_kb_from_yaml(cfg, client, "default")
+    k_client = client.ApiClient() 
+    core_api_instance = client.CoreV1Api()
+    apps_api_instance = client.AppsV1Api()
+    batch_beta_api_instance = client.BatchV1beta1Api() 
+
+    # Create the kb server: deployment and service 
+    deployment_name=cfg.knowledge_base.name
+    labels={"server": deployment_name}
+    res = apps_api_instance.create_namespaced_deployment(
+           namespace, client.V1Deployment(
+               metadata=client.V1ObjectMeta(name=deployment_name, labels=labels), 
+                spec=client.V1DeploymentSpec(
+                    selector=client.V1LabelSelector(match_labels=labels),
+                    template=client.V1PodTemplateSpec(
+                        metadata=client.V1ObjectMeta(name=deployment_name, labels=labels),
+                        spec=client.V1PodSpec(
+                            containers=[container(namespace, deployment_name, "knowledge-base:v1", 
+                                None, None, cfg.knowledge_base.port)],
+                            volumes=[client.V1Volume(
+                                name="%s-storage" % namespace, 
+                                persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(
+                                    claim_name=namespace))])))))
+
+    service_name="%s" % deployment_name
+    core_api_instance.create_namespaced_service(
+            namespace, client.V1Service(
+                metadata=client.V1ObjectMeta(name=service_name), 
+                spec=client.V1ServiceSpec(
+                    cluster_ip=cfg.knowledge_base.host, 
+                    selector=labels, 
+                    ports=[client.V1ServicePort(
+                        port=int(cfg.knowledge_base.port), 
+                        target_port=int(cfg.knowledge_base.port),
+                        node_port=int(cfg.knowledge_base.external_port))],
+                    type="NodePort")))
+  
+    # Let's give this time to setup
+    time.sleep(10)
 
     # Send experiment information to the database 
     with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
@@ -75,10 +110,29 @@ def setup(cfg):
         # set fuzzing manager to run
         kbs.Run(kbp.Empty())
         
-    print("here")  
-    # Need to start up the fm
-    utils.create_from_yaml(k_client, "/config_fm.yaml")
 
+    # Need to start up the fm and create the config map in this namespace  
+    #core_api_instance.create_namespaced_config_map(namespace,
+    #        client.V1ConfigMap(
+    #            metadata=client.V1ObjectMeta(name="job-counts"), 
+    #            data={"COUNTS_DIR": "/counts", "FUZZER": '0', "TAINT": '0', "COVERAGE": '0'}))
+
+    name = "fm"
+    batch_beta_api_instance.create_namespaced_cron_job(namespace, 
+            client.V1beta1CronJob(
+                metadata=client.V1ObjectMeta(name=name),
+                spec=client.V1beta1CronJobSpec(schedule="*/1 * * * *", successful_jobs_history_limit=100, failed_jobs_history_limit=30, 
+                    job_template=client.V1beta1JobTemplateSpec(metadata=client.V1ObjectMeta(name=name), 
+                        spec=client.V1JobSpec(template=client.V1PodTemplateSpec(
+                            spec=client.V1PodSpec(
+                                containers=[container(namespace, name, "fm:v1", None, None, None)],
+                                volumes=[client.V1Volume(
+                                    name="%s-storage" % namespace, 
+                                    persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(
+                                        claim_name=namespace))],
+                                restart_policy="OnFailure")))))))
+    
+    
 
 if __name__ == '__main__':
     setup()

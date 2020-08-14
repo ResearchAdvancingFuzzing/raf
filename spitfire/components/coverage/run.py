@@ -9,13 +9,22 @@ from os.path import basename
 import os.path
 import sys
 from collections import Counter
-spitfire_dir= os.environ.get('SPITFIRE') #"/spitfire" # Env variable
+
+# Get the environment
+namespace = os.environ.get("NAMESPACE")
+spitfire_dir = "/%s%s" % (namespace, os.environ.get('SPITFIRE_DIR'))
+input_dir = "/%s%s" % (namespace, os.environ.get("INPUTS_DIR"))
+target_dir = "/%s%s" % (namespace, os.environ.get("TARGET_DIR"))
+corpus_dir = "/%s%s" % (namespace, os.environ.get("CORPUS_DIR"))
+replay_dir = "/%s%s" % (namespace, os.environ.get("REPLAY_DIR"))
+
+# Add to the path 
 sys.path.append("/")
 sys.path.append(spitfire_dir) # this will be an env at some point 
 sys.path.append(spitfire_dir + "/protos")
-assert (not (spitfire_dir is None)) 
-import spitfire.protos.knowledge_base_pb2 as kbp
-import spitfire.protos.knowledge_base_pb2_grpc as kbpg
+
+import knowledge_base_pb2 as kbp
+import knowledge_base_pb2_grpc as kbpg
 import google.protobuf.json_format
 import subprocess
 import shutil
@@ -25,11 +34,6 @@ from google.protobuf import text_format
 
 log = logging.getLogger(__name__)
 
-# Get the environment
-input_dir = os.environ.get("INPUTS_DIR")
-target_dir = os.environ.get("TARGET_DIR") 
-corpus_dir = os.environ.get("CORPUS_DIR")
-replay_dir = os.environ.get("REPLAY_DIR")
 
 # Class to contain result of libraries 
 '''

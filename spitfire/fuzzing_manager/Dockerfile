@@ -20,10 +20,6 @@ RUN python3.6 setup.py install
 WORKDIR /
 ENV SOURCE_DIR spitfire/fuzzing_manager
 COPY $SOURCE_DIR/spitfire.py ./
-COPY $SOURCE_DIR/jobs/config_taint.yaml ./
-COPY $SOURCE_DIR/jobs/config_fuzzer.yaml ./
-COPY $SOURCE_DIR/jobs/config_coverage.yaml ./
 COPY infinite ./
 #CMD ./infinite
 CMD python3.6 spitfire.py 
-

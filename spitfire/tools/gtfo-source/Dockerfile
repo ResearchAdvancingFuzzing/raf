@@ -17,7 +17,6 @@ WORKDIR /fuzzing/build/the_fuzz
 RUN CC=clang cmake -DCMAKE_INSTALL_PREFIX=/fuzzing/gtfo ../../the_fuzz/
 RUN make
 RUN make install
-WORKDIR /fuzzing/
 
-CMD cp -r /fuzzing/gtfo/  /gtfo-source
-#CMD mkdir /shared/gtfo && cp -r /fuzzing/gtfo /shared/gtfo
+WORKDIR /
+RUN mv /fuzzing/gtfo  /gtfo

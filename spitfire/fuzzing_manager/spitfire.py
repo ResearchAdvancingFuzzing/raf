@@ -14,15 +14,31 @@ import grpc
 import sys
 from pprint import pprint
 
-spitfire_dir = os.environ.get("SPITFIRE")
+# Get Environemnt variables 
+namespace = os.environ.get("NAMESPACE")
+spitfire_dir = "/%s%s" % (namespace, os.environ.get("SPITFIRE_DIR"))
+corpus_dir = "/%s%s" % (namespace, os.environ.get("CORPUS_DIR"))
+inputs_dir = "/%s%s" % (namespace, os.environ.get("INPUTS_DIR")) 
+replays_dir = "/%s%s" % (namespace, os.environ.get("REPLAY_DIR"))
+counts_dir = "/%s/counts" % namespace
+
+# Add to the python path for more imports
 sys.path.append("/")
 sys.path.append(spitfire_dir)
 sys.path.append(spitfire_dir + "/protos")
-assert (not (spitfire_dir is None))
-import spitfire.protos.knowledge_base_pb2 as kbp
-import spitfire.protos.knowledge_base_pb2_grpc as kbpg
+sys.path.append(spitfire_dir + "/utils")
 
-from spitfire.utils import coverage
+import knowledge_base_pb2 as kbp
+import knowledge_base_pb2_grpc as kbpg
+import coverage
+
+# Make sure the counts, inputs, replays directory exists
+if not os.path.exists(counts_dir): 
+    os.mkdir(counts_dir) 
+if not os.path.exists(inputs_dir): 
+    os.mkdir(inputs_dir) 
+if not os.path.exists(replays_dir): 
+    os.mkdir(replays_dir)
 
 # some guess at how much time we'll spend on each of these
 fuzzing_dist = [("SEED_MUTATIONAL_FUZZ", 0.7), \
@@ -38,12 +54,6 @@ RARE_EDGE_COUNT = 3
 # Compute budget 
 # so, like 10 cores or nodes or whatever
 budget = 10 
-
-
-# Get env
-corpus_dir = os.environ.get("CORPUS_DIR")
-counts_dir = os.environ.get("COUNTS_DIR") 
-
 
 
 # if you have a distribution such as
@@ -66,34 +76,42 @@ def choose(dist):
             return label
 
 
-def create_job_from_yaml(api_instance, num, arg, template_file, namespace): 
-    commands = ["python3.6"]
+def container(namespace, name, image, command, args, port): 
+        return client.V1Container(
+            name=name, command=command, args=args, image=image, 
+            volume_mounts=[client.V1VolumeMount(
+                name="%s-storage" % namespace, mount_path="/%s" % namespace)],
+            env_from=[client.V1EnvFromSource(
+                client.V1ConfigMapEnvSource(name="dir-config"))],
+            ports=None if not port else [client.V1ContainerPort(container_port=port)])
+
+
+def create_job(api_instance, image, job_name, num, arg, namespace): 
+    
+    name ="%s-%s" % (job_name, str(num)) # unique name 
+    command = ["python3.6"] 
     args = ["run.py"]
     args.extend(arg)
-    print(args) # override hydra here
-    #return
-    with open( template_file ) as f:
-        job=yaml.safe_load(f)
-        print(job)
-        name ="%s-%s" % (job["metadata"]["name"], str(num)) 
-        job["metadata"]["name"] = name
-        job["spec"]["template"]["metadata"]["name"] = name
-        job["spec"]["template"]["spec"]["containers"][0]["name"] = name
-        job["spec"]["template"]["spec"]["containers"][0]["command"] = commands
-        job["spec"]["template"]["spec"]["containers"][0]["args"] = args
-        #job["spec"]["template"]["metadata"]["labels"]["app"]=name
-	#job["spec"]["template"]["spec"]["containers"][0]["image"]=image
-	#job["spec"]["template"]["spec"]["containers"][0]["command"]=commands
-	#job["spec"]["template"]["spec"]["containers"][0]["env"]=envs
-    print(job)
-    api_response = api_instance.create_namespaced_job(body=job, namespace=namespace)
-    print("Job created. status='%s'" % str(api_response.status))
-#    pprint(api_response)
-    return job
+    result = api_instance.create_namespaced_job(namespace=namespace, 
+            body=client.V1Job(
+                metadata=client.V1ObjectMeta(name=name, labels={"tier": "backend"}),
+                spec=client.V1JobSpec(
+                    template=client.V1PodTemplateSpec(
+                        metadata=client.V1ObjectMeta(name=name), 
+                        spec=client.V1PodSpec(
+                            containers=[container(namespace, name, image, command, args, None)],
+                            volumes=[client.V1Volume(
+                                name="%s-storage" % namespace, 
+                                persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(
+                                    claim_name=namespace))],
+                            restart_policy="OnFailure"))))) 
+    return result
+
 
 class Job: 
-    def __init__(self, name): 
-        self.file_name = f"/config_{name}.yaml"
+    def __init__(self, name):
+#        self.file_name = f"/config_{name}.yaml"
+        self.name = name
         self.count_file = "%s/%s" % (counts_dir, name)
         # Setup the count; we need them to be persistent 
         try:
@@ -138,15 +156,15 @@ def take_stock(core_v1):
         print("\n")
     return rp
 
-    
+
 @hydra.main(config_path=f"{spitfire_dir}/config/expt1/config.yaml")
 def run(cfg):
 
     # Setup job information
     job_names = ["taint", "coverage", "fuzzer"]
     jobs = {name:Job(name) for name in job_names}  
-
     #N = consult kubernetes to figure out how much many cores we are using currently
+
     
     # Setup access to cluster 
     config.load_incluster_config()
@@ -173,7 +191,7 @@ def run(cfg):
         print ("A previous FM is still running -- exiting")
         return
 
-    
+
     # Cleanup anything from before 
     for cj in batch_v1.list_namespaced_job(namespace=namespace, label_selector='tier=backend').items: 
         if not cj.status.active and cj.status.succeeded: 
@@ -206,7 +224,7 @@ def run(cfg):
         #S = set of original corpus seed inputs
         S = {inp.uuid for inp in kbs.GetSeedInputs(kbp.Empty())} 
         print("%d Seeds" % (len(S)))
-            
+        
         #F = set of inputs we have done mutational fuzzing on so far
         F = {inp.uuid for inp in kbs.GetExecutionInputs(kbp.Empty())}
         print("%d Execution" % (len(F)))
@@ -288,7 +306,7 @@ def run(cfg):
                 job = jobs["fuzzer"]
                 job.update_count_by(1) 
                 
-                args = [f"gtfo.input_file={kb_inp.filepath}"]
+                args = [f"fuzzer.input_file={kb_inp.filepath}"]
                 try:
                     
                     fme = kbp.FuzzingManagerEvent(number=jobs_created, type=
@@ -296,7 +314,8 @@ def run(cfg):
                     kbs.AddFuzzingEvent(kbp.FuzzingEvent(fuzzing_manager_event=fme))
                     
                     kbs.MarkInputAsPending(kb_inp)
-                    create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace)  
+                    #create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace)  
+                    create_job(batch_v1, cfg[job.name].image, job.name, job.get_count(), args, namespace) 
                     print ("uuid for input is %s" % (str(s_uuid)))
                 except Exception as e:
                     print("Unable to create job exception = %s" % str(e))
@@ -342,7 +361,7 @@ def run(cfg):
                 
                 job = jobs["fuzzer"]
                 job.update_count_by(1) 
-                args = [f"gtfo.input_file={max_inp.filepath}"] 
+                args = [f"fuzzer.input_file={max_inp.filepath}"] 
                 try:
                
                     fme = kbp.FuzzingManagerEvent(number=jobs_created, type=
@@ -350,7 +369,8 @@ def run(cfg):
                     
                     kbs.AddFuzzingEvent(kbp.FuzzingEvent(fuzzing_manager_event=fme))
                     kbs.MarkInputAsPending(kb_inp)
-                    create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace) 
+                    #create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace) 
+                    create_job(batch_v1, cfg[job.name].image, job.name, job.get_count(), args, namespace) 
                     print ("uuid for input is %s" % (str(max_inp.uuid)))
                 except Exception as e:
                     print("Unable to create job exception = %s" % str(e))
@@ -417,8 +437,8 @@ def run(cfg):
                 # Run fuzzer with this fbs 
                 job = jobs["fuzzer"]
                 job.update_count_by(1) 
-                args = [f"gtfo.input_file={kb_inp.filepath}", f"gtfo.ooze.name=restrict_bytes.so", \
-                        f"gtfo.extra_args='JIG_MAP_SIZE=65536 ANALYSIS_SIZE=65536 \
+                args = [f"fuzzer.input_file={kb_inp.filepath}", f"fuzzer.ooze.name=restrict_bytes.so", \
+                        f"fuzzer.extra_args='JIG_MAP_SIZE=65536 ANALYSIS_SIZE=65536 \
                         OOZE_LABELS={str_fbs} OOZE_LABELS_SIZE={fbs_len} OOZE_MODULE_NAME=afl_havoc.so'"] 
                 print(args)
                 try:
@@ -426,7 +446,8 @@ def run(cfg):
                             kbp.FuzzingManagerEvent.Type.TAINT_FUZZ)
                     kbs.AddFuzzingEvent(kbp.FuzzingEvent(fuzzing_manager_event=fme))
                     kbs.MarkInputAsPending(kb_inp)
-                    create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace) 
+                    #create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace) 
+                    create_job(batch_v1, cfg[job.name].image, job.name, job.get_count(), args, namespace) 
                     print ("uuid for input is %s" % (str(kb_inp.uuid)))
                 except Exception as e:
                     print("Unable to create job exception = %s" % str(e))
@@ -470,7 +491,8 @@ def run(cfg):
                             kbp.FuzzingManagerEvent.Type.TAINT_ANALYSIS)
                     kbs.AddFuzzingEvent(kbp.FuzzingEvent(fuzzing_manager_event=fme))
                     kbs.MarkInputAsPending(kb_inp)
-                    create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace)  
+                    #create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace)  
+                    create_job(batch_v1, cfg[job.name].image, job.name, job.get_count(), args, namespace) 
                     print ("uuid for input is %s" % (str(kb_inp.uuid)))
                 except Exception as e:
                     print("Unable to create job exception = %s" % str(e))
@@ -512,7 +534,8 @@ def run(cfg):
                             kbp.FuzzingManagerEvent.Type.COVERAGE_ANALYSIS)
                     kbs.AddFuzzingEvent(kbp.FuzzingEvent(fuzzing_manager_event=fme))
                     kbs.MarkInputAsPending(kb_inp)
-                    create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace) 
+                    #create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace) 
+                    create_job(batch_v1, cfg[job.name].image, job.name, job.get_count(), args, namespace) 
                     print ("uuid for input is %s" % (str(kb_inp.uuid)))
                 except Exception as e:
                     print("Unable to create job exception = %s" % str(e))

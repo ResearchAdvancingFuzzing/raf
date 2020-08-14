@@ -1,4 +1,5 @@
-FROM ubuntu:18.04
+#FROM ubuntu:18.04
+FROM gtfo-source:v1
 RUN apt-get update -y 
 RUN apt-get upgrade -y
 RUN apt-get install -y curl xxd python3.6 python3-pip libyaml-0-2 libyaml-dev 
