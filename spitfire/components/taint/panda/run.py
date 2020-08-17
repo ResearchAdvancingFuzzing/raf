@@ -22,6 +22,7 @@ from panda import Panda, blocking
 from panda import * 
 import time
 import itertools
+from kubernetes import client, config
 
 namespace = os.environ.get("NAMESPACE") 
 spitfire_dir = "/%s%s" % (namespace, os.environ.get('SPITFIRE_DIR')) #"/spitfire" # Env variable
@@ -598,9 +599,16 @@ def run(cfg):
     # Get the input file
     inputfile = cfg.taint.input_file 
     
+    # Setup access to cluster 
+    config.load_incluster_config()
+    core_api = client.CoreV1Api()
+    service = core_api.list_namespaced_service(namespace=namespace)
+    ip = service.items[0].spec.cluster_ip
+    port = service.items[0].spec.ports[0].port
+    
     # Send over some preliminary data to check if we have done this taint before 
-    with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
-        
+    with grpc.insecure_channel('%s:%d' % (ip, port)) as channel:
+    
         log.info("Connected to knowledge_base")
 
         kbs = kbpg.KnowledgeBaseStub(channel)
@@ -667,7 +675,7 @@ def run(cfg):
     fm = ingest_log_to_taint_obj(cfg, asid, modules, "2" + plog_file_name) 
     
     # Send the information over to the database 
-    with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
+    with grpc.insecure_channel('%s:%d' % (ip, port)) as channel:
     
         stub = kbpg.KnowledgeBaseStub(channel) #spitire_pb2_grpc.SpitfireStub(kb_channel)
         

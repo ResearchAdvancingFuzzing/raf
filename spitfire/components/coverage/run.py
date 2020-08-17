@@ -9,6 +9,7 @@ from os.path import basename
 import os.path
 import sys
 from collections import Counter
+from kubernetes import config, client 
 
 # Get the environment
 namespace = os.environ.get("NAMESPACE")
@@ -359,9 +360,16 @@ def run(cfg):
     
     # Get the input file
     input_file = cfg.coverage.input_file 
-
+   
+    # Setup access to cluster 
+    config.load_incluster_config()
+    core_api = client.CoreV1Api()
+    service = core_api.list_namespaced_service(namespace=namespace)
+    ip = service.items[0].spec.cluster_ip
+    port = service.items[0].spec.ports[0].port
+    
     # Add the analysis 
-    with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
+    with grpc.insecure_channel('%s:%d' % (ip, port)) as channel:
         
         log.info("Connected to knowledge_base")
 
@@ -417,7 +425,7 @@ def run(cfg):
 
     edges = ingest_log(cfg, asid, modules, plog_file)
     
-    with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
+    with grpc.insecure_channel('%s:%d' % (ip, port)) as channel:
         print("here: connected");
         
         stub = kbpg.KnowledgeBaseStub(channel) 

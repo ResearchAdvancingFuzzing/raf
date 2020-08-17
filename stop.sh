@@ -4,7 +4,7 @@ namespace=$1
 
 if [ -z "$namespace" ]
 then 
-    echo "Usage: ./stop.sh <namespace>"
+    echo "Usage: ./stop.sh <campaign-id>"
     exit 1
 fi
 
@@ -22,5 +22,6 @@ do
 done
 
 kubectl delete pvc $namespace
+kubectl delete pv "$namespace-pv"
 kubectl delete namespace $namespace
 

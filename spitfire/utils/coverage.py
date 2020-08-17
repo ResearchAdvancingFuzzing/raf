@@ -1,8 +1,8 @@
 
 import random
 
-import spitfire.protos.knowledge_base_pb2 as kbp
-import spitfire.protos.knowledge_base_pb2_grpc as kbpg
+import knowledge_base_pb2 as kbp
+import knowledge_base_pb2_grpc as kbpg
 
 # if an edge is in this or fewer inputs,
 # consider it rare

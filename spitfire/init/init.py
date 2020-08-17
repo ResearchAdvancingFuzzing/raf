@@ -71,19 +71,21 @@ def setup(cfg):
             namespace, client.V1Service(
                 metadata=client.V1ObjectMeta(name=service_name), 
                 spec=client.V1ServiceSpec(
-                    cluster_ip=cfg.knowledge_base.host, 
                     selector=labels, 
                     ports=[client.V1ServicePort(
                         port=int(cfg.knowledge_base.port), 
-                        target_port=int(cfg.knowledge_base.port),
-                        node_port=int(cfg.knowledge_base.external_port))],
+                        target_port=int(cfg.knowledge_base.port))],
                     type="NodePort")))
   
     # Let's give this time to setup
     time.sleep(10)
 
-    # Send experiment information to the database 
-    with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
+    service = core_api_instance.list_namespaced_service(namespace=namespace)
+    ip = service.items[0].spec.cluster_ip
+    port = service.items[0].spec.ports[0].port
+    node_port = service.items[0].spec.ports[0].node_port
+
+    with grpc.insecure_channel('%s:%d' % (ip, port)) as channel:
         kbs = kbpg.KnowledgeBaseStub(channel)
         print("connected")
         
@@ -121,7 +123,8 @@ def setup(cfg):
     batch_beta_api_instance.create_namespaced_cron_job(namespace, 
             client.V1beta1CronJob(
                 metadata=client.V1ObjectMeta(name=name),
-                spec=client.V1beta1CronJobSpec(schedule="*/1 * * * *", successful_jobs_history_limit=100, failed_jobs_history_limit=30, 
+                spec=client.V1beta1CronJobSpec(schedule="*/1 * * * *", successful_jobs_history_limit=100, 
+                    failed_jobs_history_limit=30, 
                     job_template=client.V1beta1JobTemplateSpec(metadata=client.V1ObjectMeta(name=name), 
                         spec=client.V1JobSpec(template=client.V1PodTemplateSpec(
                             spec=client.V1PodSpec(

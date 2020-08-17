@@ -16,6 +16,13 @@ RUN wget http://panda-re.mit.edu/qcows/linux/ubuntu/1804/x86_64/bionic-server-cl
 WORKDIR /panda/panda/python/core/
 RUN python3.6 setup.py install 
 
+# Setup kubernetes client 
+RUN pip3 install --upgrade setuptools
+RUN pip3 install requests
+RUN git clone --recursive https://github.com/kubernetes-client/python.git
+WORKDIR python
+RUN python3.6 setup.py install 
+
 WORKDIR /
 RUN mkdir working
 WORKDIR working

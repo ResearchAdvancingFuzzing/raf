@@ -17,6 +17,13 @@ RUN mkdir /qcows
 WORKDIR /qcows 
 RUN wget http://panda-re.mit.edu/qcows/linux/ubuntu/1804/x86_64/bionic-server-cloudimg-amd64.qcow2
 
+# Setup kubernetes client 
+RUN pip3 install --upgrade setuptools
+RUN pip3 install requests
+RUN git clone --recursive https://github.com/kubernetes-client/python.git
+WORKDIR python
+RUN python3.6 setup.py install 
+
 WORKDIR /
 ENV SOURCE_DIR spitfire/components/taint/panda
 COPY ./infinite ./infinite

@@ -146,11 +146,13 @@ def run(cfg):
         os.mkdir(replays_dir)
 
     # some guess at how much time we'll spend on each of these
-    fuzzing_dist = [("SEED_MUTATIONAL_FUZZ", int(cfg.manager.seed_mutational_fuzz)), \
-                ("COVERAGE_FUZZ", int(cfg.manager.coverage_fuzz)), \
-                ("TAINT_FUZZ", int(cfg.manager.taint_fuzz)), \
-                ("TAINT_ANALYSIS", int(cfg.manager.taint_analysis)), \
-                ("COVERAGE", int(cfg.manager.coverage))]
+    fuzzing_dist = [("SEED_MUTATIONAL_FUZZ", float(cfg.manager.seed_mutational_fuzz)), \
+                ("COVERAGE_FUZZ", float(cfg.manager.coverage_fuzz)), \
+                ("TAINT_FUZZ", float(cfg.manager.taint_fuzz)), \
+                ("TAINT_ANALYSIS", float(cfg.manager.taint_analysis)), \
+                ("COVERAGE", float(cfg.manager.coverage))]
+    
+    print(fuzzing_dist)
 
     MAX_TAINT_OUT_DEGREE = int(cfg.manager.max_taint_out_degree)
 
@@ -175,7 +177,7 @@ def run(cfg):
 
     # are any fm.py still running?
     # are any pods Pending?
-    resp = core_v1.list_pod_for_all_namespaces()
+    resp = core_v1.list_namespaced_pod(namespace=namespace)
     num_fm = 0
     num_pending = 0
     for i in resp.items:
@@ -199,7 +201,11 @@ def run(cfg):
             batch_v1.delete_namespaced_job(name=cj.metadata.name, namespace=namespace, propagation_policy="Background") 
 
     # Connect to the knowledge base 
-    with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
+    service = core_v1.list_namespaced_service(namespace=namespace) 
+    ip = service.items[0].spec.cluster_ip
+    port = service.items[0].spec.ports[0].port
+
+    with grpc.insecure_channel('%s:%d' % (ip, port)) as channel:
         kbs = kbpg.KnowledgeBaseStub(channel)
 
         res = kbs.GetMode(kbp.Empty())

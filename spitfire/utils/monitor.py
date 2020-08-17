@@ -73,9 +73,15 @@ def run(cfg):
     
     
     
-    # Connect to the knowledge base 
-    with grpc.insecure_channel("172.17.0.5:61111") as channel:
-#    with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
+    # Connect to the knowledge base
+    namespace = cfg.campaign.id
+    service = api_instance.list_namespaced_service(namespace=namespace)
+    ip = service.items[0].spec.cluster_ip
+    port = service.items[0].spec.ports[0].port
+    node_port = service.items[0].spec.ports[0].node_port
+    ip = "18.4.83.184"  # your ip
+    #with grpc.insecure_channel("172.17.0.5:61111") as channel:
+    with grpc.insecure_channel('%s:%d' % (ip, node_port)) as channel:
         kbs = kbpg.KnowledgeBaseStub(channel)
 
         S = {inp.uuid for inp in kbs.GetSeedInputs(kbp.Empty())} 

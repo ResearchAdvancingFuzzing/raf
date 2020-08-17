@@ -6,7 +6,7 @@ import os
 import os.path
 import sys
 from collections import Counter
-
+from kubernetes import client, config
 # Env variables
 namespace = os.environ.get("NAMESPACE") 
 spitfire_dir = "/%s%s" % (namespace, os.environ.get('SPITFIRE_DIR')) 
@@ -130,7 +130,15 @@ def run(cfg):
     fcfg = cfg.fuzzer
     inputfile = fcfg.input_file
 
-    with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
+    # Setup access to cluster 
+    config.load_incluster_config()
+    core_api = client.CoreV1Api()
+    service = core_api.list_namespaced_service(namespace=namespace)
+    ip = service.items[0].spec.cluster_ip
+    port = service.items[0].spec.ports[0].port
+    
+    # Send over some preliminary data to check if we have done this taint before 
+    with grpc.insecure_channel('%s:%d' % (ip, port)) as channel:
         
         print("here: connected")
 
@@ -199,7 +207,7 @@ def run(cfg):
     process_files(fcfg.input_file, coverage_dir, input_dir, "increased_coverage", 1)
     process_files(fcfg.input_file, interesting_dir, input_dir, "crash", 1) 
 
-    with grpc.insecure_channel('%s:%d' % (cfg.knowledge_base.host, cfg.knowledge_base.port)) as channel:
+    with grpc.insecure_channel('%s:%d' % (ip, port)) as channel:
         kbs = kbpg.KnowledgeBaseStub(channel)
 
         input_kb.fuzzed = True

@@ -4,11 +4,12 @@ defaults:
     - knowledge_base: pickle
     - coverage: panda 
     - fuzzer: gtfo
+    - manager: spitfire
 campaign:
-  id: heather
+  id: notaint #notaint
   source_code_image: spitfire:v1 
-  storage: 8Gi
-images:
+  storage: 4Gi
+images: # haven't decided if we are using this yet 
   init: "init:v1"
   knowledge_base: "knowledge-base:v1"
   fm: "fm:v1"

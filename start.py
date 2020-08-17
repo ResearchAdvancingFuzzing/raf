@@ -42,18 +42,23 @@ def container(namespace, name, image, command, args, port):
 def run(cfg): 
     namespace = cfg.campaign.id
     storage = cfg.campaign.storage
-    
+   
+    # Make sure campaign id is alphanumerical
+    if not namespace.isalnum(): 
+        return "Campaign ID must consist of letters and numbers only." 
+
     # Setup access to cluster 
     config.load_kube_config()
     core_api_instance = client.CoreV1Api()
     batch_api_instance = client.BatchV1Api() 
     apps_api_instance = client.AppsV1Api()
     
-    
+    # Create the permissions (init job and fuzzing manager can create things) 
+
+
     # Create the namespace for the campaign
     res = core_api_instance.create_namespace(client.V1Namespace(
         metadata=client.V1ObjectMeta(name=namespace)))
-    print(res)
      
 
     # Create the config map
@@ -65,8 +70,15 @@ def run(cfg):
                     "INPUTS_DIR": "/inputs", "REPLAY_DIR": "/replays",\
                     "NAMESPACE": namespace}))
 
-    
 
+    # Create the persistent volume 
+    core_api_instance.create_persistent_volume(client.V1PersistentVolume(
+        metadata=client.V1ObjectMeta(name="%s-pv" % namespace),
+        spec=client.V1PersistentVolumeSpec(
+            capacity={"storage": storage}, 
+            access_modes=["ReadWriteMany"],
+            host_path=client.V1HostPathVolumeSource(path="/tmp/%s" % namespace))))
+    
     # Create the persistent volume claim for the campaign
     core_api_instance.create_namespaced_persistent_volume_claim(
             namespace, client.V1PersistentVolumeClaim(
@@ -75,9 +87,6 @@ def run(cfg):
                     access_modes=["ReadWriteMany"],
                     resources=client.V1ResourceRequirements(requests={"storage": storage}))))
     
-    #time.sleep(10) 
-    
-
     # Create the init job-- sets up target, seeds, and code base in the PVC; 
     # sets up KB server and sends initial data to KB, starts FM 
     name="init"
