@@ -11,7 +11,7 @@ import logging
 import time
 from kubernetes import client, utils, config
 
-spitfire_dir = os.environ.get("SPITFIRE")
+spitfire_dir = os.environ.get("SPITFIRE_DIR")
 spitfire_dir = "/home/hpreslier/raf/spitfire"
 sys.path.append("/")
 sys.path.append(spitfire_dir)
@@ -52,14 +52,59 @@ def run(cfg):
     core_api_instance = client.CoreV1Api()
     batch_api_instance = client.BatchV1Api() 
     apps_api_instance = client.AppsV1Api()
+    rbac_api_instance = client.RbacAuthorizationV1Api() 
     
-    # Create the permissions (init job and fuzzing manager can create things) 
-
 
     # Create the namespace for the campaign
     res = core_api_instance.create_namespace(client.V1Namespace(
         metadata=client.V1ObjectMeta(name=namespace)))
      
+    # Create the permissions 
+    
+    role_exists = False
+    name="raf-roles"
+    for role in rbac_api_instance.list_cluster_role().items: 
+        if role.metadata.name == name:
+            role_exists = True
+
+    if not role_exists: 
+        rbac_api_instance.create_cluster_role(client.V1Role(
+            metadata=client.V1ObjectMeta(name=name), 
+            rules=[client.V1PolicyRule(
+                api_groups=["", "apps", "batch"],
+                resources=["configmaps", "persistentvolumeclaims", "pods", "services", "deployments", "jobs", "cronjobs"],
+                verbs=["list", "get", "create", "update", "delete", "watch"])]))
+
+        rbac_api_instance.create_cluster_role_binding(client.V1RoleBinding(
+            metadata=client.V1ObjectMeta(name="%s-binding" % name), 
+            subjects=[client.V1Subject(
+                kind="Group",
+                name="system:serviceaccounts", 
+                api_group="rbac.authorization.k8s.io")],
+            role_ref=client.V1RoleRef(
+                kind="ClusterRole",
+                name=name,
+                api_group="rbac.authorization.k8s.io")))
+    '''
+    name="role-%s" % namespace
+    rbac_api_instance.create_namespaced_role(namespace, client.V1Role(
+        metadata=client.V1ObjectMeta(name=name), 
+        rules=[client.V1PolicyRule(
+            api_groups=["", "apps", "batch"],
+            resources=["configmaps", "persistentvolumeclaims", "pods", "services", "deployments", "jobs", "cronjobs"],
+            verbs=["list", "get", "create", "update", "delete", "watch"])]))
+
+    rbac_api_instance.create_namespaced_role_binding(namespace, client.V1RoleBinding(
+        metadata=client.V1ObjectMeta(name="%s-binding" % name), 
+        subjects=[client.V1Subject(
+            kind="Group",
+            name="system:serviceaccounts", 
+            api_group="rbac.authorization.k8s.io")],
+        role_ref=client.V1RoleRef(
+            kind="Role",
+            name=name,
+            api_group="rbac.authorization.k8s.io")))
+    '''
 
     # Create the config map
     core_api_instance.create_namespaced_config_map(namespace, 
@@ -97,11 +142,11 @@ def run(cfg):
                     template=client.V1PodTemplateSpec(
                         metadata=client.V1ObjectMeta(name=name), 
                         spec=client.V1PodSpec(
-                            containers=[container(namespace, name, "init:v1", ["python3.6"], ["init.py"], None)],
+                            containers=[container(namespace, name, "init:%s" % namespace, ["python3.6"], ["init.py"], None)],
                             init_containers=[
-                                container(namespace, "target", "target:xmllint",  None, None, None), 
-                                container(namespace, "seed-corpus", "seed-corpus:v1",None, None, None),
-                                container(namespace, "spitfire", "spitfire:v1", None, None, None)],
+                                container(namespace, "target", "target:%s" % namespace,  None, None, None), 
+                                container(namespace, "seed-corpus", "seed-corpus:%s" % namespace, None, None, None),
+                                container(namespace, "spitfire", "spitfire:%s" % namespace, None, None, None)],
                             volumes=[client.V1Volume(
                                 name="%s-storage" % namespace, 
                                 persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(

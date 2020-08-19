@@ -113,6 +113,7 @@ class Job:
 # returns number that are running + pending
 def take_stock(core_v1):
     resp = core_v1.list_pod_for_all_namespaces()
+    resp = core_v1.list_namespaced_pod(namespace=namespace)
     count = {}
     for i in resp.items:
         pt = i.spec.containers[0].image
@@ -136,7 +137,7 @@ def take_stock(core_v1):
 
 @hydra.main(config_path=f"{spitfire_dir}/config/config.yaml")
 def run(cfg):
-
+ 
     # Make sure the counts, inputs, replays directory exists
     if not os.path.exists(counts_dir): 
         os.mkdir(counts_dir) 
@@ -322,7 +323,7 @@ def run(cfg):
                     
                     kbs.MarkInputAsPending(kb_inp)
                     #create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace)  
-                    create_job(batch_v1, cfg[job.name].image, job.name, job.get_count(), args, namespace) 
+                    create_job(batch_v1, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
                     print ("uuid for input is %s" % (str(s_uuid)))
                 except Exception as e:
                     print("Unable to create job exception = %s" % str(e))
@@ -377,7 +378,7 @@ def run(cfg):
                     kbs.AddFuzzingEvent(kbp.FuzzingEvent(fuzzing_manager_event=fme))
                     kbs.MarkInputAsPending(kb_inp)
                     #create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace) 
-                    create_job(batch_v1, cfg[job.name].image, job.name, job.get_count(), args, namespace) 
+                    create_job(batch_v1, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
                     print ("uuid for input is %s" % (str(max_inp.uuid)))
                 except Exception as e:
                     print("Unable to create job exception = %s" % str(e))
@@ -454,7 +455,7 @@ def run(cfg):
                     kbs.AddFuzzingEvent(kbp.FuzzingEvent(fuzzing_manager_event=fme))
                     kbs.MarkInputAsPending(kb_inp)
                     #create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace) 
-                    create_job(batch_v1, cfg[job.name].image, job.name, job.get_count(), args, namespace) 
+                    create_job(batch_v1, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
                     print ("uuid for input is %s" % (str(kb_inp.uuid)))
                 except Exception as e:
                     print("Unable to create job exception = %s" % str(e))
@@ -499,7 +500,7 @@ def run(cfg):
                     kbs.AddFuzzingEvent(kbp.FuzzingEvent(fuzzing_manager_event=fme))
                     kbs.MarkInputAsPending(kb_inp)
                     #create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace)  
-                    create_job(batch_v1, cfg[job.name].image, job.name, job.get_count(), args, namespace) 
+                    create_job(batch_v1, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
                     print ("uuid for input is %s" % (str(kb_inp.uuid)))
                 except Exception as e:
                     print("Unable to create job exception = %s" % str(e))
@@ -542,7 +543,7 @@ def run(cfg):
                     kbs.AddFuzzingEvent(kbp.FuzzingEvent(fuzzing_manager_event=fme))
                     kbs.MarkInputAsPending(kb_inp)
                     #create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace) 
-                    create_job(batch_v1, cfg[job.name].image, job.name, job.get_count(), args, namespace) 
+                    create_job(batch_v1, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
                     print ("uuid for input is %s" % (str(kb_inp.uuid)))
                 except Exception as e:
                     print("Unable to create job exception = %s" % str(e))

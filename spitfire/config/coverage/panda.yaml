@@ -1,5 +1,4 @@
 coverage:
-  image: "coverage:v1"
   source_string: "git clone -b spitfire_0 https://github.com/panda-re/panda.git"
   panda_container: panda
   input_file: "/default/seeds/slashdot.xml" # just a dummy value 

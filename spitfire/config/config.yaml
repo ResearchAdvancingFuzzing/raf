@@ -6,16 +6,6 @@ defaults:
     - fuzzer: gtfo
     - manager: spitfire
 campaign:
-  id: notaint #notaint
+  id: taint #notaint
   source_code_image: spitfire:v1 
   storage: 4Gi
-images: # haven't decided if we are using this yet 
-  init: "init:v1"
-  knowledge_base: "knowledge-base:v1"
-  fm: "fm:v1"
-  seed_corpus: "seed-corpus:v1"
-  target: "target:xmllint"
-  code: "spitfire:v1"
-  fuzzer: "fuzzer:v1"
-  taint: "taint:v1"
-  coverage: "coverage:v1" 

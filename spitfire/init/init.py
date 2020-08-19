@@ -59,7 +59,7 @@ def setup(cfg):
                     template=client.V1PodTemplateSpec(
                         metadata=client.V1ObjectMeta(name=deployment_name, labels=labels),
                         spec=client.V1PodSpec(
-                            containers=[container(namespace, deployment_name, "knowledge-base:v1", 
+                            containers=[container(namespace, deployment_name, "knowledge-base:%s" % namespace, 
                                 None, None, cfg.knowledge_base.port)],
                             volumes=[client.V1Volume(
                                 name="%s-storage" % namespace, 
@@ -128,7 +128,7 @@ def setup(cfg):
                     job_template=client.V1beta1JobTemplateSpec(metadata=client.V1ObjectMeta(name=name), 
                         spec=client.V1JobSpec(template=client.V1PodTemplateSpec(
                             spec=client.V1PodSpec(
-                                containers=[container(namespace, name, "fm:v1", None, None, None)],
+                                containers=[container(namespace, name, "fm:%s" % namespace, None, None, None)],
                                 volumes=[client.V1Volume(
                                     name="%s-storage" % namespace, 
                                     persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(
