@@ -44,34 +44,20 @@ sudo chown -R $USER $HOME/.minikube
 sudo chown -R $USER $HOME/.kube
 ```
 **NOTE**: You need to log out and log back in for the docker permissions to take effect.
-## Setup RAF:
-After cloning this repository, run the `run` script in order to pull the gtfo repo, create the docker images, and make the grpc proto files. 
+## Setup RAF directory:
+After cloning this repository, run the `setup.sh` script in order to pull the gtfo repo and make a sample seed corpus. 
 ```
 git clone <this_repo> 
 cd raf
-./run
+./setup.sh 
 ```
-## Running RAF:
-After all the docker images are built, we are ready to deploy objects into the cluster. Start with the following to add the objects that will _initialize the cluster environment_, _start up the knowledge base grpc server_, and _start up the fuzzing manager_.
+Note: Run this only once, when you have a clean clone of the RAF repo. 
+## Build a campaign 
+After initial setup, run the `build.sh` script. This takes in one parameter: the name of the campaign id (this id must be unique among all campaigns). This script will create the proto files, build all the docker images for this campaign, and then start up the campaign.
 ```
-./start.sh
-```
-This will create the initial Kubernetes yaml objects, defined in the `config_init.yaml` file (including the init job which will then start up the server and the fuzzing manager.)  You should see the following output if done correctly. 
-```
-role.rbac.authorization.k8s.io/job-create created
-rolebinding.rbac.authorization.k8s.io/create-jobs created
-configmap/dir-config created
-persistentvolume/data-pv created
-persistentvolumeclaim/seed-corpus-pv-claim created
-persistentvolumeclaim/replay-pv-claim created
-persistentvolumeclaim/spitfire-pv-claim created
-persistentvolumeclaim/target-pv-claim created
-persistentvolumeclaim/inputs-pv-claim created
-persistentvolumeclaim/target-instr-pv-claim created
-job.batch/init created
+./build.sh <campaign-id>
 ```
 ## Monitoring RAF:
-After this init job has completed, the fuzzing manager cron job will be left to run the individual (fuzzing, taint, coverage) jobs. Their object specifications are found in their respective `spitfire/fuzzing-manager/jobs/config-{job_type}.yaml` file. 
 
 #### Monitoring Cluster with Script
 Under `spitfire/utils` we have included a sample monitoring script, `monitor.py`, that will display statistics and graphs regarding the fuzzing events that have occurred throughout the fuzzing campaign in the cluster. To run, you first need to make sure the following python packages are installed: 
@@ -118,10 +104,15 @@ In order to get a shell to a **running** container (useful for debugging and tes
 ```
 kubectl exec -it <pod-name> -- bash
 ```
+## Suspending a campaign
+In order to suspend a campaign, run the following: 
+```
+./suspend.sh <campaign-id>
+```
 ## Cleaning up
 In order to clean up all the kubernetes objects from the campaign, run the following:
 ```
-./stop.sh
+./stop.sh <campaign-id> 
 ```
 
 
