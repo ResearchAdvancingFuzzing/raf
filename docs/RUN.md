@@ -76,10 +76,6 @@ You also need to make sure you have a way of displaying these graphs if you are 
 python3.6 monitor.py
 ```
 #### Monitoring Cluster Manually
-To suspend, you can simply run the following script to patch and suspend the fuzzing manager cron job that drives the campaign. 
-```
-./suspend.sh
-``` 
 To debug or get status updates about the pods that are running, run any of the following:
 ```
 kubectl get pods
@@ -105,7 +101,7 @@ In order to get a shell to a **running** container (useful for debugging and tes
 kubectl exec -it <pod-name> -- bash
 ```
 ## Suspending a campaign
-In order to suspend a campaign, run the following: 
+To suspend, you can simply run the following script to patch and suspend the fuzzing manager cron job that drives the campaign.  
 ```
 ./suspend.sh <campaign-id>
 ```
