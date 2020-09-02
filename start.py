@@ -11,13 +11,12 @@ import logging
 import time
 from kubernetes import client, utils, config
 
-spitfire_dir = os.environ.get("SPITFIRE_DIR")
-#spitfire_dir = "/home/hpreslier/raf/spitfire"
+spitfire_dir = "%s/%s" % (os.getcwd(), "spitfire")
+assert (not (spitfire_dir is None))
 sys.path.append("/")
 sys.path.append(spitfire_dir)
 sys.path.append(os.path.realpath(os.path.join(spitfire_dir, "..")))
 sys.path.append(spitfire_dir + "/protos")
-assert (not (spitfire_dir is None))
 
 import spitfire.protos.knowledge_base_pb2 as kbp
 import spitfire.protos.knowledge_base_pb2_grpc as kbpg
