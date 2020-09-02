@@ -12,7 +12,7 @@ import time
 from kubernetes import client, utils, config
 
 spitfire_dir = os.environ.get("SPITFIRE_DIR")
-spitfire_dir = "/home/hpreslier/raf/spitfire"
+#spitfire_dir = "/home/hpreslier/raf/spitfire"
 sys.path.append("/")
 sys.path.append(spitfire_dir)
 sys.path.append(os.path.realpath(os.path.join(spitfire_dir, "..")))
@@ -59,8 +59,7 @@ def run(cfg):
     res = core_api_instance.create_namespace(client.V1Namespace(
         metadata=client.V1ObjectMeta(name=namespace)))
      
-    # Create the permissions 
-    
+    # Create the permissions, we can probably make this more fine-grained 
     role_exists = False
     name="raf-roles"
     for role in rbac_api_instance.list_cluster_role().items: 
