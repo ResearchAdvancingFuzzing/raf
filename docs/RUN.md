@@ -94,7 +94,11 @@ kubectl get <object>
 kubectl describe <object> <object-name>
 ```
 See documentation at https://kubernetes.io/docs/reference/kubectl/overview/ for more information on how to use kubectl. 
-
+#### Monitoring a Campaign 
+Note: The above commands show objects, by default, in the **default** namespace only. If there is nothing running in the default namespace, nothing will be displayed. In order to see the kubernetes objects in a different namespace (i.e. in a specific campaign), run the following:
+```
+kubectl config set-context --current --namespace=<campaign-id> 
+```
 #### Exec a Pod
 In order to get a shell to a **running** container (useful for debugging and testing), run the following:
 ```
