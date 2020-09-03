@@ -3,10 +3,16 @@ FROM spitfirepanda
 
 RUN apt-get install -y python3.6 python3-pip vim libyaml-0-2 libyaml-dev
 
-# Install python3 modules 
+# Install python3 modules
+RUN pip3 install --upgrade pip
+RUN pip3 install --upgrade setuptools
+RUN pip3 install requests
 RUN pip3 install grpcio grpcio-tools hydra-core
-RUN pip3 install pyyaml cffi colorama google-api-python-client protobuf
+RUN pip3 install pyyaml cffi colorama 
+RUN pip3 install google-api-python-client protobuf
+RUN pip3 install google-auth
 RUN pip3 install capstone 
+RUN pip3 install kubernetes
 
 # Setup pypanda
 WORKDIR /panda/panda/python/core/
@@ -18,11 +24,11 @@ WORKDIR /qcows
 RUN wget http://panda-re.mit.edu/qcows/linux/ubuntu/1804/x86_64/bionic-server-cloudimg-amd64.qcow2
 
 # Setup kubernetes client 
-RUN pip3 install --upgrade setuptools
-RUN pip3 install requests
-RUN git clone --recursive https://github.com/kubernetes-client/python.git
-WORKDIR python
-RUN python3.6 setup.py install 
+#RUN pip3 install --upgrade setuptools
+#RUN pip3 install requests
+#RUN git clone --recursive https://github.com/kubernetes-client/python.git
+#WORKDIR python
+#RUN python3.6 setup.py install 
 
 WORKDIR /
 ENV SOURCE_DIR spitfire/components/taint/panda

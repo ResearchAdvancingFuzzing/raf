@@ -16,7 +16,7 @@ cd spitfire/protos && make clean && make && cd ../..
 # Rebuild docker images 
 docker build -t init:$id -f spitfire/init/Dockerfile_init .
 docker build -t fm:$id -f spitfire/fuzzing_manager/Dockerfile .
-docker build -t gtfo-source:$id -f spitfire/tools/gtfo-source/Dockerfile .
+docker build -t gtfo-source:v1 -f spitfire/tools/gtfo-source/Dockerfile .
 docker build -t seed-corpus:$id -f spitfire/init/Dockerfile_corpus .
 docker build -t target:$id -f spitfire/init/Dockerfile_target .
 docker build -t spitfire:$id .

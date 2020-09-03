@@ -15,7 +15,6 @@ spitfire_dir = "%s/%s" % (os.getcwd(), "spitfire")
 assert (not (spitfire_dir is None))
 sys.path.append("/")
 sys.path.append(spitfire_dir)
-sys.path.append(os.path.realpath(os.path.join(spitfire_dir, "..")))
 sys.path.append(spitfire_dir + "/protos")
 
 import spitfire.protos.knowledge_base_pb2 as kbp
