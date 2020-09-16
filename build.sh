@@ -1,13 +1,25 @@
 #!/bin/bash
 
-id=$1
+commit=$(git rev-parse HEAD | cut -c 1-8)
+tag=$(git describe --exact-match --tags $commit) 
 
-if [ -z "$id" ]
-then 
-    echo "Usage: ./start.sh <campaign-id>"
-    exit 1
+if [ -z "$commit" ] 
+then
+   echo "git commit is empty" 
+   exit 1
+elif [ -z "$tag" ]
+then
+   echo "The current git commit is not tagged. Please tag using git tag and then try again." 
+   exit 1
 fi
-# Exit if error
+
+id="$commit$tag"
+
+# Check for the largest version number for this id currently used and increment it
+num="$(($(kubectl get namespaces | awk '{print $1}' | grep "$id" | sed -e "s/$id//" | sort | sed '$!d') + 1 ))"
+namespace="$id$num"
+echo "Namespace for the campaign: $namespace"
+
 set -e
 
 # Rebuild protos
@@ -26,5 +38,4 @@ docker build -t knowledge-base:$id -f spitfire/knowledge_base/Dockerfile .
 docker build -t taint:$id -f spitfire/components/taint/panda/Dockerfile_taint .
 docker build -t coverage:$id -f spitfire/components/coverage/Dockerfile .
 
-
-python3.6 start.py campaign.id=$id
+python3.6 start.py campaign.id=$namespace
