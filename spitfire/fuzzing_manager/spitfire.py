@@ -174,7 +174,6 @@ def run(cfg):
     config.load_incluster_config()
     batch_v1 = client.BatchV1Api()
     core_v1 = client.CoreV1Api() 
-    namespace = cfg.campaign.id
 
     # are any fm.py still running?
     # are any pods Pending?

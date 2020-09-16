@@ -11,6 +11,7 @@ import logging
 import time
 from kubernetes import client, utils, config
 
+namespace = ""
 spitfire_dir = "%s/%s" % (os.getcwd(), "spitfire")
 assert (not (spitfire_dir is None))
 sys.path.append("/")
@@ -38,7 +39,7 @@ def container(namespace, name, image, command, args, port):
 
 @hydra.main(config_path=f"{spitfire_dir}/config/config.yaml") 
 def run(cfg): 
-    namespace = cfg.campaign.id
+    namespace = cfg.campaign.id # this will always be overwritten
     storage = cfg.campaign.storage
    
     # Make sure campaign id is alphanumerical

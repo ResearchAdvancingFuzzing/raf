@@ -39,8 +39,6 @@ def container(namespace, name, image, command, args, port):
 @hydra.main(config_path=f"{spitfire_dir}/config/config.yaml")
 def setup(cfg):
 
-    namespace = cfg.campaign.id 
-
     # Setup access to cluster 
     config.load_incluster_config() 
     k_client = client.ApiClient() 
