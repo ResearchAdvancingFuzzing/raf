@@ -1,8 +1,5 @@
 FROM ubuntu:18.04
-RUN apt-get update -y 
-RUN apt-get upgrade -y
-RUN apt-get install -y clang wget xxd build-essential python cmake python-pip pkg-config python-yaml libyaml-0-2 libyaml-dev systemd --fix-missing
-RUN apt-get install -y git libtool autoconf pkg-config
+RUN apt-get update -y && apt-get upgrade -y && apt-get install -y clang wget xxd build-essential python cmake python-pip pkg-config python-yaml libyaml-0-2 libyaml-dev systemd git libtool autoconf pkg-config --fix-missing
 
 ENV WORK_DIR /fuzzing
 WORKDIR $WORK_DIR
@@ -46,7 +43,10 @@ RUN mkdir /target /target-instr
 RUN cp /target_source/.libs/xmllint /target
 RUN cp -r /instrumented/xmllint /target-instr/xmllint
 
-#RUN echo "$NAMESPACE"
-#COPY infinite /
+FROM alpine:latest
+RUN mkdir /target /target-instr
+COPY --from=0 /target /target
+COPY --from=0 /target-instr /target-instr
 CMD mv target $NAMESPACE && mv target-instr $NAMESPACE
+
 

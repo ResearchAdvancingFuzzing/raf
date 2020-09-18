@@ -13,12 +13,13 @@ then
    exit 1
 fi
 
-id="$commit$tag"
+base_id="$commit$tag"
 
 # Check for the largest version number for this id currently used and increment it
-num="$(($(kubectl get namespaces | awk '{print $1}' | grep "$id" | sed -e "s/$id//" | sort | sed '$!d') + 1 ))"
-namespace="$id$num"
-echo "Namespace for the campaign: $namespace"
+num="$(($(kubectl get namespaces | awk '{print $1}' | grep "$base_id" | sed -e "s/$base_id//" | sort | sed '$!d') + 1 ))"
+id="$base_id$num"
+
+echo "Namespace for the campaign: $id"
 
 set -e
 
@@ -26,6 +27,7 @@ set -e
 cd spitfire/protos && make clean && make && cd ../..
 
 # Rebuild docker images 
+docker build -t raf -f ./Dockerfile_raf . 
 docker build -t init:$id -f spitfire/init/Dockerfile_init .
 docker build -t fm:$id -f spitfire/fuzzing_manager/Dockerfile .
 docker build -t gtfo-source:v1 -f spitfire/tools/gtfo-source/Dockerfile .
@@ -35,7 +37,8 @@ docker build -t spitfire:$id .
 docker build -t fuzzer:$id -f spitfire/components/mutfuzz/Dockerfile .
 docker build -t knowledge-base:$id -f spitfire/knowledge_base/Dockerfile .
 #docker build -t spitfirepanda -f ./Dockerfile_panda .
+#docker build -t spitfirepanda:python -f ./Dockerfile_18_04 .
 docker build -t taint:$id -f spitfire/components/taint/panda/Dockerfile_taint .
 docker build -t coverage:$id -f spitfire/components/coverage/Dockerfile .
 
-python3.6 start.py campaign.id=$namespace
+python3.6 start.py campaign.id=$id

@@ -4,7 +4,7 @@
 taint:
     source_string: "git clone -b spitfire_0 https://github.com/panda-re/panda.git"
     panda_container: panda
-    qcow: "http://panda-re.mit.edu/qcows/linux/ubuntu/1804/bionic-server-cloudimg-amd64.qcow2"
+    qcow: "http://panda-re.mit.edu/qcows/linux/ubuntu/1804/x86_64/bionic-server-cloudimg-amd64.qcow2"
     max_label_set_size: 16
     max_label_set_compute_distance: 16
     max_pcs_for_an_fbs: 16

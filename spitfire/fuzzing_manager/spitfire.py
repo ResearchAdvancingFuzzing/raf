@@ -5,6 +5,8 @@
 
 from kubernetes import client, utils, config
 import os
+import glob
+from os.path import basename
 import yaml
 import time
 import random
@@ -21,6 +23,10 @@ corpus_dir = "/%s%s" % (namespace, os.environ.get("CORPUS_DIR"))
 inputs_dir = "/%s%s" % (namespace, os.environ.get("INPUTS_DIR")) 
 replays_dir = "/%s%s" % (namespace, os.environ.get("REPLAY_DIR"))
 counts_dir = "/%s/counts" % namespace
+
+# Qcows 
+qcow_dir = "/qcows"
+qcow_name = "qcow"
 
 # Add to the python path for more imports
 sys.path.append("/")
@@ -53,36 +59,68 @@ def choose(dist):
             return label
 
 
-def container(namespace, name, image, command, args, port): 
-        return client.V1Container(
+def container(namespace, name, image, command, args, port, volume_mounts): 
+
+    return client.V1Container(
             name=name, command=command, args=args, image=image, 
-            volume_mounts=[client.V1VolumeMount(
-                name="%s-storage" % namespace, mount_path="/%s" % namespace)],
+            volume_mounts=volume_mounts,
             env_from=[client.V1EnvFromSource(
                 client.V1ConfigMapEnvSource(name="dir-config"))],
             ports=None if not port else [client.V1ContainerPort(container_port=port)])
 
 
-def create_job(api_instance, image, job_name, num, arg, namespace): 
+def create_job(cfg, api_instance, image, job_name, num, arg, namespace): 
     
     name ="%s-%s" % (job_name, str(num)) # unique name 
     command = ["python3.6"] 
     args = ["run.py"]
     args.extend(arg)
-    result = api_instance.create_namespaced_job(namespace=namespace, 
-            body=client.V1Job(
+
+    metadata_job=client.V1ObjectMeta(name=name, labels={"tier": "backend"})
+    metadata_pod=client.V1ObjectMeta(name=name)
+    volume_mounts=[client.V1VolumeMount(name="%s-storage" % namespace, mount_path="/%s" % namespace)]
+    volumes=[client.V1Volume(name="%s-storage" % namespace, 
+        persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(claim_name=namespace))]
+
+    init_containers=None
+    if job_name == "taint" or job_name == "coverage":
+        qcow=cfg.taint.qcow
+        init_volume_mounts=[client.V1VolumeMount(name=qcow_name, mount_path=qcow_dir)]
+        init_containers=[container(namespace, "%s-install" % qcow_name, "busybox", \
+            ["wget"], ["-O", "%s/%s" % (qcow_dir, basename(qcow)), qcow], None, init_volume_mounts)]
+        init_volume=[client.V1Volume(name=qcow_name, empty_dir=client.V1EmptyDirVolumeSource())]
+        volume_mounts.extend(init_volume_mounts)
+        volumes.extend(init_volume)
+
+    containers=[container(namespace, name, image, command, args, None, volume_mounts)]
+    restart_policy="OnFailure" 
+    pod_spec=client.V1PodSpec(init_containers=init_containers, containers=containers, 
+        volumes=volumes, restart_policy=restart_policy)
+    pod_temp=client.V1PodTemplateSpec(metadata=metadata_pod, spec=pod_spec)
+    job_spec=client.V1JobSpec(template=pod_temp)
+    job_body=client.V1Job(metadata=metadata_job, spec=job_spec)
+    print(job_body)
+    #result = api_instance.create_namespaced_job(namespace=namespace, body=job_body)
+    '''
+    body=client.V1Job(
                 metadata=client.V1ObjectMeta(name=name, labels={"tier": "backend"}),
                 spec=client.V1JobSpec(
                     template=client.V1PodTemplateSpec(
                         metadata=client.V1ObjectMeta(name=name), 
                         spec=client.V1PodSpec(
-                            containers=[container(namespace, name, image, command, args, None)],
+                            containers=[container(namespace, name, image, command, args, None, None)],
                             volumes=[client.V1Volume(
                                 name="%s-storage" % namespace, 
                                 persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(
                                     claim_name=namespace))],
-                            restart_policy="OnFailure"))))) 
-    return result
+                            restart_policy="OnFailure")))) 
+
+    print("---------------")
+    print(body)
+    '''
+    result = api_instance.create_namespaced_job(namespace=namespace, body=job_body)
+    print(result)
+    return "hi" 
 
 
 class Job: 
@@ -138,6 +176,7 @@ def take_stock(core_v1):
 @hydra.main(config_path=f"{spitfire_dir}/config/config.yaml")
 def run(cfg):
  
+
     # Make sure the counts, inputs, replays directory exists
     if not os.path.exists(counts_dir): 
         os.mkdir(counts_dir) 
@@ -259,6 +298,15 @@ def run(cfg):
         the_time = None
 
         choice_succeeded = True
+
+        # Remove replays that have already been through coverage and taint 
+        DR = C & T
+        for uuid in DR:
+            kp_inp = kbs.GetInputById(kbp.id(uuid=uuid))
+            filename_sub = "%s*" % basename(kb_inp.filepath)
+            path = "%s/%s" % (replays_dir, filename_sub) 
+            for filename in glob.glob(path): 
+                os.remove(filename)
         
         while True:
 
@@ -322,14 +370,15 @@ def run(cfg):
                     
                     kbs.MarkInputAsPending(kb_inp)
                     #create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace)  
-                    create_job(batch_v1, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
+                    create_job(cfg, batch_v1, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
                     print ("uuid for input is %s" % (str(s_uuid)))
                 except Exception as e:
                     print("Unable to create job exception = %s" % str(e))
                     # try again
                     continue
-                
+                 
                 jobs_created += 1
+                
                 
                 choice_succeeded = True
                 continue
@@ -377,7 +426,7 @@ def run(cfg):
                     kbs.AddFuzzingEvent(kbp.FuzzingEvent(fuzzing_manager_event=fme))
                     kbs.MarkInputAsPending(kb_inp)
                     #create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace) 
-                    create_job(batch_v1, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
+                    create_job(cfg, batch_v1, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
                     print ("uuid for input is %s" % (str(max_inp.uuid)))
                 except Exception as e:
                     print("Unable to create job exception = %s" % str(e))
@@ -454,7 +503,7 @@ def run(cfg):
                     kbs.AddFuzzingEvent(kbp.FuzzingEvent(fuzzing_manager_event=fme))
                     kbs.MarkInputAsPending(kb_inp)
                     #create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace) 
-                    create_job(batch_v1, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
+                    create_job(cfg, batch_v1, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
                     print ("uuid for input is %s" % (str(kb_inp.uuid)))
                 except Exception as e:
                     print("Unable to create job exception = %s" % str(e))
@@ -499,7 +548,7 @@ def run(cfg):
                     kbs.AddFuzzingEvent(kbp.FuzzingEvent(fuzzing_manager_event=fme))
                     kbs.MarkInputAsPending(kb_inp)
                     #create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace)  
-                    create_job(batch_v1, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
+                    create_job(cfg, batch_v1, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
                     print ("uuid for input is %s" % (str(kb_inp.uuid)))
                 except Exception as e:
                     print("Unable to create job exception = %s" % str(e))
@@ -542,7 +591,7 @@ def run(cfg):
                     kbs.AddFuzzingEvent(kbp.FuzzingEvent(fuzzing_manager_event=fme))
                     kbs.MarkInputAsPending(kb_inp)
                     #create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace) 
-                    create_job(batch_v1, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
+                    create_job(cfg, batch_v1, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
                     print ("uuid for input is %s" % (str(kb_inp.uuid)))
                 except Exception as e:
                     print("Unable to create job exception = %s" % str(e))
@@ -553,6 +602,7 @@ def run(cfg):
 
                 choice_succeeded = True                
                 continue
+
 
 
 

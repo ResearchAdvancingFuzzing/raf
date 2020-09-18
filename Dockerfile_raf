@@ -1,0 +1,7 @@
+FROM ubuntu:18.04
+
+RUN apt-get upgrade -y && apt-get update -y && apt-get install -y python3.6 python3-pip git vim
+RUN pip3 install --upgrade pip 
+RUN pip3 install --upgrade setuptools requests grpcio grpcio-tools hydra-core pyyaml cffi colorama google-api-python-client protobuf google-auth kubernetes
+
+

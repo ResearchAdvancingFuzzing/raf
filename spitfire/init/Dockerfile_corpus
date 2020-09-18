@@ -1,4 +1,4 @@
-FROM ubuntu
+FROM alpine:latest 
 COPY spitfire/init/corpus /data/seeds
 WORKDIR /
 CMD mv /data/seeds $NAMESPACE

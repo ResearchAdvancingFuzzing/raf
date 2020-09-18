@@ -1,4 +1,4 @@
-FROM ubuntu
+FROM alpine:latest 
 
 COPY spitfire /spitfire
 WORKDIR /
