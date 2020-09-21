@@ -53,9 +53,15 @@ cd raf
 ```
 Note: Run this only once, when you have a clean clone of the RAF repo. 
 ## Build a campaign 
-After initial setup, run the `build.sh` script. This takes in one parameter: the name of the campaign id (this id must be unique among all campaigns). This script will create the proto files, build all the docker images for this campaign, and then start up the campaign.
+After initial setup, you can now either (1) run an already existing experiment in RAF or (2) create your own experiment. 
+#### Using an existing experiment
+TODO. There are no existing experiments currently. 
+#### Creating a new experiemnt
+To run a new experiment, you need to make the relevant changes, commit them, and tag the commit. Note: if you do not commit the changes or you do not have a tag associated with the commit, the campaign will not run. To tag, run ```git tag <tag_name> <commit_hash>```. 
+
+After you are on the current commit with your experiment and it has been tagged, run the `build.sh` script. This will create the the name of the campaign id using the commit hash and the tag name. This script will create the proto files, build all the docker images for this campaign, and then start up the campaign.
 ```
-./build.sh <campaign-id>
+./build.sh
 ```
 ## Monitoring RAF:
 
