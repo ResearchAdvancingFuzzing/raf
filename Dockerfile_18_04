@@ -5,7 +5,7 @@ RUN apt-get update
 RUN apt install -y lsb-core git
 
 # Grab panda now and cache it. We'll pull later
-RUN git clone -b pip_panda https://github.com/panda-re/panda
+RUN git clone -b spitfire_2 https://github.com/panda-re/panda
 
 # Figure out our release name (xenial, trusty, etc...) and set up env vars
 ENV SOURCES_LIST="/etc/apt/sources.list"
