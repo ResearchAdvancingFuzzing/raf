@@ -2,9 +2,9 @@ manager:
   name: spitfire 
   seed_mutational_fuzz: 0.7
   coverage_fuzz: 0.7
-  taint_fuzz: 0.7 #0
+  taint_fuzz: 0.4 #0
   taint_analysis: 0.2 #0
   coverage: 0.2 #0.7
   max_taint_out_degree: 16
-  rare_edge_count: 3
+  rare_edge_count: 7
   budget: 10
