@@ -27,9 +27,9 @@ COPY --from=0 /panda/pc-bios /panda/pc-bios
 
 WORKDIR /
 RUN mkdir target replays
-COPY slashdot/xmllint /target/xmllint
-COPY slashdot/slashdot.xml slashdot.xml
-COPY slashdot/script.py script.py
+#COPY slashdot/xmllint /target/xmllint
+#COPY slashdot/slashdot.xml slashdot.xml
+#COPY slashdot/script.py script.py
 COPY ./infinite ./infinite 
 COPY ./spitfire/components/coverage/run.py ./
 
