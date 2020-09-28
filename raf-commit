@@ -1,0 +1,58 @@
+#!/usr/bin/python3
+
+import sys
+import re
+import subprocess as sp
+
+if len(sys.argv) != 2:
+   print("Error. Too few arguments")
+   print("Usage: raf-commit tag")
+   sys.exit(1)
+
+# I am assuming we run from the git repo dir
+o = sp.check_output("git status -s".split())
+num_unc = 0
+for line in (o.decode()).split("\n"):
+   if line == '': continue
+   if not (line.startswith("?? ")):
+      num_unc += 1
+
+if num_unc > 0:
+   print("Error. You have uncommitted code in your repo.")
+   print(o)
+   sys.exit(1)
+
+git_tag = sys.argv[1]
+foo = re.search("^[a-zA-Z][a-zA-Z0-9_]*", git_tag)
+if not foo:
+   print("Error. Tag %s no good. Should match ^[a-zA-Z][a-zA-Z0-9_]*", git_tag)
+   sys.exit(1)
+
+def tag_exists(tag):
+   o = sp.check_output("git tag".split())
+   found_tag = False
+   for line in (o.decode()).split("\n"):
+      if line == tag:
+         found_tag = True
+   return found_tag
+
+if not tag_exists(git_tag):
+   print("Error. Git tag %s doesn't exist\n" % git_tag)
+   sys.exit(1)
+
+print("Found git tag %s" % git_tag)
+
+raf_tag = "raf-expt-" + git_tag
+
+try: 
+   sp.check_call(("git tag %s" % raf_tag).split())
+   if (tag_exists(raf_tag)):
+      print("Created git tag for raf %s" % raf_tag)
+   else:
+      print("Error. Not able to create raf tag %s" % raf_tag)
+      sys.exit(1)
+except:
+   print("Error. Not able to create raf tag %s" % raf_tag)
+   sys.exit(1)
+
+print("Success. You can now run a campaign with raf-run")
