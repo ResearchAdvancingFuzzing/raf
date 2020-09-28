@@ -28,7 +28,7 @@ cd spitfire/protos && make clean && make && cd ../..
 
 # Rebuild docker images 
 docker build -t gtfo-source:v1 -f spitfire/tools/gtfo-source/Dockerfile .
-docker build -t spitfirepanda -f ./Dockerfile_panda .
+#docker build -t spitfirepanda -f ./Dockerfile_panda .
 docker build -t spitfirepanda:python -f ./Dockerfile_18_04 .
 docker build -t raf -f ./Dockerfile_raf . 
 
