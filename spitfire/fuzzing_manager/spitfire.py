@@ -302,7 +302,7 @@ def run(cfg):
         # Remove replays that have already been through coverage and taint 
         DR = C & T
         for uuid in DR:
-            kp_inp = kbs.GetInputById(kbp.id(uuid=uuid))
+            kb_inp = kbs.GetInputById(kbp.id(uuid=uuid))
             filename_sub = "%s*" % basename(kb_inp.filepath)
             path = "%s/%s" % (replays_dir, filename_sub) 
             for filename in glob.glob(path): 
