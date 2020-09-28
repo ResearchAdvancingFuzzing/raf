@@ -10,6 +10,7 @@ import hydra
 import logging
 import time
 from kubernetes import client, utils, config
+import re
 
 namespace = ""
 spitfire_dir = "%s/%s" % (os.getcwd(), "spitfire")
@@ -43,8 +44,9 @@ def run(cfg):
     storage = cfg.campaign.storage
    
     # Make sure campaign id is alphanumerical
-    if not namespace.isalnum(): 
-        return "Campaign ID must consist of letters and numbers only." 
+    if not re.match("^[A-Za-z0-9_-]*$", namespace):
+        print( "Campaign ID must consist of letters and numbers only." )
+        return
 
     # Setup access to cluster 
     config.load_kube_config()
