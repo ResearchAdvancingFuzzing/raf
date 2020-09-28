@@ -1,7 +1,39 @@
 #!/bin/bash
 
 commit=$(git rev-parse HEAD | cut -c 1-8)
-tag=$(git describe --exact-match --tags $commit) 
+
+i=0
+
+for tag in `git show-ref --tags -d | grep $commit | awk '{print $2}'`
+do
+   if [[ "$tag" == *"raf-expt-"* ]]
+   then
+       echo "RAF expt tag for current git commit $commit -- $tag"
+       git_tag=$tag
+       i=$((i+1))
+   fi
+done
+
+if [ $i -eq 0 ]
+then
+    echo "Error. No RAF expt tag for current git commit $commit. There should be a git tag of the form 'raf-expt-tagname'"
+    exit 1
+fi
+
+if [ $i -gt 1 ]
+then
+    echo "Error. Found more than one RAF expt for current git commit."
+    exit 1
+fi
+
+# there must be just one raf-expt- tag. Ok to continue
+
+# pull out just the tag (minus the raf-expt- stuff
+tag=`echo $git_tag | sed 's/refs\/tags\/raf-expt-//g'`
+
+echo "RAF expt tag is $tag"
+
+#tag=$(git describe --exact-match --tags $commit) 
 
 if [ -z "$commit" ] 
 then
@@ -13,11 +45,11 @@ then
    exit 1
 fi
 
-base_id="$commit$tag"
+base_id="$commit-$tag"
 
 # Check for the largest version number for this id currently used and increment it
 num="$(($(kubectl get namespaces | awk '{print $1}' | grep "$base_id" | sed -e "s/$base_id//" | sort | sed '$!d') + 1 ))"
-id="$base_id$num"
+id="$base_id-$num"
 
 echo "Namespace for the campaign: $id"
 
@@ -43,3 +75,6 @@ docker build -t taint:$id -f spitfire/components/taint/panda/Dockerfile_taint .
 docker build -t coverage:$id -f spitfire/components/coverage/Dockerfile .
 
 python3.6 start.py campaign.id=$id
+
+echo 
+echo "RAF campaign started.  Namespace $id"
