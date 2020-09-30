@@ -3,6 +3,7 @@
 # Expect this to run from HOST
 # i.e. not from a kubernetes thingy
 import numpy as np
+import subprocess
 import os
 import sys
 import grpc
@@ -15,11 +16,14 @@ from pprint import pprint
 from kubernetes import client, utils, config
 
 spitfire_dir = os.environ.get("SPITFIRE")
+if spitfire_dir is None:
+    print("Please set the ENV variable SPITFIRE with the path to the directory.")
+    exit()
 sys.path.append("/")
 sys.path.append(spitfire_dir)
 sys.path.append(os.path.realpath(os.path.join(spitfire_dir, "..")))
 sys.path.append(spitfire_dir + "/protos")
-assert (not (spitfire_dir is None))
+
 
 import spitfire.protos.knowledge_base_pb2 as kbp
 import spitfire.protos.knowledge_base_pb2_grpc as kbpg
@@ -72,15 +76,19 @@ def run(cfg):
 #        print("\n")
     
     
+    # Get the IP of your computer
+    process = subprocess.Popen(['curl', 'ifconfig.me'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = process.communicate()
+    ip = stdout.decode("utf-8") 
     
     # Connect to the knowledge base
     namespace = cfg.campaign.id
     service = api_instance.list_namespaced_service(namespace=namespace)
-    ip = service.items[0].spec.cluster_ip
     port = service.items[0].spec.ports[0].port
     node_port = service.items[0].spec.ports[0].node_port
-    ip = "18.4.83.184"  # your ip
-    #with grpc.insecure_channel("172.17.0.5:61111") as channel:
+
+    print("Connecting to the KB on %s:%s" % (ip, str(node_port))
+
     with grpc.insecure_channel('%s:%d' % (ip, node_port)) as channel:
         kbs = kbpg.KnowledgeBaseStub(channel)
 
