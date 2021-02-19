@@ -4,7 +4,7 @@ defaults:
     - knowledge_base: pickle
     - coverage: panda 
     - fuzzer: gtfo
-    - manager: spitfire
+    - manager: aflfast #spitfire
 campaign:
   id: tim1
   source_code_image: spitfire:v1 
