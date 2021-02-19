@@ -74,7 +74,7 @@ def calibrate_case(kbs, entry, queue_cycle, target):
     #print(old)
 
 
-def calculate_score(kbs, entry, schedule, avg_exec_time, avg_bitmap_size, fuzz_mu): 
+def calculate_score(cfg, kbs, entry, avg_exec_time, avg_bitmap_size, fuzz_mu): 
     perf_score = 100
     print(entry)
     print(perf_score)
@@ -136,12 +136,13 @@ def calculate_score(kbs, entry, schedule, avg_exec_time, avg_bitmap_size, fuzz_m
         perf_score *= 5
 
     # Parmaters 
-    POWER_BETA = 1
+    POWER_BETA = cfg.manager.POWER_BETA 
     MAX_FACTOR = POWER_BETA * 32 
-    HAVOC_MAX_MULT = 16 
+    HAVOC_MAX_MULT = cfg.manager.HAVOC_MAX_MULT
 
     factor = 1
     fuzz = entry.n_fuzz
+    schedule = cfg.manager.schedule
     if schedule == "EXPLORE": 
         pass
     elif schedule == "EXPLOIT": 
@@ -239,25 +240,12 @@ def run(cfg):
         S = {inp.uuid for inp in kbs.GetSeedInputs(kbp.Empty())} 
         print("%d Seeds" % (len(S)))
         
-        #F = set of inputs we have done mutational fuzzing on so far
-        F = {inp.uuid for inp in kbs.GetExecutionInputs(kbp.Empty())}
-        print("%d Execution" % (len(F)))
-        
-        #C = set of inputs for which we have measured coverage
-        C = {inp.uuid for inp in kbs.GetInputsWithCoverage(kbp.Empty())}
-        print("%d Inputs With Coverage" % (len(C)))
-        
         #ICV = set of interesting inputs that got marginal covg (increased covg)
         ICV = {inp.uuid for inp in kbs.GetInputsWithoutCoverage(kbp.Empty())}
         print("%d Inputs without Coverage" % (len(ICV)))
         
-        #T = set of inputs for which we have done taint analysis
-        T = {inp.uuid for inp in kbs.GetTaintInputs(kbp.Empty())}
-        print("%d Taint Inputs" % (len(T)))
-
         # set of inputs for which we have submitted jobs during this run
         # and thus results are pending
-        # we need this so that we don't choose them again for analysis
         P = {inp.uuid for inp in kbs.GetPendingInputs(kbp.Empty())} #set([])
         print("%d Pending Inputs" % len(P))
             
@@ -266,9 +254,8 @@ def run(cfg):
         the_time = None
         
         # Add the seeds and interesting inputs to the queue
-        # There is no ordering here?
+        # There is no ordering here
         queue = S | ICV - P 
-        print("\n\n\n\nStarting!")
         print(queue)
         print(len(queue))
 
@@ -283,8 +270,8 @@ def run(cfg):
                 calibrate_case(kbs, entry, queue_cycle, target)
 
         # Parameters
-        HAVOC_CYCLES_INIT = 1024
-        HAVOC_CYCLES = 256 
+        HAVOC_CYCLES_INIT = cfg.manager.HAVOC_CYCLES_INIT 
+        HAVOC_CYCLES = cfg.manager.HAVOC_CYCLES
 
         # Variables
         total_entries = len(queue)
@@ -326,10 +313,9 @@ def run(cfg):
             queue = sorted(queue, key=lambda x: x.fuzz_level)
 
         index = 0
-        schedule = cfg.manager.schedule
         while True:
 
-            perf_score = calculate_score(kbs, queue[index], schedule, avg_exec_time, avg_bitmap_size, avg_fuzz_mu) 
+            perf_score = calculate_score(cfg, kbs, queue[index], avg_exec_time, avg_bitmap_size, avg_fuzz_mu) 
             print(perf_score)
 
             if perf_score == 0: 
