@@ -37,12 +37,14 @@ import knowledge_base_pb2_grpc as kbpg
 import coverage
 from kubernetes_help import * 
 
+# Find first power of two greater or equal to value
 def next_p2(value): 
     ret = 1
     while value > ret:
         ret = ret << 1
     return ret
 
+#  Finds and updates an input's exec time, bitmap size, and handicap (queue cycles behind) value 
 def calibrate_case(kbs, entry, queue_cycle, target):
     if entry.calibrated: 
         return
@@ -74,6 +76,8 @@ def calibrate_case(kbs, entry, queue_cycle, target):
     #print(old)
 
 
+
+# Calculate case desirability score to adjust the length of havoc fuzzing (takes from AFLFast)
 def calculate_score(cfg, kbs, entry, avg_exec_time, avg_bitmap_size, fuzz_mu): 
     perf_score = 100
     print(entry)
@@ -244,32 +248,25 @@ def run(cfg):
         ICV = {inp.uuid for inp in kbs.GetInputsWithoutCoverage(kbp.Empty())}
         print("%d Inputs without Coverage" % (len(ICV)))
         
-        # set of inputs for which we have submitted jobs during this run
-        # and thus results are pending
+        # set of inputs that are unfinished, with results still pending  
         P = {inp.uuid for inp in kbs.GetPendingInputs(kbp.Empty())} #set([])
         print("%d Pending Inputs" % len(P))
             
-        jobs_created = 0
-
-        the_time = None
-        
         # Add the seeds and interesting inputs to the queue
-        # There is no ordering here
+        # There is no ordering here; we will sort the queue later 
         queue = S | ICV - P 
         print(queue)
         print(len(queue))
-
         queue = [kbs.GetInputById(kbp.id(uuid=entry)) for entry in queue]
 
-        # Calibrate data that has not yet been calibrated
+        # Find queue cycle and calibrate data that has not yet been calibrated
         queue_cycle = min([entry.fuzz_level for entry in queue])
         print(queue_cycle)
-
         for entry in queue: 
             if not entry.calibrated:
                 calibrate_case(kbs, entry, queue_cycle, target)
 
-        # Parameters
+        # Parameters (taken from AFLFast)
         HAVOC_CYCLES_INIT = cfg.manager.HAVOC_CYCLES_INIT 
         HAVOC_CYCLES = cfg.manager.HAVOC_CYCLES
 
@@ -281,7 +278,6 @@ def run(cfg):
 
         # Calculate averages  
         for entry in queue:
-            #kb_inp = kbs.GetInputById(kbp.id(uuid=entry)) 
             total_exec_time += entry.exec_time 
             total_bitmap_size += entry.bitmap_size
             total_fuzz += entry.n_fuzz
@@ -293,10 +289,10 @@ def run(cfg):
         print(avg_bitmap_size)
         print(avg_fuzz_mu)
 
+        # Adjust havoc_div (cycle count divisor for havoc)
         havoc_div = 1
         seed_avg_exec_time = sum([kbs.GetInputById(kbp.id(uuid=entry)).exec_time for entry in S]) / len(S) 
         print(seed_avg_exec_time)
-
         if seed_avg_exec_time > 50000:
             havoc_div = 10
         elif seed_avg_exec_time > 20000:
@@ -308,7 +304,7 @@ def run(cfg):
         if cfg.manager.search_strategy == "F": # sorted based on low f_i (i.e. smallest number of fuzz)
             print("Sorting based on f_i") 
             queue = sorted(queue, key=lambda x: x.n_fuzz)
-        else: # s(i) 
+        else: # s(i) default, sorted based on low s_i (i.e. number of times fuzzed) 
             print("Sorting based on s_i")
             queue = sorted(queue, key=lambda x: x.fuzz_level)
 
@@ -334,7 +330,7 @@ def run(cfg):
                     f"fuzzer.extra_args='JIG_MAP_SIZE=65536 ANALYSIS_SIZE=65536'"] 
             print(args)
             try:
-                fme = kbp.FuzzingManagerEvent(number=jobs_created, type=
+                fme = kbp.FuzzingManagerEvent(number=1, type=
                         kbp.FuzzingManagerEvent.Type.TAINT_FUZZ)
                 kbs.AddFuzzingEvent(kbp.FuzzingEvent(fuzzing_manager_event=fme))
                 kbs.MarkInputAsPending(kb_inp)
@@ -345,8 +341,6 @@ def run(cfg):
                print("Unable to create job exception = %s" % str(e))
 
             break
-
-            #index += 1
 
 if __name__=="__main__":
     run()
