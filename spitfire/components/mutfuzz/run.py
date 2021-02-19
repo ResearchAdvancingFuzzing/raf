@@ -5,6 +5,7 @@ import hydra
 import os
 import os.path
 import sys
+import time
 from collections import Counter
 from kubernetes import client, config
 # Env variables
@@ -19,6 +20,7 @@ gtfo_dir = "/gtfo" #"/%s%s" % (namespace, os.environ.get('GTFO_DIR'))
 sys.path.append("/")
 sys.path.append(spitfire_dir) # this will be an env at some point 
 sys.path.append(spitfire_dir + "/protos")
+sys.path.append(spitfire_dir + "/utils")
 
 import knowledge_base_pb2 as kbp
 import knowledge_base_pb2_grpc as kbpg
@@ -31,31 +33,35 @@ from google.protobuf import text_format
 
 log = logging.getLogger(__name__)
 
-inputs = {} 
+inputs = {} # tracks all the new interesting inputs (file_name, kb_input) 
 
 # Copy files from src to dest
 # Add the attrb and value to that file 
-def process_file(file_name, src, dest, attrb, value): 
-    full_file_name = os.path.join(src, file_name) 
+def process_file(file_name, src, dest, attrb, value, depth): 
+    full_file_name = os.path.join(src, file_name)  # fully qualified file name
     if os.path.isfile(full_file_name) and full_file_name.endswith(".input"):
         kb_input = None
-        if not file_name in inputs: 
-            shutil.copy(full_file_name, dest) 
-            kb_input = kbp.Input(filepath = "%s/%s" % (dest, file_name))
-            inputs[full_file_name] = kb_input
+        if not file_name in inputs: # make sure we haven't seen it before
+            shutil.copy(full_file_name, dest)  # copy the file to the new dest 
+            kb_input = kbp.Input(filepath = "%s/%s" % (dest, file_name)) # create the kb input for this 
+            inputs[full_file_name] = kb_input # add the (file_name, kb_input) to the inputs map
         setattr(inputs[full_file_name], attrb, value)
+        setattr(inputs[full_file_name], "depth", depth) 
 
-def process_files(input_file, src, dest, attrb, value): 
+
+def process_files(input_kb, input_file, src, dest, attrb, value): 
+    # Get depth 
+    depth = input_kb.depth + 1 
     if (os.path.isdir(src)): 
         src_files = os.listdir(src)
         for i, file_name in enumerate(src_files):
             ret = filecmp.cmp(input_file, os.path.join(src, file_name))
             if ret: 
                 continue
-            process_file(file_name, src, dest, attrb, value)
+            process_file(file_name, src, dest, attrb, value, depth)
 
 
-def send_to_database(kbs, inputs, kb_analysis, coverage_dir, interesting_dir):
+def send_to_database(kbs, input_file, inputs, kb_analysis, coverage_dir, interesting_dir):
     # Inputs is a dictionary of inputs to their kb_input 
     num_inc_covg = 0
     num_crash = 0
@@ -81,6 +87,12 @@ def send_to_database(kbs, inputs, kb_analysis, coverage_dir, interesting_dir):
         else: 
             kb_input = kbs.AddInput(inp)
 
+    input_kb = kbs.GetInput(kbp.Input(filepath=input_file))
+    n_fuzz = input_kb.n_fuzz + num_inc_covg
+    fuzz_level = input_kb.fuzz_level + 1 
+    print(n_fuzz)
+    input_kb = kbs.AddInput(kbp.Input(filepath=input_file, n_fuzz=n_fuzz, fuzz_level=fuzz_level))
+    print(input_kb)
     print("%d inputs that increased coverage" % num_inc_covg) 
     print("%d inputs that crashed" % num_crash) 
     print("Sent %d new inputs out of %d to the database" % 
@@ -123,7 +135,7 @@ def check_analysis_complete(cfg, kbs, inputfile):
     return [False, fuzzer_input, fuzzer_analysis] 
 
 
-@hydra.main(config_path=f"{spitfire_dir}/config/config.yaml")
+@hydra.main(config_path=f"{spitfire_dir}/config", config_name="config")
 def run(cfg):    
     
     target = "%s/%s" % (target_dir, cfg.target.name)
@@ -197,15 +209,15 @@ def run(cfg):
     cmd += ["-s", fcfg.ooze_seed] 
     print(cmd) 
 
-    # Run fuzzer 
+    # Run fuzzer
     proc = subprocess.run(args=cmd, env=env)
     exit_code = proc.returncode
     
     interesting_dir = "%s/interesting/crash/" % os.getcwd()
     coverage_dir = "%s/coverage" % os.getcwd() 
     
-    process_files(fcfg.input_file, coverage_dir, input_dir, "increased_coverage", 1)
-    process_files(fcfg.input_file, interesting_dir, input_dir, "crash", 1) 
+    process_files(input_kb, fcfg.input_file, coverage_dir, input_dir, "increased_coverage", 1)
+    process_files(input_kb, fcfg.input_file, interesting_dir, input_dir, "crash", 1) 
 
     with grpc.insecure_channel('%s:%d' % (ip, port)) as channel:
         kbs = kbpg.KnowledgeBaseStub(channel)
@@ -214,7 +226,7 @@ def run(cfg):
         input_kb.pending_lock = False
         kb_input = kbs.AddInput(input_kb)
         
-        send_to_database(kbs, inputs, kb_analysis, coverage_dir, interesting_dir) 
+        send_to_database(kbs, fcfg.input_file, inputs, kb_analysis, coverage_dir, interesting_dir) 
 
         te =  kbp.TimingEvent(type=kbp.TimingEvent.Type.ANALYSIS,
                               event=kbp.TimingEvent.Event.END)        

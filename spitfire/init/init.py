@@ -94,7 +94,7 @@ def setup(cfg):
         uuid = []
         for dirpath,_,filenames in os.walk(corpus_dir): 
             for f in filenames:
-                input_msg = kbp.Input(filepath=os.path.join(dirpath, f), seed=True)
+                input_msg = kbp.Input(filepath=os.path.join(dirpath, f), seed=True, depth=0, n_fuzz=0, fuzz_level=0)
                 fuzz_input = kbs.AddInput(input_msg)
                 fuzz_inputs.append(fuzz_input)
                 uuid.append(fuzz_input.uuid)
