@@ -37,20 +37,22 @@ import knowledge_base_pb2_grpc as kbpg
 import coverage
 from kubernetes_help import * 
 
+def next_p2(value): 
+    ret = 1
+    while value > ret:
+        ret = ret << 1
+    return ret
 
 def calibrate_case(kbs, entry, queue_cycle, target):
     if entry.calibrated: 
         return
 
-    #print(entry)
     # Execution time:
     start_time = time.time() * 1e6
     subprocess.run(args=[target, entry.filepath], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     stop_time = time.time() * 1e6
     exec_us = stop_time - start_time
-    #print(exec_us)
     setattr(entry, "exec_time", exec_us)
-    #print(inputs[file_name])
 
     # Bitmap size
     output_file = "out"
@@ -62,18 +64,17 @@ def calibrate_case(kbs, entry, queue_cycle, target):
     output = subprocess.check_output(args=cmd)
     bitmap_size = int(output.decode("utf-8").split()[0])
     setattr(entry, "bitmap_size", bitmap_size)
-    #print(inputs[file_name])
-    #print(bitmap_size)
 
     # Handicap value 
-    setattr(entry, "handicap", 0 if queue_cycle == 0 else queue_cycle - 1)
+    setattr(entry, "handicap", queue_cycle - 1) #0 if queue_cycle == 0 else queue_cycle - 1)
+
     setattr(entry, "calibrated", True)
     kbs.AddInput(entry)
-    old = kbs.GetInput(kbp.Input(filepath=entry.filepath))
-    print(old)
+    #old = kbs.GetInput(kbp.Input(filepath=entry.filepath))
+    #print(old)
 
 
-def calculate_score(kbs, entry, avg_exec_time, avg_bitmap_size, fuzz_mu): 
+def calculate_score(kbs, entry, schedule, avg_exec_time, avg_bitmap_size, fuzz_mu): 
     perf_score = 100
     print(entry)
     print(perf_score)
@@ -118,10 +119,10 @@ def calculate_score(kbs, entry, avg_exec_time, avg_bitmap_size, fuzz_mu):
     # handicap here
     if entry.handicap >= 4:
         perf_score *= 4
-        #setattr(entry, "handicap", entry.handicap - 4)
+        setattr(entry, "handicap", entry.handicap - 4)
     elif entry.handicap: 
         perf_score *= 2
-        #setattr(entry, "handicap", entry.handicap - 1)
+        setattr(entry, "handicap", entry.handicap - 1)
     kbs.AddInput(entry)
 
     # More power to inputs found further down 
@@ -139,10 +140,8 @@ def calculate_score(kbs, entry, avg_exec_time, avg_bitmap_size, fuzz_mu):
     MAX_FACTOR = POWER_BETA * 32 
     HAVOC_MAX_MULT = 16 
 
-
     factor = 1
     fuzz = entry.n_fuzz
-    schedule = "COE"
     if schedule == "EXPLORE": 
         pass
     elif schedule == "EXPLOIT": 
@@ -319,7 +318,7 @@ def run(cfg):
             havoc_div = 2
 
         # let's sort this queue (based on f_i or s_i) 
-        if False: #cfg.manager.search_strategy == "F"): # sorted based on low f_i (i.e. smallest number of fuzz)
+        if cfg.manager.search_strategy == "F": # sorted based on low f_i (i.e. smallest number of fuzz)
             print("Sorting based on f_i") 
             queue = sorted(queue, key=lambda x: x.n_fuzz)
         else: # s(i) 
@@ -327,9 +326,10 @@ def run(cfg):
             queue = sorted(queue, key=lambda x: x.fuzz_level)
 
         index = 0
+        schedule = cfg.manager.schedule
         while True:
 
-            perf_score = calculate_score(kbs, queue[index], avg_exec_time, avg_bitmap_size, avg_fuzz_mu) 
+            perf_score = calculate_score(kbs, queue[index], schedule, avg_exec_time, avg_bitmap_size, avg_fuzz_mu) 
             print(perf_score)
 
             if perf_score == 0: 

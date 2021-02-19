@@ -176,7 +176,7 @@ message Input {
     uint64 bitmap_size = 14;
     double exec_time = 15;
     uint64 fuzz_level = 16;
-    uint64 handicap = 17; 
+    sint64 handicap = 17; 
     bool calibrated = 18;
     map<string, string> additional_infomation = 20;
 }
