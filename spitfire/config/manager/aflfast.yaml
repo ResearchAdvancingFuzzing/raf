@@ -1,0 +1,10 @@
+manager:
+  name: aflfast 
+  budget: 10
+  search_startegy: "F" # or "S"
+  schedule: "EXPLORE"
+  HAVOC_CYCLES_INIT: 1024
+  HAVOC_CYCLES: 256
+  POWER_BETA: 1
+  HAVOC_MAX_MULT: 16
+
