@@ -1,7 +1,3 @@
-#
-# Tm: A taint and coverage based fuzzing manager. 
-
-#
 
 from kubernetes import client, utils, config
 import os
@@ -272,9 +268,7 @@ def run(cfg):
 
         # Variables
         total_entries = len(queue)
-        total_exec_time = 0
-        total_bitmap_size = 0 
-        total_fuzz = 0
+        total_exec_time, total_bitmap_size, total_fuzz = 0, 0, 0
 
         # Calculate averages  
         for entry in queue:

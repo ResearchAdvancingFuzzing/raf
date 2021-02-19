@@ -20,21 +20,10 @@ sys.path.append(spitfire_dir + "/utils")
 import knowledge_base_pb2 as kbp
 import knowledge_base_pb2_grpc as kbpg 
 import coverage 
+from kubernetes_help import * 
 
 # This requires the config_server.yaml file named accordingly and the yaml deployment 
 # specified first and the yaml service second 
-
-# <name> container in <namespace> with volume mounts and env configured
-# command and args are a list or None
-# port is a port # or None
-def container(namespace, name, image, command, args, port): 
-        return client.V1Container(
-            name=name, command=command, args=args, image=image, 
-            volume_mounts=[client.V1VolumeMount(
-                name="%s-storage" % namespace, mount_path="/%s" % namespace)],
-            env_from=[client.V1EnvFromSource(
-                client.V1ConfigMapEnvSource(name="dir-config"))],
-            ports=None if not port else [client.V1ContainerPort(container_port=port)])
 
 @hydra.main(config_path=f"{spitfire_dir}/config/config.yaml")
 def setup(cfg):
@@ -46,35 +35,33 @@ def setup(cfg):
     apps_api_instance = client.AppsV1Api()
     batch_beta_api_instance = client.BatchV1beta1Api() 
 
+    # Storage volume & volume mount
+    volumes = [client.V1Volume(name="%s-storage" % namespace, 
+        persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(claim_name=namespace))]
+    volume_mounts = [client.V1VolumeMount(name="%s-storage" % namespace, mount_path="/%s" % namespace)]
+
     # Create the kb server: deployment and service 
     deployment_name=cfg.knowledge_base.name
     labels={"server": deployment_name}
-    res = apps_api_instance.create_namespaced_deployment(
-           namespace, client.V1Deployment(
-               metadata=client.V1ObjectMeta(name=deployment_name, labels=labels), 
-                spec=client.V1DeploymentSpec(
-                    selector=client.V1LabelSelector(match_labels=labels),
-                    template=client.V1PodTemplateSpec(
-                        metadata=client.V1ObjectMeta(name=deployment_name, labels=labels),
-                        spec=client.V1PodSpec(
-                            containers=[container(namespace, deployment_name, "knowledge-base:%s" % namespace, 
-                                None, None, cfg.knowledge_base.port)],
-                            volumes=[client.V1Volume(
-                                name="%s-storage" % namespace, 
-                                persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(
-                                    claim_name=namespace))])))))
+    containers=[container(namespace, deployment_name, "knowledge-base:%s" % namespace, 
+                                None, None, cfg.knowledge_base.port, volume_mounts)]
+    metadata = client.V1ObjectMeta(name=deployment_name, labels=labels)
+    pod_spec = client.V1PodSpec(containers=containers, volumes=volumes)
+    pod_temp = client.V1PodTemplateSpec(metadata=metadata, spec=pod_spec)
+    label_sel = client.V1LabelSelector(match_labels=labels)
+    depl_spec = client.V1DeploymentSpec(selector=label_sel, template=pod_temp)
+    deployment = client.V1Deployment(metadata=metadata, spec=depl_spec)
+    apps_api_instance.create_namespaced_deployment(namespace, deployment) 
 
+   
     service_name="%s" % deployment_name
-    core_api_instance.create_namespaced_service(
-            namespace, client.V1Service(
-                metadata=client.V1ObjectMeta(name=service_name), 
-                spec=client.V1ServiceSpec(
-                    selector=labels, 
-                    ports=[client.V1ServicePort(
-                        port=int(cfg.knowledge_base.port), 
-                        target_port=int(cfg.knowledge_base.port))],
-                    type="NodePort")))
-  
+    metadata = client.V1ObjectMeta(name=service_name)
+    ports = client.V1ServicePort(port=int(cfg.knowledge_base.port), 
+            target_port=int(cfg.knowledge_base.port))
+    service_spec = client.V1ServiceSpec(selector=labels, ports=[ports], type="NodePort")
+    service = client.V1Service(metadata=metadata, spec=service_spec)
+    core_api_instance.create_namespaced_service(namespace, service)
+
     # Let's give this time to setup
     time.sleep(10)
 
@@ -94,7 +81,8 @@ def setup(cfg):
         uuid = []
         for dirpath,_,filenames in os.walk(corpus_dir): 
             for f in filenames:
-                input_msg = kbp.Input(filepath=os.path.join(dirpath, f), seed=True, depth=0, n_fuzz=0, fuzz_level=0)
+                input_msg = kbp.Input(filepath=os.path.join(dirpath, f), 
+                        seed=True, depth=0, n_fuzz=0, fuzz_level=0)
                 fuzz_input = kbs.AddInput(input_msg)
                 fuzz_inputs.append(fuzz_input)
                 uuid.append(fuzz_input.uuid)
@@ -118,22 +106,21 @@ def setup(cfg):
     #            data={"COUNTS_DIR": "/counts", "FUZZER": '0', "TAINT": '0', "COVERAGE": '0'}))
 
     name = "fm"
-    batch_beta_api_instance.create_namespaced_cron_job(namespace, 
-            client.V1beta1CronJob(
-                metadata=client.V1ObjectMeta(name=name),
-                spec=client.V1beta1CronJobSpec(schedule="*/1 * * * *", successful_jobs_history_limit=100, 
-                    failed_jobs_history_limit=30, 
-                    job_template=client.V1beta1JobTemplateSpec(metadata=client.V1ObjectMeta(name=name), 
-                        spec=client.V1JobSpec(template=client.V1PodTemplateSpec(
-                            spec=client.V1PodSpec(
-                                containers=[container(namespace, name, "fm:%s" % namespace, None, None, None)],
-                                volumes=[client.V1Volume(
-                                    name="%s-storage" % namespace, 
-                                    persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(
-                                        claim_name=namespace))],
-                                restart_policy="OnFailure")))))))
-    
-    
+    fm_name = cfg.manager.name + ".py"
+    cmd = ['python3.6']
+    args = [fm_name]
+    metadata=client.V1ObjectMeta(name=name)
+    containers = [container(namespace, name, "fm:%s" % namespace, cmd, args, None, volume_mounts)]
+    restart_policy = "OnFailure"
+    pod_spec = client.V1PodSpec(containers=containers, volumes=volumes, restart_policy=restart_policy)
+    pod_temp = client.V1PodTemplateSpec(metadata=metadata, spec=pod_spec)
+    job_spec = client.V1JobSpec(template=pod_temp)
+    job_temp = client.V1beta1JobTemplateSpec(metadata=metadata, spec=job_spec)
+    cron_job_spec = client.V1beta1CronJobSpec(schedule="*/1 * * * *", successful_jobs_history_limit=100, 
+            failed_jobs_history_limit=30, job_template=job_temp)
+    cron_job = client.V1beta1CronJob(metadata=metadata, spec=cron_job_spec) 
+    batch_beta_api_instance.create_namespaced_cron_job(namespace, cron_job)
+
 
 if __name__ == '__main__':
     setup()
