@@ -11,7 +11,7 @@
 - AFL's power schedule only assigns high energy. Most fuzz exercises the same few paths and, as a result, too much energy gets assigned to high-frequency paths. AFLFast's power schedule assigns energy that is inversely proportional to the density of the stationary distribution (which they approximate for a state *i* by counting the number of fuzz *f(i)* that exercises the path *i*). 
 - AFLFast includes 6 different versions of power schedules based on the above two points.
 #### Search strategies (deciding which input is chosen next)
-- In AFLFast, the decision of what input is chosen next purely based on the number the number of times an input has been fuzzed before (*s(i)*) and the amount of fuzz exercising the same path as the input (*f(i)*).
+- In AFLFast, the decision of what input is chosen next is purely based on the number the number of times an input has been fuzzed before (*s(i)*) and the amount of fuzz exercising the same path as the input (*f(i)*).
 	- **Prioritizing small *s(i)***- this allows the fuzzer to establish early whether or not path *i* is a low-frequency path and whether it should invest more energy into fuzzing it 
 	- **Prioritizing small *f(i)***- this allows the fuzzer to fuzz an input that exercises a low-frequency path, which might generate more inputs exercising low-frequency paths.
 ## AFL vs AFLFast Implementations
@@ -22,4 +22,6 @@
 ## AFLFast vs RAF AFLFast Implementations  
 - RAF implements an AFLFast type fuzzing manager in `aflfast.py`. 
 - Both RAF and AFL/AFLFast maintain a list of seed and interesting inputs. However, unlike AFL/AFLFast's sequential/circular queue, RAF maintains an unordered list; it does this by querying the knowledge base for all seed inputs and interesting inputs found so far and adding these to its list of inputs. 
-- 
+- Both RAF andAFLFast "favor" inputs to fuzz next. AFLFast favors inputs by maintaining a list that pairs all potential paths in the program to a "top rated" input for that path, finding the minimal set of those inputs that cover all paths seen so far, and then "tagging" those inputs as favorable. (Note: a "top rated" input here is the input that has the fewest fuzz and, if none do, it is the input that has equal fuzz and a smaller size x speed factor (assuming it is not the only input seen so far; if it is, it is automatically the top rated input). RAF, on the other hand, simply sorts its list of inputs based on search strategies described in AFLFast (i.e. sorts the queue based on inputs that has the fewest fuzz / inputs that have been fuzzed the fewest times). Where inputs are chosen sequentially and potentially skipped over in AFLFast (if they are not favored), RAF always fuzzes the first input in its list.  
+- When an input is finally chosen to fuzz, both RAF and AFLFast calculate a score (power) for that input test case and adjust the number of iterations spent havoc fuzzing based on that score. Both RAF and AFLFast use the exact same heuristics and power schedules to determine this time spent fuzzing.
+-  When new, interesting inputs are found, both RAF and AFLFast calibrate the test case (calculating things like execution time and bitmap size). While AFLFast calibrates test cases as soon as new, inputs are added, RAF calibrates cases found that is has not calibrated before as soon as it wakes up.
