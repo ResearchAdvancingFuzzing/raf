@@ -22,6 +22,9 @@ replays_dir = "/%s%s" % (namespace, os.environ.get("REPLAY_DIR"))
 counts_dir = "/%s/counts" % namespace
 target_dir = "/%s%s" % (namespace, os.environ.get("TARGET_INSTR_DIR"))
 
+trace_file_name = "%s/trace" % counts_dir
+results_file_name = "%s/results" % counts_dir
+
 # Add to the python path for more imports
 sys.path.append("/")
 sys.path.append(spitfire_dir)
@@ -33,6 +36,12 @@ import knowledge_base_pb2_grpc as kbpg
 import coverage
 from kubernetes_help import * 
 
+# Mapping of bytes (ints) to entry uuids (string)
+top_rated = {} 
+# Mapping of uuids to lists representing the bytes they have seen so far
+trace_bits = {}
+score_changed = 0 
+
 # Find first power of two greater or equal to value
 def next_p2(value): 
     ret = 1
@@ -40,10 +49,33 @@ def next_p2(value):
         ret = ret << 1
     return ret
 
+# When we bump into a new path, we call this to see if the path appears
+#  more "favorable" than any of the existing ones. 
+def update_bitmap_score(kbs, entry, trace_bits): 
+    fuzz_p2 = next_p2(entry.n_fuzz)
+    fav_factor = entry.exec_time * entry.size 
+
+    for path in trace_bits: 
+        if path in top_rated: 
+            top_rated_entry = kbs.GetInputById(kbp.id(uuid=top_rated[path]))
+            top_rated_fuzz_p2 = next_p2(top_rated_entry.n_fuzz)
+            top_rated_fav_factor = top_rated_entry.exec_time * entry.size
+        if fuzz_p2 > top_rated_fuzz_p2: 
+            continue
+        elif fuzz_p2 == top_rated_fuzz_p2 and fav_factor > top_rated_fav_factor:
+            continue
+
+        # Looks like we are going to win this slot
+        top_rated[path] = entry.uuid
+        score_changed = 1
+
 #  Finds and updates an input's exec time, bitmap size, and handicap (queue cycles behind) value 
-def calibrate_case(kbs, entry, queue_cycle, target):
+def calibrate_case(kbs, entry, queue_cycle, target, trace_file):
     if entry.calibrated: 
         return
+
+    # Size 
+    setattr(entry, "size", os.path.getsize(entry.filepath))
 
     # Execution time:
     start_time = time.time() * 1e6
@@ -52,19 +84,26 @@ def calibrate_case(kbs, entry, queue_cycle, target):
     exec_us = stop_time - start_time
     setattr(entry, "exec_time", exec_us)
 
-    # Bitmap size
+    # Bitmap size and updating bitmap score
     output_file = "out"
     cmd = "/AFL/afl-showmap -o %s  -- %s %s" % (output_file, target, entry.filepath)
     cmd = cmd.split()
     subprocess.run(args=cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    cmd = "wc -l %s" % output_file
-    cmd = cmd.split()
-    output = subprocess.check_output(args=cmd)
-    bitmap_size = int(output.decode("utf-8").split()[0])
+
+    # Open afl-showmap file to get path:count mapping
+    f = open(output_file, "r") 
+    trace_bits = {int(line.split(':')[0]):line.split(':')[1] for line in f.readlines()}
+    trace_bits.keys()
+    f.close()
+    
+    # Number of bits set is just the length of that file 
+    bitmap_size = len(trace_bits)
     setattr(entry, "bitmap_size", bitmap_size)
 
     # Handicap value 
     setattr(entry, "handicap", queue_cycle - 1) #0 if queue_cycle == 0 else queue_cycle - 1)
+
+    update_bitmap_score(kbs, entry, trace_bits) 
 
     setattr(entry, "calibrated", True)
     kbs.AddInput(entry)
@@ -179,6 +218,43 @@ def calculate_score(cfg, kbs, entry, avg_exec_time, avg_bitmap_size, fuzz_mu):
     return perf_score 
 
 
+# Looks at entire queue and returns a list of favored inputs 
+def cull_queue(cfg, kbs, queue): 
+
+    if not score_changed:
+        return 
+    score_changed = 0
+    pending_favored = 0
+    favored = {}
+    temp_v = [1 for i in range(0, cfg.manager.MAP_SIZE)]
+    for path in sorted(top_rated): # all the top_rated entries we are looking at  
+        if not temp_v[path]: # if entry has seen a path we've already seen, continue
+            continue
+        uuid = top_rated[path]
+        for index in trace_bits[uuid]: # if not, look at all paths it has seen and mark seen
+            temp_v[index] = 0 
+        favored[uuid] = 0
+        entry = kbs.GetInputById(kbp.id(uuid=uuid)) 
+        if entry.fuzz_level == 0: 
+            pending_favored += 1 
+    return [pending_favored, favored]
+        
+
+
+def skip_fuzz(cfg, kbs, pending_favored, favored, entry, queue, queue_cycle): 
+    if pending_favored:
+        if entry.fuzz_level > 0 || not entry in favored:
+            if UR(100) < cfg.manager.SKIP_TO_NEW_PROB: 
+                return 1
+        elif not entry in favored and len(queue) > 10:
+            if queue_cycle > 1 and entry.fuzz_level == 0:
+                if UR(100) < cfg.manager.SKIP_NFAV_NEW_PROB:
+                    return 1
+            else: 
+                if UR(100) < cfg.manager.SKIP_NFAV_OLD_PROB:
+                    return 1
+    return 0
+
 
 @hydra.main(config_path=f"{spitfire_dir}/config/config.yaml")
 def run(cfg):
@@ -188,6 +264,26 @@ def run(cfg):
         os.mkdir(inputs_dir) 
     if not os.path.exists(counts_dir):
         os.mkdir(counts_dir)
+    
+    # Let's get our top rated stuff
+    try: 
+        f = open(results_file_name, "r") 
+        top_rated = {int(line.split(':')[0]):line.split(':')[1] for line in f.readlines()}
+    except IOError:
+        top_rated = {}
+    finally: 
+        f.close()
+
+    try:
+        f = open(trace_file_name, "r") 
+        trace_bits = {} 
+        for line in f.readlines(): 
+            tup = line.rstrip().split(':')
+            trace_bits[tup[0]] = [int(x) for x in tup[1].split(',')] 
+    except IOError:
+        trace_bits = {}
+    finally: 
+        f.close()
 
     # Compute budget 
     # so, like 10 cores or nodes or whatever
@@ -247,7 +343,8 @@ def run(cfg):
         # set of inputs that are unfinished, with results still pending  
         P = {inp.uuid for inp in kbs.GetPendingInputs(kbp.Empty())} #set([])
         print("%d Pending Inputs" % len(P))
-            
+        
+        '''
         # Add the seeds and interesting inputs to the queue
         # There is no ordering here; we will sort the queue later 
         queue = S | ICV - P 
@@ -258,9 +355,34 @@ def run(cfg):
         # Find queue cycle and calibrate data that has not yet been calibrated
         queue_cycle = min([entry.fuzz_level for entry in queue])
         print(queue_cycle)
+        '''
+
+        # Get the queue and queue_cycle from the KB
+        queue = [inp for inp in kbs.GetQueue(kbp.Empty())]
+        queue_cycle = kbs.GetQueueCycle(kbp.Empty()) 
+
+        # Calibrate things in the queue that have not yet been calibrated
+        # everything that we haven't calibrated yet is "new" (we haven't seen it yet)
         for entry in queue: 
             if not entry.calibrated:
                 calibrate_case(kbs, entry, queue_cycle, target)
+
+        '''
+        # Find the inputs in the queue with the least number of fuzz, n_fuzz ("favored") 
+        min_n_fuzz = queue[0].n_fuzz if queue else None
+        favored_inp = []
+        for entry in queue: 
+            if entry.n_fuzz < min_n_fuzz: 
+                favored_inp = [entry] # reset the list
+            elif entry.n_fuzz == min_n_fuzz: 
+                favored_inp.append(entry) # add to min list 
+            else: 
+                continue
+        
+        # Sort those "favored" inputs with the least fuzz by the ones that have been fuzzed the least
+        inputs_to_fuzz = sorted(min_fuzz_inp, key=lambda x: x.fuzz_level)
+        '''
+
 
         # Parameters (taken from AFLFast)
         HAVOC_CYCLES_INIT = cfg.manager.HAVOC_CYCLES_INIT 
@@ -294,6 +416,7 @@ def run(cfg):
         elif seed_avg_exec_time > 10000:
             havoc_div = 2
 
+        '''
         # let's sort this queue (based on f_i or s_i) 
         if cfg.manager.search_strategy == "F": # sorted based on low f_i (i.e. smallest number of fuzz)
             print("Sorting based on f_i") 
@@ -301,15 +424,23 @@ def run(cfg):
         else: # s(i) default, sorted based on low s_i (i.e. number of times fuzzed) 
             print("Sorting based on s_i")
             queue = sorted(queue, key=lambda x: x.fuzz_level)
+        '''
 
-        index = 0
+        [pending_favored, favored] = cull_queue(cfg, kbs, queue) 
+
         while True:
+            [pending_favored, favored] = cull_queue(cfg, kbs, queue) 
+
+            kb_inp = kbs.NextInQueue(kbp.Empty()) 
+
+            skipped_fuzz = skip_fuzz(cfg, kbs, pending_favored, favored, kb_inp, queue, queue_cycle) 
+            if skipped_fuzz: 
+                continue
 
             perf_score = calculate_score(cfg, kbs, queue[index], avg_exec_time, avg_bitmap_size, avg_fuzz_mu) 
             print(perf_score)
 
             if perf_score == 0: 
-                index += 1
                 continue # skip this entry
 
             stage_max = HAVOC_CYCLES * perf_score / havoc_div / 100
