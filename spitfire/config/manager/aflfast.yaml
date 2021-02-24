@@ -1,8 +1,8 @@
 manager:
   name: aflfast 
   budget: 10
-  search_strategy: "F" # or "S"
   schedule: "EXPLORE"
+  MAP_SIZE: 65536
   HAVOC_CYCLES_INIT: 1024
   HAVOC_CYCLES: 256
   POWER_BETA: 1

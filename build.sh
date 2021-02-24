@@ -1,55 +1,5 @@
 #!/bin/bash
-
-commit=$(git rev-parse HEAD | cut -c 1-8)
-
-i=0
-
-for tag in `git show-ref --tags -d | grep $commit | awk '{print $2}'`
-do
-   if [[ "$tag" == *"raf-expt-"* ]]
-   then
-       echo "RAF expt tag for current git commit $commit -- $tag"
-       git_tag=$tag
-       i=$((i+1))
-   fi
-done
-
-if [ $i -eq 0 ]
-then
-    echo "Error. No RAF expt tag for current git commit $commit. There should be a git tag of the form 'raf-expt-tagname'"
-    exit 1
-fi
-
-if [ $i -gt 1 ]
-then
-    echo "Error. Found more than one RAF expt for current git commit."
-    exit 1
-fi
-
-# there must be just one raf-expt- tag. Ok to continue
-
-# pull out just the tag (minus the raf-expt- stuff
-tag=`echo $git_tag | sed 's/refs\/tags\/raf-expt-//g'`
-
-echo "RAF expt tag is $tag"
-
-#tag=$(git describe --exact-match --tags $commit) 
-
-if [ -z "$commit" ] 
-then
-   echo "git commit is empty" 
-   exit 1
-elif [ -z "$tag" ]
-then
-   echo "The current git commit is not tagged. Please tag using git tag and then try again." 
-   exit 1
-fi
-
-base_id="$commit-$tag"
-
-# Check for the largest version number for this id currently used and increment it
-num="$(($(kubectl get namespaces | awk '{print $1}' | grep "$base_id" | sed -e "s/$base_id//" | sort | sed '$!d') + 1 ))"
-id="$base_id-$num"
+id=$1
 
 echo "Namespace for the campaign: $id"
 
@@ -59,10 +9,9 @@ set -e
 cd spitfire/protos && make clean && make && cd ../..
 
 # Rebuild docker images 
-docker build -t gtfo-source:v1 -f spitfire/tools/gtfo-source/Dockerfile .
-#docker build -t spitfirepanda -f ./Dockerfile_panda .
-docker build -t spitfirepanda:python -f ./Dockerfile_18_04 .
-docker build -t raf -f ./Dockerfile_raf . 
+#docker build -t gtfo-source:v1 -f spitfire/tools/gtfo-source/Dockerfile .
+#docker build -t spitfirepanda:python -f ./Dockerfile_panda .
+#docker build -t raf -f ./Dockerfile_raf . 
 
 docker build -t init:$id -f spitfire/init/Dockerfile_init .
 docker build -t fm:$id -f spitfire/fuzzing_manager/Dockerfile .

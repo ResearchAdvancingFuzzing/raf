@@ -35,64 +35,93 @@ log = logging.getLogger(__name__)
 
 inputs = {} # tracks all the new interesting inputs (file_name, kb_input) 
 
-# Copy files from src to dest
-# Add the attrb and value to that file 
-def process_file(file_name, src, dest, attrb, value, depth): 
-    full_file_name = os.path.join(src, file_name)  # fully qualified file name
-    if os.path.isfile(full_file_name) and full_file_name.endswith(".input"):
-        kb_input = None
-        if not file_name in inputs: # make sure we haven't seen it before
-            shutil.copy(full_file_name, dest)  # copy the file to the new dest 
-            kb_input = kbp.Input(filepath = "%s/%s" % (dest, file_name)) # create the kb input for this 
-            inputs[full_file_name] = kb_input # add the (file_name, kb_input) to the inputs map
-        setattr(inputs[full_file_name], attrb, value)
-        setattr(inputs[full_file_name], "depth", depth) 
+
+# Copy all files in src to dest 
+def copy_to_shared_dir(src, dest): 
+    if not os.path.isdir(src) or not os.path.isdir(dest):
+        return 
+    src_files = os.listdir(src) 
+    for i, file_name in enumerate(src_files): 
+        full_file_name = os.path.join(src, file_name) 
+        if not os.path.isfile(full_file_name):
+            continue
+        shutil.copy(full_file_name, dest)
+
+# Adds any attributes specified in attrib_map, plus main ones
+def add_attrib_to_inp(kb_inp, attrib_map, depth): 
+    for attrib, value in attrib_map.items(): 
+        setattr(kb_inp, attrib, value)
+    kb_inp.depth = depth
+    kb_inp.time_found = time.time()
+    kb_inp.n_fuzz = 0
+    kb_inp.fuzz_level = 0
+    
+
+# Helper function for send_to_database
+# Sends the input to the KB
+def add_inp_to_database(kbs, file_name, attrib_map, depth): 
+    # Ignore the .results files 
+    if not file_name.endswith(".input"): 
+        return
+    new_inp= kbp.Input(filepath = "%s/%s" % (input_dir, file_name)) # create the kb input for this 
+    add_attrib_to_inp(new_inp, attrib_map, depth)
+    new_kb_input = None 
+    result = kbs.InputExists(new_inp)
+    if result.success: # Exists
+        new_kb_input = kbs.GetInput(new_inp)
+        if new_kb_input.seed: # input exists
+            old_base = os.path.splitext(file_name)[0]
+            new_base = os.path.basename(os.path.splitext(new_kb_input.filepath)[0])
+            results = "%s/%s.results" % (input_dir, old_base)
+            new_results = "%s/%s.results" % (input_dir, new_base)
+            os.rename(results, new_results) 
+    else: 
+        # Only if it does not already exist, do we add it 
+        new_kb_input = kbs.AddInput(new_inp)
+    return new_kb_input
 
 
-def process_files(input_kb, input_file, src, dest, attrb, value): 
-    # Get depth 
-    depth = input_kb.depth + 1 
-    if (os.path.isdir(src)): 
-        src_files = os.listdir(src)
-        for i, file_name in enumerate(src_files):
-            ret = filecmp.cmp(input_file, os.path.join(src, file_name))
-            if ret: 
-                continue
-            process_file(file_name, src, dest, attrb, value, depth)
-
-
-def send_to_database(kbs, input_file, inputs, kb_analysis, coverage_dir, interesting_dir):
+def send_to_database(kbs, kb_input, kb_analysis, coverage_dir, interesting_dir):
     # Inputs is a dictionary of inputs to their kb_input 
     num_inc_covg = 0
     num_crash = 0
-    for inp_path in inputs:
-        inp = inputs[inp_path]
-        result = kbs.InputExists(inp)
-        #print(result.success)
-        if not result.success: # Input did not exist before
-            kb_input = kbs.AddInput(inp)
-            # Add the fuzzing events
-            if os.path.dirname(inp_path) == coverage_dir: # inc coverage
-                num_inc_covg += 1
-                te =  kbp.IncreasedCoverageEvent()        
-                kbs.AddFuzzingEvent(kbp.FuzzingEvent(
-                    analysis=kb_analysis.uuid, input=kb_input.uuid,
-                    increased_coverage_event=te))
-            if os.path.dirname(inp_path) == interesting_dir: # crashes
-                num_crash += 1
-                te = kbp.CrashEvent() 
-                kbs.AddFuzzingEvent(kbp.FuzzingEvent(
-                    analysis=kb_analysis.uuid, input=kb_input.uuid, 
-                    crash_event=te))
-        else: 
-            kb_input = kbs.AddInput(inp)
+    depth = kb_input.depth + 1
 
-    input_kb = kbs.GetInput(kbp.Input(filepath=input_file))
-    n_fuzz = input_kb.n_fuzz + num_inc_covg
-    fuzz_level = input_kb.fuzz_level + 1 
-    print(n_fuzz)
-    input_kb = kbs.AddInput(kbp.Input(filepath=input_file, n_fuzz=n_fuzz, fuzz_level=fuzz_level))
-    print(input_kb)
+    # Add the new interesting inputs to the KB 
+    files = os.listdir(interesting_dir) if os.path.isdir(interesting_dir) else []
+    for file_name in files: 
+        num_crash += 1
+        new_kb_input = add_inp_to_database(kbs, file_name, {"crash": 1}, depth)
+        if new_kb_input:
+            event = kbp.CrashEvent()
+            kbs.AddFuzzingEvent(kbp.FuzzingEvent(analysis=kb_analysis.uuid,  
+                input=new_kb_input.uuid, crash_event=event))
+
+    files = os.listdir(coverage_dir) if os.path.isdir(coverage_dir) else []
+    for file_name in files:
+        num_inc_covg += 1
+        new_kb_input = add_inp_to_database(kbs, file_name, {"increased_coverage": 1}, depth) 
+        if new_kb_input:
+            event = kbp.IncreasedCoverageEvent()
+            kbs.AddFuzzingEvent(kbp.FuzzingEvent(analysis=kb_analysis.uuid,  
+                input=new_kb_input.uuid, increased_coverage_event=event))
+
+    # Add to the queue
+    kbs.AddToQueue(new_kb_input) 
+
+    # Update the input we fuzzed 
+    kb_input.fuzzed = True
+    kb_input.pending_lock = False
+    n_fuzz = kb_input.n_fuzz + num_inc_covg
+    fuzz_level = kb_input.fuzz_level + 1 
+    kb_input.n_fuzz = n_fuzz
+    kb_input.fuzz_level = fuzz_level
+    print(kb_input) 
+    kb_input = kbs.AddInput(kb_input)
+    kb_input = kbs.GetInput(kb_input)
+    # Print some stuff out
+    print(kb_input)
+    print("N_fuzz: %d Fuzz_level: %d" % (n_fuzz, fuzz_level))
     print("%d inputs that increased coverage" % num_inc_covg) 
     print("%d inputs that crashed" % num_crash) 
     print("Sent %d new inputs out of %d to the database" % 
@@ -100,7 +129,7 @@ def send_to_database(kbs, input_file, inputs, kb_analysis, coverage_dir, interes
 
 
 
-def check_analysis_complete(cfg, kbs, inputfile):
+def check_analysis_complete(cfg, kbs, input_file):
 
     # get canonical representations for all of these things
     target_msg = kbp.Target(name=cfg.target.name, \
@@ -112,8 +141,8 @@ def check_analysis_complete(cfg, kbs, inputfile):
                                type=kbp.AnalysisTool.AnalysisType.MUTATION_FUZZER)
     gtfo     = kbs.AddAnalysisTool(gtfo_msg)
 
-    print("input file is [%s]" % inputfile) 
-    fuzzer_input = kbs.GetInput(kbp.Input(filepath=inputfile))
+    print("input file is [%s]" % input_file) 
+    fuzzer_input = kbs.GetInput(kbp.Input(filepath=input_file))
 
     # if we have already performed this coverage analysis, bail
     fuzzer_analysis_msg = kbp.Analysis(tool=gtfo.uuid, \
@@ -140,7 +169,7 @@ def run(cfg):
     
     target = "%s/%s" % (target_dir, cfg.target.name)
     fcfg = cfg.fuzzer
-    inputfile = fcfg.input_file
+    input_file = fcfg.input_file
 
     # Setup access to cluster 
     config.load_incluster_config()
@@ -156,30 +185,28 @@ def run(cfg):
 
         # Get the input
         kbs = kbpg.KnowledgeBaseStub(channel)
-        input_kb = kbs.GetInput(kbp.Input(filepath=fcfg.input_file))
+        kb_input = kbs.GetInput(kbp.Input(filepath=input_file))
+        print(kb_input)
 
         # Get the target
         target_msg = kbp.Target(name=cfg.target.name, source_hash=cfg.target.source_hash)
         target_kb = kbs.GetTarget(target_msg)
         
         # Add the execution
-        execution_msg = kbp.Execution(input=input_kb, target=target_kb)
+        execution_msg = kbp.Execution(input=kb_input, target=target_kb)
         execution_kb = kbs.AddExecution(execution_msg)
 
         # Check if the analysis has already been performed
-        [complete, kb_input, kb_analysis] = check_analysis_complete(cfg, kbs, inputfile)
+        [complete, kb_input, kb_analysis] = check_analysis_complete(cfg, kbs, input_file)
         if complete:   
             return
         
         # TODO: Really we need for mutfuzz run.py to have the Experiment and Analysis
         # to add them to this fuzzing event
-        te =  kbp.TimingEvent(type=kbp.TimingEvent.Type.ANALYSIS,
-                              event=kbp.TimingEvent.Event.BEGIN)        
-        kbs.AddFuzzingEvent(
-            kbp.FuzzingEvent(
-                analysis=kb_analysis.uuid,
-                input=input_kb.uuid,
-                             timing_event=te))
+        te = kbp.TimingEvent(type=kbp.TimingEvent.Type.ANALYSIS,
+                event=kbp.TimingEvent.Event.BEGIN)        
+        kbs.AddFuzzingEvent(kbp.FuzzingEvent(analysis=kb_analysis.uuid, 
+            input=kb_input.uuid, timing_event=te))
         
     # Now let's fuzz
    
@@ -203,7 +230,7 @@ def run(cfg):
     # Make the gtfo command 
     cmd = f'{gtfo_dir}/bin/the_fuzz -S {gtfo_dir}/gtfo/analysis/%s -O {gtfo_dir}/gtfo/ooze/%s \
             -J {gtfo_dir}/gtfo/the_fuzz/%s -i %s -n %d -x %d -c %s' % \
-            (fcfg.analysis.name, fcfg.ooze.name, fcfg.jig.name, fcfg.input_file, fcfg.iteration_count, \
+            (fcfg.analysis.name, fcfg.ooze.name, fcfg.jig.name, input_file, fcfg.iteration_count, \
             fcfg.max_input_size, fcfg.analysis_load_file) 
     cmd = cmd.split()
     cmd += ["-s", fcfg.ooze_seed] 
@@ -213,20 +240,18 @@ def run(cfg):
     proc = subprocess.run(args=cmd, env=env)
     exit_code = proc.returncode
     
+    # Process the results
     interesting_dir = "%s/interesting/crash/" % os.getcwd()
     coverage_dir = "%s/coverage" % os.getcwd() 
     
-    process_files(input_kb, fcfg.input_file, coverage_dir, input_dir, "increased_coverage", 1)
-    process_files(input_kb, fcfg.input_file, interesting_dir, input_dir, "crash", 1) 
+    copy_to_shared_dir(coverage_dir, input_dir)
+    copy_to_shared_dir(interesting_dir, input_dir)
 
+    # Reconnect to the database to send some stuff over 
     with grpc.insecure_channel('%s:%d' % (ip, port)) as channel:
         kbs = kbpg.KnowledgeBaseStub(channel)
-
-        input_kb.fuzzed = True
-        input_kb.pending_lock = False
-        kb_input = kbs.AddInput(input_kb)
         
-        send_to_database(kbs, fcfg.input_file, inputs, kb_analysis, coverage_dir, interesting_dir) 
+        send_to_database(kbs, kb_input,  kb_analysis, coverage_dir, interesting_dir) 
 
         te =  kbp.TimingEvent(type=kbp.TimingEvent.Type.ANALYSIS,
                               event=kbp.TimingEvent.Event.END)        
