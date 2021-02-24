@@ -337,6 +337,20 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
                 filtered |= True
             if not filtered:
                 yield fe
+
+    def AddToQueue(self, inp, context): 
+        self.ks.add_to_queue(inp)
+        return kbp.Empty()
+
+    def NextInQueue(self, emp, context): 
+        return self.ks.next_in_queue() 
+
+    def GetQueueCycle(self, emp, context):
+        return self.ks.get_queue_cycle()
+
+    def GetQueue(self, emp, context): 
+        for inp in self.ks.get_queue: 
+            yield inp
     
 
     

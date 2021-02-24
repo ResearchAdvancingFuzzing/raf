@@ -371,6 +371,10 @@ class KnowledgeStorePickle(KnowledgeStore):
         self.fuzzing_events_timestamps = []
         self.fuzzing_events = []
 
+        self.queue = []
+        self.queue_index = None
+        self.queue_cycle = 0
+
     def pause(self):
         self.mode = Mode.PAUSED
         return True
@@ -417,7 +421,7 @@ class KnowledgeStorePickle(KnowledgeStore):
         l = dir(old)
         l = l[self.start_index(l):]
         for attr in l:
-            if attr == "uuid":
+            if attr == "uuid" or attr == "seed":
                 continue 
             if getattr(new, attr) != getattr(old, attr): 
                 setattr(old, attr, getattr(new, attr)) 
@@ -697,6 +701,27 @@ class KnowledgeStorePickle(KnowledgeStore):
         for fe in self.fuzzing_events:
             yield fe
             
+    def add_to_queue(self, inp):
+        self.queue.add(inp)
+
+    def next_in_queue(self): 
+        if self.queue_index == None: # initialize things 
+            self.queue_cycle = 0 
+            self.queue_index = 0
+        elif self.queue_index == len(self.queue) - 1: # made it to the end
+            self.queue_cycle += 1 
+            self.queue_index = 0
+        else: # just somewhere in the queue
+            self.queue_index += 1
+        # every queue_index at this point should be valid
+        return self.queue[self.queue_index] 
+
+    def get_queue_cycle(self):
+        return self.queue_cycle
+
+    def get_queue(self): 
+        for inp in self.queue:
+            yield inp
             
 
             
