@@ -346,10 +346,10 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
         return self.ks.next_in_queue() 
 
     def GetQueueCycle(self, emp, context):
-        return self.ks.get_queue_cycle()
+        return kbp.IntMessage(val=self.ks.get_queue_cycle())
 
     def GetQueue(self, emp, context): 
-        for inp in self.ks.get_queue: 
+        for inp in self.ks.get_queue(): 
             yield inp
     
 

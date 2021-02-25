@@ -371,7 +371,7 @@ class KnowledgeStorePickle(KnowledgeStore):
         self.fuzzing_events_timestamps = []
         self.fuzzing_events = []
 
-        self.queue = []
+        self.queue = [] # this can only be of their uuids!
         self.queue_index = None
         self.queue_cycle = 0
 
@@ -702,7 +702,7 @@ class KnowledgeStorePickle(KnowledgeStore):
             yield fe
             
     def add_to_queue(self, inp):
-        self.queue.add(inp)
+        self.queue.append(inp.uuid)
 
     def next_in_queue(self): 
         if self.queue_index == None: # initialize things 
@@ -714,14 +714,15 @@ class KnowledgeStorePickle(KnowledgeStore):
         else: # just somewhere in the queue
             self.queue_index += 1
         # every queue_index at this point should be valid
-        return self.queue[self.queue_index] 
+        return self.inputs.get_by_id(self.queue[self.queue_index]) 
 
     def get_queue_cycle(self):
         return self.queue_cycle
 
     def get_queue(self): 
-        for inp in self.queue:
-            yield inp
+        return [self.inputs.get_by_id(uuid) for uuid in self.queue] 
+        #for inp in self.queue:
+        #    yield inp
             
 
             
