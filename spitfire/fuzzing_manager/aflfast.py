@@ -56,7 +56,6 @@ def update_bitmap_score(kbs, entry, trace_bits):
     global top_rated
     global score_changed
 
-    print("updating bitmap score")
     fuzz_p2 = next_p2(entry.n_fuzz)
     fav_factor = entry.exec_time * entry.size 
 
@@ -85,7 +84,8 @@ def calibrate_case(kbs, entry, queue_cycle, target):
 
     if entry.calibrated: 
         return
-    print("calibrating case")
+
+    print("Calibrating case")
     print(entry)
 
     # Size 
@@ -97,10 +97,8 @@ def calibrate_case(kbs, entry, queue_cycle, target):
     subprocess.run(args=[target, entry.filepath], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     stop_time = time.time() * 1e6
     exec_us = stop_time - start_time
-    #setattr(entry, "exec_time", exec_us)
     entry.exec_time = exec_us
-    print("execution_time")
-    print(exec_us / 1e6)
+    print("Execution_time {}".format(exec_us / 1e6))
 
     # Bitmap size and updating bitmap score
     start_time = time.time()
@@ -109,7 +107,7 @@ def calibrate_case(kbs, entry, queue_cycle, target):
     cmd = cmd.split()
     subprocess.run(args=cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     stop_time = time.time()
-    print("afl-showmap time: {}".format(stop_time-start_time))
+    print("Afl-showmap time: {}".format(stop_time-start_time))
 
     # Open afl-showmap file to get path:count mapping
     start_time = time.time()
@@ -118,17 +116,14 @@ def calibrate_case(kbs, entry, queue_cycle, target):
     trace_bits_total[entry.uuid] = list(trace_bits.keys())
     f.close()
     stop_time = time.time()
-    print("process trace_bits time : {}".format(stop_time-start_time))
+    print("Process trace_bits time : {}".format(stop_time-start_time))
     
     # Number of bits set is just the length of that file 
     bitmap_size = len(trace_bits)
-    #setattr(entry, "bitmap_size", bitmap_size)
     entry.bitmap_size = bitmap_size
 
     # Handicap value 
-    #setattr(entry, "handicap", queue_cycle - 1) #0 if queue_cycle == 0 else queue_cycle - 1)
     entry.handicap = queue_cycle - 1
-    print("Exec_time: %d, bitmap_size: %d, handicap: %d" % (exec_us, bitmap_size, queue_cycle - 1))
 
     start = time.time()
     update_bitmap_score(kbs, entry, trace_bits) 
@@ -139,9 +134,9 @@ def calibrate_case(kbs, entry, queue_cycle, target):
     #setattr(entry, "calibrated", True)
     #entry.calibrated = True
     #kbs.AddInput(entry)
-    print(entry)
-    old = kbs.GetInput(kbp.Input(filepath=entry.filepath))
-    print(old)
+    #print(entry)
+    #old = kbs.GetInput(kbp.Input(filepath=entry.filepath))
+    #print(old)
 
 
 
@@ -254,17 +249,15 @@ def calculate_score(cfg, kbs, entry, avg_exec_time, avg_bitmap_size, fuzz_mu):
 # Looks at entire queue and returns a list of favored inputs 
 def cull_queue(cfg, kbs, queue): 
     global score_changed
-    print("SCORE_CHANGED %d" % score_changed)
-
-    #if not score_changed:
-    #    return 
+    print("Culling queue")
+    print("Score_changed %d" % score_changed)
+    if not score_changed:
+        return 
     score_changed = 0
     pending_favored = 0
     favored = {}
     temp_v = [1 for i in range(0, cfg.manager.MAP_SIZE)]
     for path in sorted(top_rated): # all the top_rated entries we are looking at  
-        #print("Path: %d, top_rated for path: %s, temp_v[path]: %d, trace_bits[entry]: " % (path, top_rated[path], temp_v[path]))
-        #print(trace_bits_total[top_rated[path]]) 
         if not temp_v[path]: # if entry has seen a path we've already seen, continue
             continue
         uuid = top_rated[path].uuid
@@ -359,18 +352,12 @@ def run(cfg):
 
     with grpc.insecure_channel('%s:%d' % (ip, port)) as channel:
         kbs = kbpg.KnowledgeBaseStub(channel)
-        top_rated = {key:kbs.GetInputById(kbp.id(uuid=val.encode("utf-8"))) for key,val in top_rated.items()} 
-        #top_rated = {int(line.split(':')[0]):line.split(':')[1] for line in f.readlines()}
+
+        top_rated = {key:kbs.GetInputById(kbp.id(uuid=val.rstrip("\n").encode("utf-8"))) for key,val in top_rated.items()} 
 
         #S = set of original corpus seed inputs
         S = {inp.uuid for inp in kbs.GetSeedInputs(kbp.Empty())} 
-        print("%d Seeds" % (len(S)))
-
-        ''' 
-        # set of inputs that are unfinished, with results still pending  
-        P = {inp.uuid for inp in kbs.GetPendingInputs(kbp.Empty())} #set([])
-        print("%d Pending Inputs" % len(P))
-        '''
+        #print("%d Seeds" % (len(S)))
 
         # Parameters (taken from AFLFast)
         HAVOC_CYCLES_INIT = cfg.manager.HAVOC_CYCLES_INIT 
@@ -379,14 +366,13 @@ def run(cfg):
         # Adjust havoc_div (cycle count divisor for havoc)
         havoc_div = 1
         seed_avg_exec_time = sum([kbs.GetInputById(kbp.id(uuid=entry)).exec_time for entry in S]) / len(S) 
-        print(seed_avg_exec_time)
         if seed_avg_exec_time > 50000:
             havoc_div = 10
         elif seed_avg_exec_time > 20000:
             havoc_div = 5
         elif seed_avg_exec_time > 10000:
             havoc_div = 2
-        print(havoc_div)
+        print("Havoc div: %d" % havoc_div)
 
         total_exec_time, total_bitmap_size, total_fuzz = 0, 0, 0
         new_inp_index = 0
@@ -406,9 +392,6 @@ def run(cfg):
                 # Calculate totals AFTER calibration
                 start = time.time()
                 for i in range(new_inp_index, len(queue)):
-                    #print(queue[i])
-                    #print("here")
-                    #print(kbs.GetInputById(kbp.id(uuid=queue[i].uuid)))
                     if not queue[i].calibrated: 
                         calibrate_case(kbs, queue[i], queue_cycle, target)
                     total_exec_time += queue[i].exec_time 
@@ -416,7 +399,7 @@ def run(cfg):
                     total_fuzz += queue[i].n_fuzz
                 stop = time.time()
 
-                print("Time: {} for {} inp".format(stop-start, total_entries))
+                print("Total Calibration Time: {} for {} inp".format(stop-start, total_entries))
                 # Calculate averages from totals
                 avg_exec_time = total_exec_time / total_entries
                 avg_bitmap_size = total_bitmap_size / total_entries
@@ -426,8 +409,7 @@ def run(cfg):
                 start = time.time()
                 [pending_favored, favored] = cull_queue(cfg, kbs, queue) 
                 stop = time.time()
-                print("Cull queue time:")
-                print(stop-start)
+                print("Total cull queue time: {}".format(stop-start))
                 print("Pending favored: %d" % pending_favored)
                 print("Favored:") 
                 print(favored)
@@ -448,8 +430,8 @@ def run(cfg):
             start = time.time()
             perf_score = calculate_score(cfg, kbs, kb_inp, avg_exec_time, avg_bitmap_size, avg_fuzz_mu) 
             stop = time.time()
-            print(stop-start)
-            print(perf_score)
+            print("Calculate score time: {}".format(stop-start))
+            print("Score for input: {}".format(perf_score))
 
             if perf_score == 0: 
                 skipped_fuzz = True
@@ -486,7 +468,8 @@ def run(cfg):
         f = open(results_file_name, "w") 
         #print(top_rated)
         for path in top_rated:
-            f.write("{}:{}\n".format(path, top_rated[path].uuid))
+            string_id = (top_rated[path].uuid).decode("utf-8")
+            f.write("{}:{}\n".format(path, string_id))
         f.close()
 
         f = open(trace_file_name, "w")
