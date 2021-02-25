@@ -86,45 +86,22 @@ def run(cfg):
     RARE_EDGE_COUNT = int(cfg.manager.rare_edge_count)
 
     # Compute budget 
-    # so, like 10 cores or nodes or whatever
     budget = cfg.manager.budget
-
 
     # Setup job information
     job_names = ["taint", "coverage", "fuzzer"]
     jobs = {name:Job(name) for name in job_names}  
     #N = consult kubernetes to figure out how much many cores we are using currently
-
     
     # Setup access to cluster 
     config.load_incluster_config()
     batch_v1 = client.BatchV1Api()
     core_v1 = client.CoreV1Api() 
 
-    # are any fm.py still running?
-    # are any pods Pending?
-    resp = core_v1.list_namespaced_pod(namespace=namespace)
-    num_fm = 0
-    num_pending = 0
-    for i in resp.items:
-        pt = i.spec.containers[0].image
-        s = i.status.phase
-        # number of running or pending fuzzing managers
-        if (s=="Running" or s=="Pending") and "fm:" in pt:
-            num_fm += 1
-        if s=="Pending":
-            num_pending += 1
-    print ("num_fm = %d" % num_fm)
-
-    if num_fm > 1:
-        print ("A previous FM is still running -- exiting")
+    if num_active_fm(namespace) > 1:
+        print("A previous FM is still running -- exiting") 
         return
-
-
-    # Cleanup anything from before 
-    for cj in batch_v1.list_namespaced_job(namespace=namespace, label_selector='tier=backend').items: 
-        if not cj.status.active and cj.status.succeeded: 
-            batch_v1.delete_namespaced_job(name=cj.metadata.name, namespace=namespace, propagation_policy="Background") 
+    cleanup_finished_jobs(namespace)
 
     # Connect to the knowledge base 
     service = core_v1.list_namespaced_service(namespace=namespace) 
