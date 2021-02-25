@@ -132,8 +132,8 @@ def calibrate_case(kbs, entry, queue_cycle, target):
 
 
     #setattr(entry, "calibrated", True)
-    #entry.calibrated = True
-    #kbs.AddInput(entry)
+    entry.calibrated = True
+    kbs.AddInput(entry)
     #print(entry)
     #old = kbs.GetInput(kbp.Input(filepath=entry.filepath))
     #print(old)
@@ -252,7 +252,7 @@ def cull_queue(cfg, kbs, queue):
     print("Culling queue")
     print("Score_changed %d" % score_changed)
     if not score_changed:
-        return 
+        return [0, []] 
     score_changed = 0
     pending_favored = 0
     favored = {}
@@ -319,7 +319,7 @@ def run(cfg):
         trace_bits_total = {} 
         for line in f.readlines(): 
             tup = line.rstrip().split(':')
-            trace_bits_total[tup[0]] = [int(x) for x in tup[1].split(',')] 
+            trace_bits_total[tup[0].encode("utf-8")] = [int(x) for x in tup[1].split(',')] 
     except IOError:
         trace_bits_total = {}
     finally: 
@@ -416,15 +416,14 @@ def run(cfg):
 
             # Get the next input in the queue
             kb_inp = kbs.NextInQueue(kbp.Empty()) 
-            print("INPUT_TO_FUZZ")
+            #print("Fuzzing input %d out of %d" % (, len(queue))
             print(kb_inp)
 
             # Skip this input with some probability if it is not favored
             skipped_fuzz = skip_fuzz(cfg, kbs, pending_favored, favored, kb_inp, queue, queue_cycle) 
             if skipped_fuzz: 
                 print("skipped_fuzz 1") 
-                return
-                #continue
+                continue
 
             # Calculate the score of that input for potential havoc fuzzing
             start = time.time()
@@ -436,7 +435,7 @@ def run(cfg):
             if perf_score == 0: 
                 skipped_fuzz = True
                 print("skipped_fuzz 2") 
-                return
+                continue
                 #continue # skip this entry
 
             # We are fuzzing
@@ -453,7 +452,6 @@ def run(cfg):
                     f"fuzzer.iteration_count={stage_max}", \
                     f"fuzzer.extra_args='JIG_MAP_SIZE=65536 ANALYSIS_SIZE=65536'"] 
             print(args)
-            '''
             try:
                 kbs.MarkInputAsPending(kb_inp)
                 create_job(cfg, batch_v1, "%s:%s" % (job.name, namespace), job.name, 
@@ -461,7 +459,6 @@ def run(cfg):
                 print ("uuid for input is %s" % (str(kb_inp.uuid)))
             except Exception as e:
                print("Unable to create job exception = %s" % str(e))
-            '''
             break
 
         # Save results
