@@ -84,6 +84,7 @@ def setup(cfg):
                 input_msg = kbp.Input(filepath=os.path.join(dirpath, f), 
                         seed=True, depth=0, n_fuzz=0, fuzz_level=0)
                 fuzz_input = kbs.AddInput(input_msg)
+                kbs.AddToQueue(fuzz_input)
                 fuzz_inputs.append(fuzz_input)
                 uuid.append(fuzz_input.uuid)
         uuid = b"".join(uuid)

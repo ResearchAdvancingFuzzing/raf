@@ -106,8 +106,8 @@ def send_to_database(kbs, kb_input, kb_analysis, coverage_dir, interesting_dir):
             kbs.AddFuzzingEvent(kbp.FuzzingEvent(analysis=kb_analysis.uuid,  
                 input=new_kb_input.uuid, increased_coverage_event=event))
 
-    # Add to the queue
-    kbs.AddToQueue(new_kb_input) 
+            # Add to the queue
+            kbs.AddToQueue(new_kb_input) 
 
     # Update the input we fuzzed 
     kb_input.fuzzed = True

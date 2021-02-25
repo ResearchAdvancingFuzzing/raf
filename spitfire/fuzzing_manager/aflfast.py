@@ -41,6 +41,9 @@ top_rated = {}
 # Mapping of uuids to lists representing the bytes they have seen so far
 trace_bits = {}
 score_changed = 0 
+avg_exec_time = 0
+avg_bitmap_size = 0 
+avg_fuzz_mu = 0 
 
 # Find first power of two greater or equal to value
 def next_p2(value): 
@@ -60,10 +63,10 @@ def update_bitmap_score(kbs, entry, trace_bits):
             top_rated_entry = kbs.GetInputById(kbp.id(uuid=top_rated[path]))
             top_rated_fuzz_p2 = next_p2(top_rated_entry.n_fuzz)
             top_rated_fav_factor = top_rated_entry.exec_time * entry.size
-        if fuzz_p2 > top_rated_fuzz_p2: 
-            continue
-        elif fuzz_p2 == top_rated_fuzz_p2 and fav_factor > top_rated_fav_factor:
-            continue
+            if fuzz_p2 > top_rated_fuzz_p2: 
+                continue
+            elif fuzz_p2 == top_rated_fuzz_p2 and fav_factor > top_rated_fav_factor:
+                continue
 
         # Looks like we are going to win this slot
         top_rated[path] = entry.uuid
@@ -243,7 +246,7 @@ def cull_queue(cfg, kbs, queue):
 
 def skip_fuzz(cfg, kbs, pending_favored, favored, entry, queue, queue_cycle): 
     if pending_favored:
-        if entry.fuzz_level > 0 || not entry in favored:
+        if entry.fuzz_level > 0 or not entry in favored:
             if UR(100) < cfg.manager.SKIP_TO_NEW_PROB: 
                 return 1
         elif not entry in favored and len(queue) > 10:
@@ -258,14 +261,16 @@ def skip_fuzz(cfg, kbs, pending_favored, favored, entry, queue, queue_cycle):
 
 @hydra.main(config_path=f"{spitfire_dir}/config/config.yaml")
 def run(cfg):
+    while True:
+        pass
 
-    # Make sure the counts, inputs, replays directory exists
+    # Make sure the counts, inputs directory exists
     if not os.path.exists(inputs_dir): 
         os.mkdir(inputs_dir) 
     if not os.path.exists(counts_dir):
         os.mkdir(counts_dir)
     
-    # Let's get our top rated stuff
+    # Let's get our data from files (top rated entries, bitmap traces)
     try: 
         f = open(results_file_name, "r") 
         top_rated = {int(line.split(':')[0]):line.split(':')[1] for line in f.readlines()}
@@ -274,6 +279,7 @@ def run(cfg):
     finally: 
         f.close()
 
+    # Let's get our input bitmap traces 
     try:
         f = open(trace_file_name, "r") 
         trace_bits = {} 
@@ -286,43 +292,23 @@ def run(cfg):
         f.close()
 
     # Compute budget 
-    # so, like 10 cores or nodes or whatever
     budget = cfg.manager.budget
     target = "%s/%s" % (target_dir, cfg.target.name)
 
     # Setup job information
-    job_names = ["taint", "coverage", "fuzzer"]
+    job_names = ["fuzzer"]
     jobs = {name:Job(name) for name in job_names}  
-    #N = consult kubernetes to figure out how much many cores we are using currently
 
     # Setup access to cluster 
     config.load_incluster_config()
     batch_v1 = client.BatchV1Api()
     core_v1 = client.CoreV1Api() 
 
-    # are any fm.py still running?
-    # are any pods Pending?
-    resp = core_v1.list_namespaced_pod(namespace=namespace)
-    num_fm = 0
-    num_pending = 0
-    for i in resp.items:
-        pt = i.spec.containers[0].image
-        s = i.status.phase
-        # number of running or pending fuzzing managers
-        if (s=="Running" or s=="Pending") and "fm:" in pt:
-            num_fm += 1
-        if s=="Pending":
-            num_pending += 1
-    print ("num_fm = %d" % num_fm)
-
-    if num_fm > 1:
+    # Status of current fuzzing manager; cleanup old jobs
+    if num_active_fm(namespace) > 1: 
         print ("A previous FM is still running -- exiting")
         return
-
-    # Cleanup anything from before 
-    for cj in batch_v1.list_namespaced_job(namespace=namespace, label_selector='tier=backend').items: 
-        if not cj.status.active and cj.status.succeeded: 
-            batch_v1.delete_namespaced_job(name=cj.metadata.name, namespace=namespace, propagation_policy="Background") 
+    cleanup_finished_jobs(namespace) 
 
     # Connect to the knowledge base 
     service = core_v1.list_namespaced_service(namespace=namespace) 
@@ -335,75 +321,16 @@ def run(cfg):
         #S = set of original corpus seed inputs
         S = {inp.uuid for inp in kbs.GetSeedInputs(kbp.Empty())} 
         print("%d Seeds" % (len(S)))
-        
-        #ICV = set of interesting inputs that got marginal covg (increased covg)
-        ICV = {inp.uuid for inp in kbs.GetInputsWithoutCoverage(kbp.Empty())}
-        print("%d Inputs without Coverage" % (len(ICV)))
-        
+
+        ''' 
         # set of inputs that are unfinished, with results still pending  
         P = {inp.uuid for inp in kbs.GetPendingInputs(kbp.Empty())} #set([])
         print("%d Pending Inputs" % len(P))
-        
         '''
-        # Add the seeds and interesting inputs to the queue
-        # There is no ordering here; we will sort the queue later 
-        queue = S | ICV - P 
-        print(queue)
-        print(len(queue))
-        queue = [kbs.GetInputById(kbp.id(uuid=entry)) for entry in queue]
-
-        # Find queue cycle and calibrate data that has not yet been calibrated
-        queue_cycle = min([entry.fuzz_level for entry in queue])
-        print(queue_cycle)
-        '''
-
-        # Get the queue and queue_cycle from the KB
-        queue = [inp for inp in kbs.GetQueue(kbp.Empty())]
-        queue_cycle = kbs.GetQueueCycle(kbp.Empty()) 
-
-        # Calibrate things in the queue that have not yet been calibrated
-        # everything that we haven't calibrated yet is "new" (we haven't seen it yet)
-        for entry in queue: 
-            if not entry.calibrated:
-                calibrate_case(kbs, entry, queue_cycle, target)
-
-        '''
-        # Find the inputs in the queue with the least number of fuzz, n_fuzz ("favored") 
-        min_n_fuzz = queue[0].n_fuzz if queue else None
-        favored_inp = []
-        for entry in queue: 
-            if entry.n_fuzz < min_n_fuzz: 
-                favored_inp = [entry] # reset the list
-            elif entry.n_fuzz == min_n_fuzz: 
-                favored_inp.append(entry) # add to min list 
-            else: 
-                continue
-        
-        # Sort those "favored" inputs with the least fuzz by the ones that have been fuzzed the least
-        inputs_to_fuzz = sorted(min_fuzz_inp, key=lambda x: x.fuzz_level)
-        '''
-
 
         # Parameters (taken from AFLFast)
         HAVOC_CYCLES_INIT = cfg.manager.HAVOC_CYCLES_INIT 
         HAVOC_CYCLES = cfg.manager.HAVOC_CYCLES
-
-        # Variables
-        total_entries = len(queue)
-        total_exec_time, total_bitmap_size, total_fuzz = 0, 0, 0
-
-        # Calculate averages  
-        for entry in queue:
-            total_exec_time += entry.exec_time 
-            total_bitmap_size += entry.bitmap_size
-            total_fuzz += entry.n_fuzz
-
-        avg_exec_time = total_exec_time / total_entries
-        avg_bitmap_size = total_bitmap_size / total_entries
-        avg_fuzz_mu = total_fuzz / total_entries 
-        print(avg_exec_time)
-        print(avg_bitmap_size)
-        print(avg_fuzz_mu)
 
         # Adjust havoc_div (cycle count divisor for havoc)
         havoc_div = 1
@@ -416,36 +343,58 @@ def run(cfg):
         elif seed_avg_exec_time > 10000:
             havoc_div = 2
 
-        '''
-        # let's sort this queue (based on f_i or s_i) 
-        if cfg.manager.search_strategy == "F": # sorted based on low f_i (i.e. smallest number of fuzz)
-            print("Sorting based on f_i") 
-            queue = sorted(queue, key=lambda x: x.n_fuzz)
-        else: # s(i) default, sorted based on low s_i (i.e. number of times fuzzed) 
-            print("Sorting based on s_i")
-            queue = sorted(queue, key=lambda x: x.fuzz_level)
-        '''
-
-        [pending_favored, favored] = cull_queue(cfg, kbs, queue) 
+        total_exec_time, total_bitmap_size, total_fuzz = 0, 0, 0
+        new_inp_index = 0
+        skipped_fuzz = False
 
         while True:
-            [pending_favored, favored] = cull_queue(cfg, kbs, queue) 
+            # Only do this part if we have not skipped the last fuzz
+            if not skipped_fuzz: 
+                # Get the queue and the queue cycle 
+                queue = [inp for inp in kbs.GetQueue(kbp.Empty())]
+                queue_cycle = kbs.GetQueueCycle(kbp.Empty()) 
+                total_entries = len(queue)
 
+                # Calibrate things in the queue that have not yet been calibrated
+                # Calculate totals AFTER calibration
+                for i in range(new_inp_index, len(queue)):
+                    if not queue[i].calibrated: 
+                        calibrate_case(kbs, queue[i], queue_cycle, target)
+                    total_exec_time += entry.exec_time 
+                    total_bitmap_size += entry.bitmap_size
+                    total_fuzz += entry.n_fuzz
+        
+                # Calculate averages from totals
+                avg_exec_time = total_exec_time / total_entries
+                avg_bitmap_size = total_bitmap_size / total_entries
+                avg_fuzz_mu = total_fuzz / total_entries 
+                print(avg_exec_time)
+                print(avg_bitmap_size)
+                print(avg_fuzz_mu)
+
+                [pending_favored, favored] = cull_queue(cfg, kbs, queue) 
+
+            # Get the next input in the queue
             kb_inp = kbs.NextInQueue(kbp.Empty()) 
 
+            # Skip this input with some probability if it is not favored
             skipped_fuzz = skip_fuzz(cfg, kbs, pending_favored, favored, kb_inp, queue, queue_cycle) 
             if skipped_fuzz: 
                 continue
 
+            # Calculate the score of that input for potential havoc fuzzing
             perf_score = calculate_score(cfg, kbs, queue[index], avg_exec_time, avg_bitmap_size, avg_fuzz_mu) 
             print(perf_score)
 
             if perf_score == 0: 
+                skipped_fuzz = True
                 continue # skip this entry
 
+            # We are fuzzing
+            new_inp_index = len(queue)
+
+            # Calculate how many iterations to fuzz (AFLFast)
             stage_max = HAVOC_CYCLES * perf_score / havoc_div / 100
-            print(queue[index])
-            kb_inp = queue[index]
 
             # Run fuzzer with this input, stage_max times (-n arg) 
             job = jobs["fuzzer"]
@@ -455,9 +404,6 @@ def run(cfg):
                     f"fuzzer.extra_args='JIG_MAP_SIZE=65536 ANALYSIS_SIZE=65536'"] 
             print(args)
             try:
-                fme = kbp.FuzzingManagerEvent(number=1, type=
-                        kbp.FuzzingManagerEvent.Type.TAINT_FUZZ)
-                kbs.AddFuzzingEvent(kbp.FuzzingEvent(fuzzing_manager_event=fme))
                 kbs.MarkInputAsPending(kb_inp)
                 create_job(cfg, batch_v1, "%s:%s" % (job.name, namespace), job.name, 
                         job.get_count(), args, namespace) 
