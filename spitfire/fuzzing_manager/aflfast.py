@@ -62,7 +62,8 @@ def update_bitmap_score(kbs, entry, trace_bits):
 
     for path in trace_bits:  
         if path in top_rated: 
-            top_rated_entry = kbs.GetInputById(kbp.id(uuid=top_rated[path]))
+            top_rated_entry = top_rated[path]
+            #top_rated_entry = kbs.GetInputById(kbp.id(uuid=top_rated[path]))
             top_rated_fuzz_p2 = next_p2(top_rated_entry.n_fuzz)
             top_rated_fav_factor = top_rated_entry.exec_time * entry.size
             if fuzz_p2 > top_rated_fuzz_p2: 
@@ -71,12 +72,14 @@ def update_bitmap_score(kbs, entry, trace_bits):
                 continue
 
         # Looks like we are going to win this slot
-        top_rated[path] = entry.uuid
+            
+        top_rated[path] = entry
         score_changed = 1
 
     #return score_changed
 
 #  Finds and updates an input's exec time, bitmap size, and handicap (queue cycles behind) value 
+# This function is incredibly slow 
 def calibrate_case(kbs, entry, queue_cycle, target):
     global trace_bits_total 
 
@@ -96,19 +99,26 @@ def calibrate_case(kbs, entry, queue_cycle, target):
     exec_us = stop_time - start_time
     #setattr(entry, "exec_time", exec_us)
     entry.exec_time = exec_us
+    print("execution_time")
+    print(exec_us / 1e6)
 
     # Bitmap size and updating bitmap score
+    start_time = time.time()
     output_file = "out"
     cmd = "/AFL/afl-showmap -o %s  -- %s %s" % (output_file, target, entry.filepath)
     cmd = cmd.split()
     subprocess.run(args=cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    stop_time = time.time()
+    print("afl-showmap time: {}".format(stop_time-start_time))
 
     # Open afl-showmap file to get path:count mapping
+    start_time = time.time()
     f = open(output_file, "r") 
     trace_bits = {int(line.split(':')[0]):line.split(':')[1] for line in f.readlines()}
-    trace_bits_total[entry.uuid] = trace_bits.keys()
+    trace_bits_total[entry.uuid] = list(trace_bits.keys())
     f.close()
-    # We need to write it out also immediately
+    stop_time = time.time()
+    print("process trace_bits time : {}".format(stop_time-start_time))
     
     # Number of bits set is just the length of that file 
     bitmap_size = len(trace_bits)
@@ -120,11 +130,15 @@ def calibrate_case(kbs, entry, queue_cycle, target):
     entry.handicap = queue_cycle - 1
     print("Exec_time: %d, bitmap_size: %d, handicap: %d" % (exec_us, bitmap_size, queue_cycle - 1))
 
+    start = time.time()
     update_bitmap_score(kbs, entry, trace_bits) 
+    stop = time.time()
+    print("Update bitmap score time: {}".format(stop-start))
+
 
     #setattr(entry, "calibrated", True)
-    entry.calibrated = True
-    kbs.AddInput(entry)
+    #entry.calibrated = True
+    #kbs.AddInput(entry)
     print(entry)
     old = kbs.GetInput(kbp.Input(filepath=entry.filepath))
     print(old)
@@ -253,7 +267,7 @@ def cull_queue(cfg, kbs, queue):
         #print(trace_bits_total[top_rated[path]]) 
         if not temp_v[path]: # if entry has seen a path we've already seen, continue
             continue
-        uuid = top_rated[path]
+        uuid = top_rated[path].uuid
         for index in trace_bits_total[uuid]: # if not, look at all paths it has seen and mark seen
             temp_v[index] = 0 
         favored[uuid] = 0
@@ -284,6 +298,7 @@ def skip_fuzz(cfg, kbs, pending_favored, favored, entry, queue, queue_cycle):
 
 @hydra.main(config_path=f"{spitfire_dir}/config/config.yaml")
 def run(cfg):
+
     global top_rated
     global trace_bits_total
 
@@ -303,7 +318,6 @@ def run(cfg):
     finally: 
         if f:
             f.close()
-    print(top_rated)
 
     # Let's get our input bitmap traces 
     f = None
@@ -318,7 +332,6 @@ def run(cfg):
     finally: 
         if f:
             f.close() 
-    print(trace_bits_total)
 
     # Compute budget 
     budget = cfg.manager.budget
@@ -346,6 +359,8 @@ def run(cfg):
 
     with grpc.insecure_channel('%s:%d' % (ip, port)) as channel:
         kbs = kbpg.KnowledgeBaseStub(channel)
+        top_rated = {key:kbs.GetInputById(kbp.id(uuid=val.encode("utf-8"))) for key,val in top_rated.items()} 
+        #top_rated = {int(line.split(':')[0]):line.split(':')[1] for line in f.readlines()}
 
         #S = set of original corpus seed inputs
         S = {inp.uuid for inp in kbs.GetSeedInputs(kbp.Empty())} 
@@ -401,7 +416,7 @@ def run(cfg):
                     total_fuzz += queue[i].n_fuzz
                 stop = time.time()
 
-                print("Time: %d for %d inp" % (stop-start, total_entries))
+                print("Time: {} for {} inp".format(stop-start, total_entries))
                 # Calculate averages from totals
                 avg_exec_time = total_exec_time / total_entries
                 avg_bitmap_size = total_bitmap_size / total_entries
@@ -411,7 +426,7 @@ def run(cfg):
                 start = time.time()
                 [pending_favored, favored] = cull_queue(cfg, kbs, queue) 
                 stop = time.time()
-                print("Cull queue time: %d")
+                print("Cull queue time:")
                 print(stop-start)
                 print("Pending favored: %d" % pending_favored)
                 print("Favored:") 
@@ -456,6 +471,7 @@ def run(cfg):
                     f"fuzzer.iteration_count={stage_max}", \
                     f"fuzzer.extra_args='JIG_MAP_SIZE=65536 ANALYSIS_SIZE=65536'"] 
             print(args)
+            '''
             try:
                 kbs.MarkInputAsPending(kb_inp)
                 create_job(cfg, batch_v1, "%s:%s" % (job.name, namespace), job.name, 
@@ -463,20 +479,20 @@ def run(cfg):
                 print ("uuid for input is %s" % (str(kb_inp.uuid)))
             except Exception as e:
                print("Unable to create job exception = %s" % str(e))
-
+            '''
             break
 
         # Save results
         f = open(results_file_name, "w") 
-        print(top_rated)
+        #print(top_rated)
         for path in top_rated:
-            f.write("{}:{}\n".format(path, top_rated[path]))
+            f.write("{}:{}\n".format(path, top_rated[path].uuid))
         f.close()
 
         f = open(trace_file_name, "w")
-        print(trace_bits_total)
+        #print(trace_bits_total)
         for uuid in trace_bits_total:
-            f.write("{}:".format(uuid))
+            f.write("{}:".format(uuid.decode("utf-8")))
             for path in trace_bits_total[uuid]: 
                 f.write(str(path))
                 if path  != trace_bits_total[uuid][-1]: 
