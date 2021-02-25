@@ -11,6 +11,7 @@ import hydra
 import logging
 import grpc 
 import sys
+import random
 from pprint import pprint
 
 # Get Environemnt variables 
@@ -39,11 +40,8 @@ from kubernetes_help import *
 # Mapping of bytes (ints) to entry uuids (string)
 top_rated = {} 
 # Mapping of uuids to lists representing the bytes they have seen so far
-trace_bits = {}
+trace_bits_total = {}
 score_changed = 0 
-avg_exec_time = 0
-avg_bitmap_size = 0 
-avg_fuzz_mu = 0 
 
 # Find first power of two greater or equal to value
 def next_p2(value): 
@@ -55,10 +53,14 @@ def next_p2(value):
 # When we bump into a new path, we call this to see if the path appears
 #  more "favorable" than any of the existing ones. 
 def update_bitmap_score(kbs, entry, trace_bits): 
+    global top_rated
+    global score_changed
+
+    print("updating bitmap score")
     fuzz_p2 = next_p2(entry.n_fuzz)
     fav_factor = entry.exec_time * entry.size 
 
-    for path in trace_bits: 
+    for path in trace_bits:  
         if path in top_rated: 
             top_rated_entry = kbs.GetInputById(kbp.id(uuid=top_rated[path]))
             top_rated_fuzz_p2 = next_p2(top_rated_entry.n_fuzz)
@@ -72,20 +74,28 @@ def update_bitmap_score(kbs, entry, trace_bits):
         top_rated[path] = entry.uuid
         score_changed = 1
 
+    #return score_changed
+
 #  Finds and updates an input's exec time, bitmap size, and handicap (queue cycles behind) value 
-def calibrate_case(kbs, entry, queue_cycle, target, trace_file):
+def calibrate_case(kbs, entry, queue_cycle, target):
+    global trace_bits_total 
+
     if entry.calibrated: 
         return
+    print("calibrating case")
+    print(entry)
 
     # Size 
-    setattr(entry, "size", os.path.getsize(entry.filepath))
+    #setattr(entry, "size", os.path.getsize(entry.filepath))
+    entry.size = os.path.getsize(entry.filepath)
 
     # Execution time:
     start_time = time.time() * 1e6
     subprocess.run(args=[target, entry.filepath], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     stop_time = time.time() * 1e6
     exec_us = stop_time - start_time
-    setattr(entry, "exec_time", exec_us)
+    #setattr(entry, "exec_time", exec_us)
+    entry.exec_time = exec_us
 
     # Bitmap size and updating bitmap score
     output_file = "out"
@@ -96,22 +106,28 @@ def calibrate_case(kbs, entry, queue_cycle, target, trace_file):
     # Open afl-showmap file to get path:count mapping
     f = open(output_file, "r") 
     trace_bits = {int(line.split(':')[0]):line.split(':')[1] for line in f.readlines()}
-    trace_bits.keys()
+    trace_bits_total[entry.uuid] = trace_bits.keys()
     f.close()
+    # We need to write it out also immediately
     
     # Number of bits set is just the length of that file 
     bitmap_size = len(trace_bits)
-    setattr(entry, "bitmap_size", bitmap_size)
+    #setattr(entry, "bitmap_size", bitmap_size)
+    entry.bitmap_size = bitmap_size
 
     # Handicap value 
-    setattr(entry, "handicap", queue_cycle - 1) #0 if queue_cycle == 0 else queue_cycle - 1)
+    #setattr(entry, "handicap", queue_cycle - 1) #0 if queue_cycle == 0 else queue_cycle - 1)
+    entry.handicap = queue_cycle - 1
+    print("Exec_time: %d, bitmap_size: %d, handicap: %d" % (exec_us, bitmap_size, queue_cycle - 1))
 
     update_bitmap_score(kbs, entry, trace_bits) 
 
-    setattr(entry, "calibrated", True)
+    #setattr(entry, "calibrated", True)
+    entry.calibrated = True
     kbs.AddInput(entry)
-    #old = kbs.GetInput(kbp.Input(filepath=entry.filepath))
-    #print(old)
+    print(entry)
+    old = kbs.GetInput(kbp.Input(filepath=entry.filepath))
+    print(old)
 
 
 
@@ -223,18 +239,22 @@ def calculate_score(cfg, kbs, entry, avg_exec_time, avg_bitmap_size, fuzz_mu):
 
 # Looks at entire queue and returns a list of favored inputs 
 def cull_queue(cfg, kbs, queue): 
+    global score_changed
+    print("SCORE_CHANGED %d" % score_changed)
 
-    if not score_changed:
-        return 
+    #if not score_changed:
+    #    return 
     score_changed = 0
     pending_favored = 0
     favored = {}
     temp_v = [1 for i in range(0, cfg.manager.MAP_SIZE)]
     for path in sorted(top_rated): # all the top_rated entries we are looking at  
+        #print("Path: %d, top_rated for path: %s, temp_v[path]: %d, trace_bits[entry]: " % (path, top_rated[path], temp_v[path]))
+        #print(trace_bits_total[top_rated[path]]) 
         if not temp_v[path]: # if entry has seen a path we've already seen, continue
             continue
         uuid = top_rated[path]
-        for index in trace_bits[uuid]: # if not, look at all paths it has seen and mark seen
+        for index in trace_bits_total[uuid]: # if not, look at all paths it has seen and mark seen
             temp_v[index] = 0 
         favored[uuid] = 0
         entry = kbs.GetInputById(kbp.id(uuid=uuid)) 
@@ -243,13 +263,16 @@ def cull_queue(cfg, kbs, queue):
     return [pending_favored, favored]
         
 
+# Generate a random number between 0 and 100 
+def UR(limit): 
+    return random.randint(0, 99)
 
 def skip_fuzz(cfg, kbs, pending_favored, favored, entry, queue, queue_cycle): 
     if pending_favored:
-        if entry.fuzz_level > 0 or not entry in favored:
+        if entry.fuzz_level > 0 or not entry.uuid in favored:
             if UR(100) < cfg.manager.SKIP_TO_NEW_PROB: 
                 return 1
-        elif not entry in favored and len(queue) > 10:
+        elif not entry.uuid in favored and len(queue) > 10:
             if queue_cycle > 1 and entry.fuzz_level == 0:
                 if UR(100) < cfg.manager.SKIP_NFAV_NEW_PROB:
                     return 1
@@ -261,8 +284,8 @@ def skip_fuzz(cfg, kbs, pending_favored, favored, entry, queue, queue_cycle):
 
 @hydra.main(config_path=f"{spitfire_dir}/config/config.yaml")
 def run(cfg):
-    while True:
-        pass
+    global top_rated
+    global trace_bits_total
 
     # Make sure the counts, inputs directory exists
     if not os.path.exists(inputs_dir): 
@@ -271,25 +294,31 @@ def run(cfg):
         os.mkdir(counts_dir)
     
     # Let's get our data from files (top rated entries, bitmap traces)
+    f = None
     try: 
         f = open(results_file_name, "r") 
         top_rated = {int(line.split(':')[0]):line.split(':')[1] for line in f.readlines()}
     except IOError:
         top_rated = {}
     finally: 
-        f.close()
+        if f:
+            f.close()
+    print(top_rated)
 
     # Let's get our input bitmap traces 
+    f = None
     try:
         f = open(trace_file_name, "r") 
-        trace_bits = {} 
+        trace_bits_total = {} 
         for line in f.readlines(): 
             tup = line.rstrip().split(':')
-            trace_bits[tup[0]] = [int(x) for x in tup[1].split(',')] 
+            trace_bits_total[tup[0]] = [int(x) for x in tup[1].split(',')] 
     except IOError:
-        trace_bits = {}
+        trace_bits_total = {}
     finally: 
-        f.close()
+        if f:
+            f.close() 
+    print(trace_bits_total)
 
     # Compute budget 
     budget = cfg.manager.budget
@@ -307,7 +336,7 @@ def run(cfg):
     # Status of current fuzzing manager; cleanup old jobs
     if num_active_fm(namespace) > 1: 
         print ("A previous FM is still running -- exiting")
-        return
+        #return
     cleanup_finished_jobs(namespace) 
 
     # Connect to the knowledge base 
@@ -342,6 +371,7 @@ def run(cfg):
             havoc_div = 5
         elif seed_avg_exec_time > 10000:
             havoc_div = 2
+        print(havoc_div)
 
         total_exec_time, total_bitmap_size, total_fuzz = 0, 0, 0
         new_inp_index = 0
@@ -351,50 +381,73 @@ def run(cfg):
             # Only do this part if we have not skipped the last fuzz
             if not skipped_fuzz: 
                 # Get the queue and the queue cycle 
-                queue = [inp for inp in kbs.GetQueue(kbp.Empty())]
-                queue_cycle = kbs.GetQueueCycle(kbp.Empty()) 
+                queue = [kbs.GetInputById(kbp.id(uuid=inp.uuid)) for inp in kbs.GetQueue(kbp.Empty())]
+                queue_cycle = kbs.GetQueueCycle(kbp.Empty()).val 
                 total_entries = len(queue)
+                print("Queue len: %d, Queue cycle: %d, New_index: %d" % (len(queue), queue_cycle, new_inp_index))
+                print(queue)
 
                 # Calibrate things in the queue that have not yet been calibrated
                 # Calculate totals AFTER calibration
+                start = time.time()
                 for i in range(new_inp_index, len(queue)):
+                    #print(queue[i])
+                    #print("here")
+                    #print(kbs.GetInputById(kbp.id(uuid=queue[i].uuid)))
                     if not queue[i].calibrated: 
                         calibrate_case(kbs, queue[i], queue_cycle, target)
-                    total_exec_time += entry.exec_time 
-                    total_bitmap_size += entry.bitmap_size
-                    total_fuzz += entry.n_fuzz
-        
+                    total_exec_time += queue[i].exec_time 
+                    total_bitmap_size += queue[i].bitmap_size
+                    total_fuzz += queue[i].n_fuzz
+                stop = time.time()
+
+                print("Time: %d for %d inp" % (stop-start, total_entries))
                 # Calculate averages from totals
                 avg_exec_time = total_exec_time / total_entries
                 avg_bitmap_size = total_bitmap_size / total_entries
                 avg_fuzz_mu = total_fuzz / total_entries 
-                print(avg_exec_time)
-                print(avg_bitmap_size)
-                print(avg_fuzz_mu)
+                print("Avg_exec_time: %d, avg_bitmap_size: %d, avg_fuzz_mu: %d" % (avg_exec_time, avg_bitmap_size, avg_fuzz_mu))
 
+                start = time.time()
                 [pending_favored, favored] = cull_queue(cfg, kbs, queue) 
+                stop = time.time()
+                print("Cull queue time: %d")
+                print(stop-start)
+                print("Pending favored: %d" % pending_favored)
+                print("Favored:") 
+                print(favored)
 
             # Get the next input in the queue
             kb_inp = kbs.NextInQueue(kbp.Empty()) 
+            print("INPUT_TO_FUZZ")
+            print(kb_inp)
 
             # Skip this input with some probability if it is not favored
             skipped_fuzz = skip_fuzz(cfg, kbs, pending_favored, favored, kb_inp, queue, queue_cycle) 
             if skipped_fuzz: 
-                continue
+                print("skipped_fuzz 1") 
+                return
+                #continue
 
             # Calculate the score of that input for potential havoc fuzzing
-            perf_score = calculate_score(cfg, kbs, queue[index], avg_exec_time, avg_bitmap_size, avg_fuzz_mu) 
+            start = time.time()
+            perf_score = calculate_score(cfg, kbs, kb_inp, avg_exec_time, avg_bitmap_size, avg_fuzz_mu) 
+            stop = time.time()
+            print(stop-start)
             print(perf_score)
 
             if perf_score == 0: 
                 skipped_fuzz = True
-                continue # skip this entry
+                print("skipped_fuzz 2") 
+                return
+                #continue # skip this entry
 
             # We are fuzzing
             new_inp_index = len(queue)
 
             # Calculate how many iterations to fuzz (AFLFast)
             stage_max = HAVOC_CYCLES * perf_score / havoc_div / 100
+            print("Stage_max: %d" % stage_max)
 
             # Run fuzzer with this input, stage_max times (-n arg) 
             job = jobs["fuzzer"]
@@ -412,6 +465,26 @@ def run(cfg):
                print("Unable to create job exception = %s" % str(e))
 
             break
+
+        # Save results
+        f = open(results_file_name, "w") 
+        print(top_rated)
+        for path in top_rated:
+            f.write("{}:{}\n".format(path, top_rated[path]))
+        f.close()
+
+        f = open(trace_file_name, "w")
+        print(trace_bits_total)
+        for uuid in trace_bits_total:
+            f.write("{}:".format(uuid))
+            for path in trace_bits_total[uuid]: 
+                f.write(str(path))
+                if path  != trace_bits_total[uuid][-1]: 
+                    f.write(",")
+                else:
+                    f.write("\n")
+        f.close()
+
 
 if __name__=="__main__":
     run()
