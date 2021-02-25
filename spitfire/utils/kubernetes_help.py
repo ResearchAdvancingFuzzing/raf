@@ -1,3 +1,6 @@
+# To use any of the functions in this file,
+# access to the cluster must be set up first 
+
 from kubernetes import client, utils, config
 import os
 from os.path import basename
@@ -5,6 +8,30 @@ from os.path import basename
 namespace = os.environ.get("NAMESPACE")
 counts_dir = "/%s/counts" % namespace
 qcow_dir = "/qcows"
+
+# Determines number of active fuzzing managers
+def num_active_fm(namespace): 
+    core_v1 = client.CoreV1Api()
+    resp = core_v1.list_namespaced_pod(namespace=namespace)
+    num_fm, num_pending = 0, 0
+    for i in resp.items:
+        pt = i.spec.containers[0].image
+        s = i.status.phase
+        # number of running or pending fuzzing managers
+        if (s=="Running" or s=="Pending") and "fm:" in pt:
+            num_fm += 1
+        #if s=="Pending":
+        #    num_pending += 1
+    print ("num_fm = %d" % num_fm)
+    return num_fm
+
+# Cleanup all "backend" jobs that have succeeded 
+def cleanup_finished_jobs(namespace): 
+    # Cleanup anything from before 
+    batch_v1 = client.BatchV1Api()
+    for cj in batch_v1.list_namespaced_job(namespace=namespace, label_selector='tier=backend').items: 
+        if not cj.status.active and cj.status.succeeded: 
+            batch_v1.delete_namespaced_job(name=cj.metadata.name, namespace=namespace, propagation_policy="Background") 
 
 def container(namespace, name, image, command, args, port, volume_mounts): 
 
