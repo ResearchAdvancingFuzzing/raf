@@ -24,7 +24,11 @@ RAF AFLFast is an impementation of AFLFast within the RAF modular framework. The
 ## AFLFast vs RAF AFLFast Implementations   
 - RAF AFLFast implements an AFLFast type fuzzing manager in `aflfast.py`. This fuzzing manager (`aflfast.py`) implements all of the heuristics and analysis found in AFL and AFLFast so it can navigate its input search strategies and selection and determine its inputs' powers as closely as it can. 
 #### Differences 
-- AFL/AFLFast's fuzzing campaign utilizes the AFL fork server to fuzz new inputs; RAF AFLFast deploys a kubernetes job for each fuzzing instance. 
-- AFL/AFLFast uses global data to maintain its queue; RAF AFLFast uses the knowledge base server. 
-- AFL/AFLFast calibrates test cases as soon as new, interesting inputs are found and added to the queue; RAF AFLFast calibrates cases found that it has not calibrated before as soon as it wakes up (it is a cron job). 
-- A lot of the optimizations found in AFL/AFLFast (such as the trace_mini bitmap) are not implemented in RAF. It is not designed to be a fast fuzzer.
+- AFL/AFLFast's fuzzing components (input generation, fuzzing a singular input, analyzing results, etc.) are mostly all intertwined with one another in one large file (`afl_fuzz.c`); RAF AFLFast, however, decouples most of these components through its (and its fuzzer's) modular design. This results in the following differences:
+	- AFL/AFLFast runs one long-lived process to orchestrate its fuzzing campaign; RAF AFLFast runs many short-lived fuzzing managers (kuberenetes jobs). 
+	- AFL/AFLFast's fuzzing campaign utilizes the AFL fork server and shared memory to fuzz new inputs and get results; RAF AFLFast deploys a kubernetes job responsible for each fuzzing instance which then reports results to the knowledge base server (kubernetes deployment/service). 
+	- AFL/AFLFast uses global data in its head to maintain its queue; RAF AFLFast uses the external knowledge base server. 
+	- AFL/AFLFast calibrates test cases as soon as new, interesting inputs are found and added to its global queue; RAF AFLFast fuzzing manager calibrates cases found that it has not calibrated before as soon as it wakes up (it is a cron job). 
+	- In order to get the bitmap data (`trace_bits[]`) that AFL/AFLFast has in memory for each input it discovers, RAF calls the `afl-showmap` utility during calibration and reads in the results to then process. 
+	- In order to maintain the global data across fuzzing manager jobs--global data that AFL/AFLFast keeps in its head (top rated entries and their traces)--RAF writes out the data to shared files (kubernetes persistent volumes) that can be read in by the next instance of the fuzzing manager.
+- A lot of the optimizations found in AFL/AFLFast (such as the trace_mini bitmap) are not implemented in RAF as it is not designed to be a fast fuzzer.
