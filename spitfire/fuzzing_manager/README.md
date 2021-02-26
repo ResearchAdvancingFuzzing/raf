@@ -24,7 +24,7 @@ RAF AFLFast is an impementation of AFLFast within the RAF modular framework. The
 ## AFLFast vs RAF AFLFast Implementations   
 - RAF AFLFast implements an AFLFast type fuzzing manager in `aflfast.py`. This fuzzing manager (`aflfast.py`) implements all of the heuristics and analysis found in AFL and AFLFast so it can navigate its input search strategies and selection and determine its inputs' powers as closely as it can. 
 #### Differences 
-- AFL/AFLFast's fuzzing components (input generation, fuzzing a singular input, analyzing results, etc.) are mostly all intertwined with one another in one large file (`afl_fuzz.c`); RAF AFLFast, however, decouples most of these components through its (and its fuzzer's) modular design. This results in the following differences:
+- AFL/AFLFast's fuzzing components (input generation, fuzzing a single input, analyzing results, etc.) are mostly all intertwined with one another in one large file (`afl_fuzz.c`); RAF AFLFast, however, decouples most of these components through its (and its fuzzer's) modular design. This results in the following differences:
 	- AFL/AFLFast runs one long-lived process to orchestrate its fuzzing campaign; RAF AFLFast runs many short-lived fuzzing managers (kuberenetes jobs). 
 	- AFL/AFLFast's fuzzing campaign utilizes the AFL fork server and shared memory to fuzz new inputs and get results; RAF AFLFast deploys a kubernetes job responsible for each fuzzing instance which then reports results to the knowledge base server (kubernetes deployment/service). 
 	- AFL/AFLFast uses global data in its head to maintain its queue; RAF AFLFast uses the external knowledge base server. 
