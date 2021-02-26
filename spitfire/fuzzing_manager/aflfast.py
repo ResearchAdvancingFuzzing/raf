@@ -339,7 +339,7 @@ def run(cfg):
 
     # We've just started. Check if another fm is alive. 
     # If it is, wait until it finishes 
-    while num_active_fm(namespace) > 1: 
+    while active_fm(namespace) > 1: 
         pass
     
     # Begin 
@@ -399,7 +399,7 @@ def run(cfg):
             #break  
             # If another fm is waiting for us to finish, stop so they
             # can begin 
-            if num_active_fm(namespace) > 1: 
+            if active_fm(namespace) > 1: 
                 break
 
             # Only do this part if we have not skipped the last fuzz

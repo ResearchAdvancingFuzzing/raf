@@ -10,7 +10,7 @@ counts_dir = "/%s/counts" % namespace
 qcow_dir = "/qcows"
 
 # Determines number of active fuzzing managers
-def num_active_fm(namespace): 
+def active_fm(namespace): 
     core_v1 = client.CoreV1Api()
     resp = core_v1.list_namespaced_pod(namespace=namespace)
     num_fm, num_pending = 0, 0
@@ -20,21 +20,19 @@ def num_active_fm(namespace):
         # number of running or pending fuzzing managers
         if (s=="Running" or s=="Pending") and "fm:" in pt:
             num_fm += 1
-        #if s=="Pending":
-        #    num_pending += 1
-    #print ("num_fm = %d" % num_fm)
     return num_fm
 
 # Cleanup all "backend" jobs that have succeeded 
 def cleanup_finished_jobs(namespace): 
     # Cleanup anything from before 
     batch_v1 = client.BatchV1Api()
-    for cj in batch_v1.list_namespaced_job(namespace=namespace, label_selector='tier=backend').items: 
+    for cj in batch_v1.list_namespaced_job(namespace=namespace, 
+            label_selector='tier=backend').items: 
         if not cj.status.active and cj.status.succeeded: 
-            batch_v1.delete_namespaced_job(name=cj.metadata.name, namespace=namespace, propagation_policy="Background") 
+            batch_v1.delete_namespaced_job(name=cj.metadata.name, 
+                    namespace=namespace, propagation_policy="Background") 
 
 def container(namespace, name, image, command, args, port, volume_mounts): 
-
     return client.V1Container(
             name=name, command=command, args=args, image=image, 
             volume_mounts=volume_mounts,
@@ -44,7 +42,6 @@ def container(namespace, name, image, command, args, port, volume_mounts):
 
 
 def create_job(cfg, api_instance, image, job_name, num, arg, namespace): 
-    
     name ="%s-%s" % (job_name, str(num)) # unique name 
     command = ["python3.6"] 
     args = ["run.py"]
@@ -52,7 +49,8 @@ def create_job(cfg, api_instance, image, job_name, num, arg, namespace):
 
     metadata_job=client.V1ObjectMeta(name=name, labels={"tier": "backend"})
     metadata_pod=client.V1ObjectMeta(name=name)
-    volume_mounts=[client.V1VolumeMount(name="%s-storage" % namespace, mount_path="/%s" % namespace)]
+    volume_mounts=[client.V1VolumeMount(name="%s-storage" % namespace, 
+        mount_path="/%s" % namespace)]
     volumes=[client.V1Volume(name="%s-storage" % namespace, 
         persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(claim_name=namespace))]
 
@@ -60,8 +58,9 @@ def create_job(cfg, api_instance, image, job_name, num, arg, namespace):
     if job_name == "taint" or job_name == "coverage":
         qcow=cfg.taint.qcow
         init_volume_mounts=[client.V1VolumeMount(name=qcow_name, mount_path=qcow_dir)]
-        init_containers=[container(namespace, "%s-install" % qcow_name, "busybox", \
-            ["wget"], ["-O", "%s/%s" % (qcow_dir, basename(qcow)), qcow], None, init_volume_mounts)]
+        init_containers=[container(namespace, "%s-install" % qcow_name, "busybox", 
+            ["wget"], ["-O", "%s/%s" % (qcow_dir, basename(qcow)), qcow], 
+            None, init_volume_mounts)]
         init_volume=[client.V1Volume(name=qcow_name, empty_dir=client.V1EmptyDirVolumeSource())]
         volume_mounts.extend(init_volume_mounts)
         volumes.extend(init_volume)
@@ -161,12 +160,8 @@ def take_stock(core_v1):
             count[s][pt] += 1
     rp = 0
     for s in count.keys():
-        #print ("Status=%s:" % s)
         if s=="Running" or s=="Pending":
             rp += 1
-        #for pt in count[s].keys():
-            #print("  %d %s" % (count[s][pt], pt))
-        #print("\n")
     return rp
 
 
