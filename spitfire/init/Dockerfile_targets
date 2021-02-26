@@ -1,0 +1,73 @@
+FROM ubuntu:18.04
+RUN apt-get update -y && apt-get upgrade -y && apt-get install -y clang wget xxd build-essential python cmake python-pip pkg-config python-yaml libyaml-0-2 libyaml-dev systemd git libtool autoconf pkg-config --fix-missing
+
+ENV WORK_DIR /fuzzing
+WORKDIR $WORK_DIR
+
+# Get AFL
+RUN wget http://lcamtuf.coredump.cx/afl/releases/afl-2.52b.tgz
+RUN  tar xvf afl-2.52b.tgz
+RUN rm afl-2.52b.tgz
+WORKDIR $WORK_DIR/afl-2.52b
+RUN make
+
+# Get the target
+WORKDIR /
+RUN wget http://ftp.gnu.org/gnu/binutils/binutils-2.32.tar.gz && tar -xf binutils-2.32.tar.gz
+WORKDIR /binutils-2.32
+
+# Move the target to /target_source
+RUN cp -r /binutils-2.32 /target_source
+
+# Copy over to instrumented as well
+WORKDIR $WORK_DIR
+RUN cp -r /target_source ./instrumented
+
+# Make regular
+WORKDIR /target_source
+#RUN ./autogen.sh
+RUN ./configure && make
+
+# Make instrumented
+WORKDIR $WORK_DIR/instrumented
+#RUN CFLAGS="-static -fno-PIE -fno-PIC" CC=$WORK_DIR/afl-2.52b/afl-clang ./autogen.sh
+RUN CFLAGS="-static -fno-PIE -fno-PIC" CC=$WORK_DIR/afl-2.52b/afl-clang ./configure 
+RUN CFLAGS="-static -fno-PIE -fno-PIC" CC=$WORK_DIR/afl-2.52b/afl-clang make
+
+# Copy to instrumented 
+WORKDIR /
+RUN mv $WORK_DIR/instrumented/ /instrumented/
+
+RUN mkdir /target /target-instr
+WORKDIR /target_source/binutils
+RUN cp cxxfilt nm-new objdump strings size /target
+WORKDIR /instrumented/binutils
+RUN cp cxxfilt nm-new objdump strings size /target-instr
+#RUN cp /instrumented/binutils /target-instr/xmllint
+
+WORKDIR /
+RUN apt-get install nasm
+#RUN git clone https://git.ffmpeg.org/ffmpeg.git 
+RUN git clone https://github.com/FFmpeg/FFMpeg.git
+WORKDIR /FFMpeg
+RUN CFLAGS="-static -fno-PIE -fno-PIC" CC=$WORK_DIR/afl-2.52b/afl-clang ./configure --cc=$WORK_DIR/afl-2.52b/afl-clang 
+RUN CFLAGS="-static -fno-PIE -fno-PIC" CC=$WORK_DIR/afl-2.52b/afl-clang make 
+RUN cp ffmpeg /target-instr/ffmpeg
+
+WORKDIR / 
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get -y install libpng-dev xmlto curl 
+RUN wget http://deb.debian.org/debian/pool/main/g/gif2png/gif2png_2.5.8.orig.tar.gz
+RUN tar -xf gif2png_2.5.8.orig.tar.gz
+WORKDIR /gif2png-2.5.8
+RUN CFLAGS="-static -fno-PIE -fno-PIC" CC=$WORK_DIR/afl-2.52b/afl-clang ./configure 
+RUN CFLAGS="-static -fno-PIE -fno-PIC" CC=$WORK_DIR/afl-2.52b/afl-clang make 
+RUN cp gif2png /target-instr/gif2png
+
+FROM alpine:latest
+RUN mkdir /target /target-instr
+COPY --from=0 /target /target
+COPY --from=0 /target-instr /target-instr
+CMD mv target $NAMESPACE && mv target-instr $NAMESPACE
+
+
