@@ -85,8 +85,8 @@ def calibrate_case(kbs, entry, queue_cycle, target):
     if entry.calibrated: 
         return
 
-    print("Calibrating case")
-    print(entry)
+    #print("Calibrating case")
+    #print(entry)
 
     # Size 
     #setattr(entry, "size", os.path.getsize(entry.filepath))
@@ -98,7 +98,7 @@ def calibrate_case(kbs, entry, queue_cycle, target):
     stop_time = time.time() * 1e6
     exec_us = stop_time - start_time
     entry.exec_time = exec_us
-    print("Execution_time {}".format(exec_us / 1e6))
+    #print("Execution_time {}".format(exec_us / 1e6))
 
     # Bitmap size and updating bitmap score
     start_time = time.time()
@@ -107,7 +107,7 @@ def calibrate_case(kbs, entry, queue_cycle, target):
     cmd = cmd.split()
     subprocess.run(args=cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     stop_time = time.time()
-    print("Afl-showmap time: {}".format(stop_time-start_time))
+    #print("Afl-showmap time: {}".format(stop_time-start_time))
 
     # Open afl-showmap file to get path:count mapping
     start_time = time.time()
@@ -116,7 +116,7 @@ def calibrate_case(kbs, entry, queue_cycle, target):
     trace_bits_total[entry.uuid] = list(trace_bits.keys())
     f.close()
     stop_time = time.time()
-    print("Process trace_bits time : {}".format(stop_time-start_time))
+    #print("Process trace_bits time : {}".format(stop_time-start_time))
     
     # Number of bits set is just the length of that file 
     bitmap_size = len(trace_bits)
@@ -128,7 +128,7 @@ def calibrate_case(kbs, entry, queue_cycle, target):
     start = time.time()
     update_bitmap_score(kbs, entry, trace_bits) 
     stop = time.time()
-    print("Update bitmap score time: {}".format(stop-start))
+    #print("Update bitmap score time: {}".format(stop-start))
 
 
     #setattr(entry, "calibrated", True)
@@ -143,12 +143,12 @@ def calibrate_case(kbs, entry, queue_cycle, target):
 # Calculate case desirability score to adjust the length of havoc fuzzing (takes from AFLFast)
 def calculate_score(cfg, kbs, entry, avg_exec_time, avg_bitmap_size, fuzz_mu): 
     perf_score = 100
-    print(entry)
-    print(perf_score)
-    print(avg_exec_time)
-    print(avg_bitmap_size)
-    print(fuzz_mu)
-    print(entry.exec_time)
+    #print(entry)
+    #print(perf_score)
+    #print(avg_exec_time)
+    #print(avg_bitmap_size)
+    #print(fuzz_mu)
+    #print(entry.exec_time)
     
     # Adjust score based on execution speed of this path compared to global avg
     # Assign a greater perf_score if the execution time of the entry is less than 2x,3x,4x smaller
@@ -289,11 +289,7 @@ def skip_fuzz(cfg, kbs, pending_favored, favored, entry, queue, queue_cycle):
     return 0
 
 
-@hydra.main(config_path=f"{spitfire_dir}/config/config.yaml")
-def run(cfg):
-
-    global top_rated
-    global trace_bits_total
+def get_file_data(): 
 
     # Make sure the counts, inputs directory exists
     if not os.path.exists(inputs_dir): 
@@ -326,6 +322,37 @@ def run(cfg):
         if f:
             f.close() 
 
+def save_data_file():
+    # Save results
+    f = open(results_file_name, "w") 
+    #print(top_rated)
+    for path in top_rated:
+        string_id = (top_rated[path].uuid).decode("utf-8")
+        f.write("{}:{}\n".format(path, string_id))
+    f.close()
+
+    f = open(trace_file_name, "w")
+    #print(trace_bits_total)
+    for uuid in trace_bits_total:
+        f.write("{}:".format(uuid.decode("utf-8")))
+        for path in trace_bits_total[uuid]: 
+            f.write(str(path))
+            if path  != trace_bits_total[uuid][-1]: 
+                f.write(",")
+            else:
+                f.write("\n")
+    f.close()
+
+@hydra.main(config_path=f"{spitfire_dir}/config/config.yaml")
+def run(cfg):
+
+    start_timer = time.time() 
+
+    global top_rated
+    global trace_bits_total
+
+    get_file_data()
+
     # Compute budget 
     budget = cfg.manager.budget
     target = "%s/%s" % (target_dir, cfg.target.name)
@@ -353,11 +380,10 @@ def run(cfg):
     with grpc.insecure_channel('%s:%d' % (ip, port)) as channel:
         kbs = kbpg.KnowledgeBaseStub(channel)
 
-        top_rated = {key:kbs.GetInputById(kbp.id(uuid=val.rstrip("\n").encode("utf-8"))) for key,val in top_rated.items()} 
-
-        #S = set of original corpus seed inputs
         S = {inp.uuid for inp in kbs.GetSeedInputs(kbp.Empty())} 
-        #print("%d Seeds" % (len(S)))
+
+        # Replace top rated uuids with actual entries 
+        top_rated = {key:kbs.GetInputById(kbp.id(uuid=val.rstrip("\n").encode("utf-8"))) for key,val in top_rated.items()} 
 
         # Parameters (taken from AFLFast)
         HAVOC_CYCLES_INIT = cfg.manager.HAVOC_CYCLES_INIT 
@@ -378,7 +404,12 @@ def run(cfg):
         new_inp_index = 0
         skipped_fuzz = False
 
+        jobs_created = 0
         while True:
+            stop_timer = time.time()
+            # Do what you can in 50 seconds or max 20 jobs
+            if stop_timer - start_timer > 50 or jobs_created == 20:
+                break 
             # Only do this part if we have not skipped the last fuzz
             if not skipped_fuzz: 
                 # Get the queue and the queue cycle 
@@ -386,20 +417,22 @@ def run(cfg):
                 queue_cycle = kbs.GetQueueCycle(kbp.Empty()).val 
                 total_entries = len(queue)
                 print("Queue len: %d, Queue cycle: %d, New_index: %d" % (len(queue), queue_cycle, new_inp_index))
-                print(queue)
+                #print(queue)
 
                 # Calibrate things in the queue that have not yet been calibrated
                 # Calculate totals AFTER calibration
                 start = time.time()
+                calibrated_inputs = 0
                 for i in range(new_inp_index, len(queue)):
                     if not queue[i].calibrated: 
+                        calibrated_inputs += 1
                         calibrate_case(kbs, queue[i], queue_cycle, target)
                     total_exec_time += queue[i].exec_time 
                     total_bitmap_size += queue[i].bitmap_size
                     total_fuzz += queue[i].n_fuzz
                 stop = time.time()
 
-                print("Total Calibration Time: {} for {} inp".format(stop-start, total_entries))
+                print("Calibrated {} entries in {} seconds".format(calibrated_inputs, stop-start))
                 # Calculate averages from totals
                 avg_exec_time = total_exec_time / total_entries
                 avg_bitmap_size = total_bitmap_size / total_entries
@@ -409,27 +442,27 @@ def run(cfg):
                 start = time.time()
                 [pending_favored, favored] = cull_queue(cfg, kbs, queue) 
                 stop = time.time()
-                print("Total cull queue time: {}".format(stop-start))
+                #print("Total cull queue time: {}".format(stop-start))
                 print("Pending favored: %d" % pending_favored)
                 print("Favored:") 
                 print(favored)
 
             # Get the next input in the queue
-            kb_inp = kbs.NextInQueue(kbp.Empty()) 
-            #print("Fuzzing input %d out of %d" % (, len(queue))
-            print(kb_inp)
+            kb_inp = kbs.NextInQueue(kbp.Empty())
+            #print("Next in queue input %d out of %d" % (kb_inp_ind, len(queue)))
+            #kb_inp = queue[kb_inp_ind]
 
             # Skip this input with some probability if it is not favored
             skipped_fuzz = skip_fuzz(cfg, kbs, pending_favored, favored, kb_inp, queue, queue_cycle) 
             if skipped_fuzz: 
-                print("skipped_fuzz 1") 
+                print("skipped_fuzz 1: {}".format(kb_inp.uuid)) 
                 continue
 
             # Calculate the score of that input for potential havoc fuzzing
             start = time.time()
             perf_score = calculate_score(cfg, kbs, kb_inp, avg_exec_time, avg_bitmap_size, avg_fuzz_mu) 
             stop = time.time()
-            print("Calculate score time: {}".format(stop-start))
+            #print("Calculate score time: {}".format(stop-start))
             print("Score for input: {}".format(perf_score))
 
             if perf_score == 0: 
@@ -456,31 +489,15 @@ def run(cfg):
                 kbs.MarkInputAsPending(kb_inp)
                 create_job(cfg, batch_v1, "%s:%s" % (job.name, namespace), job.name, 
                         job.get_count(), args, namespace) 
+                jobs_created += 1
                 print ("uuid for input is %s" % (str(kb_inp.uuid)))
             except Exception as e:
                print("Unable to create job exception = %s" % str(e))
-            break
+               continue
 
-        # Save results
-        f = open(results_file_name, "w") 
-        #print(top_rated)
-        for path in top_rated:
-            string_id = (top_rated[path].uuid).decode("utf-8")
-            f.write("{}:{}\n".format(path, string_id))
-        f.close()
-
-        f = open(trace_file_name, "w")
-        #print(trace_bits_total)
-        for uuid in trace_bits_total:
-            f.write("{}:".format(uuid.decode("utf-8")))
-            for path in trace_bits_total[uuid]: 
-                f.write(str(path))
-                if path  != trace_bits_total[uuid][-1]: 
-                    f.write(",")
-                else:
-                    f.write("\n")
-        f.close()
-
+        # Process results
+        print("Ran {} jobs this round".format(jobs_created))
+        save_data_file()
 
 if __name__=="__main__":
     run()

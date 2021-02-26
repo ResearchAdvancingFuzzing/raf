@@ -22,7 +22,7 @@ def num_active_fm(namespace):
             num_fm += 1
         #if s=="Pending":
         #    num_pending += 1
-    print ("num_fm = %d" % num_fm)
+    #print ("num_fm = %d" % num_fm)
     return num_fm
 
 # Cleanup all "backend" jobs that have succeeded 
@@ -73,9 +73,9 @@ def create_job(cfg, api_instance, image, job_name, num, arg, namespace):
     pod_temp=client.V1PodTemplateSpec(metadata=metadata_pod, spec=pod_spec)
     job_spec=client.V1JobSpec(template=pod_temp)
     job_body=client.V1Job(metadata=metadata_job, spec=job_spec)
-    print(job_body)
+    #print(job_body)
     result = api_instance.create_namespaced_job(namespace=namespace, body=job_body)
-    print(result)
+    #print(result)
 
 class Job: 
     def __init__(self, name):
@@ -117,12 +117,12 @@ def take_stock(core_v1):
             count[s][pt] += 1
     rp = 0
     for s in count.keys():
-        print ("Status=%s:" % s)
+        #print ("Status=%s:" % s)
         if s=="Running" or s=="Pending":
             rp += 1
-        for pt in count[s].keys():
-            print("  %d %s" % (count[s][pt], pt))
-        print("\n")
+        #for pt in count[s].keys():
+            #print("  %d %s" % (count[s][pt], pt))
+        #print("\n")
     return rp
 
 

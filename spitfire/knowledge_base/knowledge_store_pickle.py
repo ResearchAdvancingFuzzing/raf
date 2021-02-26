@@ -706,7 +706,7 @@ class KnowledgeStorePickle(KnowledgeStore):
 
     def next_in_queue(self): 
         if self.queue_index == None: # initialize things 
-            self.queue_cycle = 0 
+            self.queue_cycle = 1 
             self.queue_index = 0
         elif self.queue_index == len(self.queue) - 1: # made it to the end
             self.queue_cycle += 1 
@@ -714,6 +714,9 @@ class KnowledgeStorePickle(KnowledgeStore):
         else: # just somewhere in the queue
             self.queue_index += 1
         # every queue_index at this point should be valid
+        print("next_in_queue():")
+        print("cycle: {}, index: {}".format(self.queue_cycle, self.queue_index))
+        #return self.queue_index
         return self.inputs.get_by_id(self.queue[self.queue_index]) 
 
     def get_queue_cycle(self):
