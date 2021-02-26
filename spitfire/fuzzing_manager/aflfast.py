@@ -37,7 +37,7 @@ import knowledge_base_pb2_grpc as kbpg
 import coverage
 from kubernetes_help import * 
 
-# Mapping of bytes (ints) to entry uuids (string)
+# Mapping of ints (bytes/paths) to inputs
 top_rated = {} 
 # Mapping of uuids to lists representing the bytes they have seen so far
 trace_bits_total = {}
@@ -62,7 +62,6 @@ def update_bitmap_score(kbs, entry, trace_bits):
     for path in trace_bits:  
         if path in top_rated: 
             top_rated_entry = top_rated[path]
-            #top_rated_entry = kbs.GetInputById(kbp.id(uuid=top_rated[path]))
             top_rated_fuzz_p2 = next_p2(top_rated_entry.n_fuzz)
             top_rated_fav_factor = top_rated_entry.exec_time * entry.size
             if fuzz_p2 > top_rated_fuzz_p2: 
@@ -75,21 +74,15 @@ def update_bitmap_score(kbs, entry, trace_bits):
         top_rated[path] = entry
         score_changed = 1
 
-    #return score_changed
 
 #  Finds and updates an input's exec time, bitmap size, and handicap (queue cycles behind) value 
-# This function is incredibly slow 
 def calibrate_case(kbs, entry, queue_cycle, target):
     global trace_bits_total 
 
     if entry.calibrated: 
         return
 
-    #print("Calibrating case")
-    #print(entry)
-
     # Size 
-    #setattr(entry, "size", os.path.getsize(entry.filepath))
     entry.size = os.path.getsize(entry.filepath)
 
     # Execution time:
@@ -130,8 +123,6 @@ def calibrate_case(kbs, entry, queue_cycle, target):
     stop = time.time()
     #print("Update bitmap score time: {}".format(stop-start))
 
-
-    #setattr(entry, "calibrated", True)
     entry.calibrated = True
     kbs.AddInput(entry)
     #print(entry)
@@ -143,12 +134,6 @@ def calibrate_case(kbs, entry, queue_cycle, target):
 # Calculate case desirability score to adjust the length of havoc fuzzing (takes from AFLFast)
 def calculate_score(cfg, kbs, entry, avg_exec_time, avg_bitmap_size, fuzz_mu): 
     perf_score = 100
-    #print(entry)
-    #print(perf_score)
-    #print(avg_exec_time)
-    #print(avg_bitmap_size)
-    #print(fuzz_mu)
-    #print(entry.exec_time)
     
     # Adjust score based on execution speed of this path compared to global avg
     # Assign a greater perf_score if the execution time of the entry is less than 2x,3x,4x smaller
@@ -274,23 +259,23 @@ def cull_queue(cfg, kbs, queue):
 def UR(limit): 
     return random.randint(0, 99)
 
+# Determine if we will fuzz entry
 def skip_fuzz(cfg, kbs, pending_favored, favored, entry, queue, queue_cycle): 
     if pending_favored:
         if entry.fuzz_level > 0 or not entry.uuid in favored:
             if UR(100) < cfg.manager.SKIP_TO_NEW_PROB: 
-                return 1
+                return True
         elif not entry.uuid in favored and len(queue) > 10:
             if queue_cycle > 1 and entry.fuzz_level == 0:
                 if UR(100) < cfg.manager.SKIP_NFAV_NEW_PROB:
-                    return 1
+                    return True
             else: 
                 if UR(100) < cfg.manager.SKIP_NFAV_OLD_PROB:
-                    return 1
-    return 0
+                    return True
+    return False
 
 
 def get_file_data(): 
-
     # Make sure the counts, inputs directory exists
     if not os.path.exists(inputs_dir): 
         os.mkdir(inputs_dir) 
@@ -325,14 +310,12 @@ def get_file_data():
 def save_data_file():
     # Save results
     f = open(results_file_name, "w") 
-    #print(top_rated)
     for path in top_rated:
         string_id = (top_rated[path].uuid).decode("utf-8")
         f.write("{}:{}\n".format(path, string_id))
     f.close()
 
     f = open(trace_file_name, "w")
-    #print(trace_bits_total)
     for uuid in trace_bits_total:
         f.write("{}:".format(uuid.decode("utf-8")))
         for path in trace_bits_total[uuid]: 
@@ -346,10 +329,10 @@ def save_data_file():
 @hydra.main(config_path=f"{spitfire_dir}/config/config.yaml")
 def run(cfg):
 
-    start_timer = time.time() 
-
     global top_rated
     global trace_bits_total
+
+    start_timer = time.time() 
 
     get_file_data()
 
@@ -402,14 +385,16 @@ def run(cfg):
 
         total_exec_time, total_bitmap_size, total_fuzz = 0, 0, 0
         new_inp_index = 0
-        skipped_fuzz = False
-
         jobs_created = 0
         while True:
+
+            skipped_fuzz = False
+
             stop_timer = time.time()
             # Do what you can in 50 seconds or max 20 jobs
             if stop_timer - start_timer > 50 or jobs_created == 20:
                 break 
+
             # Only do this part if we have not skipped the last fuzz
             if not skipped_fuzz: 
                 # Get the queue and the queue cycle 
@@ -417,7 +402,6 @@ def run(cfg):
                 queue_cycle = kbs.GetQueueCycle(kbp.Empty()).val 
                 total_entries = len(queue)
                 print("Queue len: %d, Queue cycle: %d, New_index: %d" % (len(queue), queue_cycle, new_inp_index))
-                #print(queue)
 
                 # Calibrate things in the queue that have not yet been calibrated
                 # Calculate totals AFTER calibration
@@ -431,45 +415,34 @@ def run(cfg):
                     total_bitmap_size += queue[i].bitmap_size
                     total_fuzz += queue[i].n_fuzz
                 stop = time.time()
+                print(f"Calibrated {calibrated_inputs} entries in {stop-start} seconds")
 
-                print("Calibrated {} entries in {} seconds".format(calibrated_inputs, stop-start))
                 # Calculate averages from totals
                 avg_exec_time = total_exec_time / total_entries
                 avg_bitmap_size = total_bitmap_size / total_entries
                 avg_fuzz_mu = total_fuzz / total_entries 
-                print("Avg_exec_time: %d, avg_bitmap_size: %d, avg_fuzz_mu: %d" % (avg_exec_time, avg_bitmap_size, avg_fuzz_mu))
+                print(f"Avg_exec_time: {avg_exec_time}, avg_bitmap_size: {avg_bitmap_size}, avg_fuzz_mu: {avg_fuzz_mu}")
 
-                start = time.time()
                 [pending_favored, favored] = cull_queue(cfg, kbs, queue) 
-                stop = time.time()
-                #print("Total cull queue time: {}".format(stop-start))
-                print("Pending favored: %d" % pending_favored)
-                print("Favored:") 
-                print(favored)
+                print(f"Pending favored: {pending_favored}\nFavored: {favored}")
 
             # Get the next input in the queue
             kb_inp = kbs.NextInQueue(kbp.Empty())
-            #print("Next in queue input %d out of %d" % (kb_inp_ind, len(queue)))
-            #kb_inp = queue[kb_inp_ind]
 
             # Skip this input with some probability if it is not favored
             skipped_fuzz = skip_fuzz(cfg, kbs, pending_favored, favored, kb_inp, queue, queue_cycle) 
             if skipped_fuzz: 
-                print("skipped_fuzz 1: {}".format(kb_inp.uuid)) 
+                print(f"skipped_fuzz 1: {kb_inp.uuid}")
                 continue
 
             # Calculate the score of that input for potential havoc fuzzing
-            start = time.time()
             perf_score = calculate_score(cfg, kbs, kb_inp, avg_exec_time, avg_bitmap_size, avg_fuzz_mu) 
-            stop = time.time()
-            #print("Calculate score time: {}".format(stop-start))
-            print("Score for input: {}".format(perf_score))
+            print(f"Score for input: {perf_score}")
 
             if perf_score == 0: 
                 skipped_fuzz = True
-                print("skipped_fuzz 2") 
+                print(f"skipped_fuzz 2: {kb_inp.uuid}") 
                 continue
-                #continue # skip this entry
 
             # We are fuzzing
             new_inp_index = len(queue)
