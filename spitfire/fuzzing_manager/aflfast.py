@@ -332,7 +332,21 @@ def run(cfg):
     global top_rated
     global trace_bits_total
 
-    start_timer = time.time() 
+    # Setup access to cluster 
+    config.load_incluster_config()
+    batch_v1 = client.BatchV1Api()
+    core_v1 = client.CoreV1Api() 
+
+    # We've just started. Check if another fm is alive. 
+    # If it is, wait until it finishes 
+    while num_active_fm(namespace) > 1: 
+        pass
+    
+    # Begin 
+    #print ("A previous FM is still running -- exiting")
+    cleanup_finished_jobs(namespace) 
+
+    #start_timer = time.time() 
 
     get_file_data()
 
@@ -343,17 +357,6 @@ def run(cfg):
     # Setup job information
     job_names = ["fuzzer"]
     jobs = {name:Job(name) for name in job_names}  
-
-    # Setup access to cluster 
-    config.load_incluster_config()
-    batch_v1 = client.BatchV1Api()
-    core_v1 = client.CoreV1Api() 
-
-    # Status of current fuzzing manager; cleanup old jobs
-    if num_active_fm(namespace) > 1: 
-        print ("A previous FM is still running -- exiting")
-        #return
-    cleanup_finished_jobs(namespace) 
 
     # Connect to the knowledge base 
     service = core_v1.list_namespaced_service(namespace=namespace) 
@@ -390,10 +393,14 @@ def run(cfg):
 
             skipped_fuzz = False
 
-            stop_timer = time.time()
+            #stop_timer = time.time()
             # Do what you can in 50 seconds or max 20 jobs
-            if stop_timer - start_timer > 50 or jobs_created == 20:
-                break 
+            #if stop_timer - start_timer > 50 or jobs_created == 20:
+            #break  
+            # If another fm is waiting for us to finish, stop so they
+            # can begin 
+            if num_active_fm(namespace) > 1: 
+                break
 
             # Only do this part if we have not skipped the last fuzz
             if not skipped_fuzz: 
