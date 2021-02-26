@@ -108,6 +108,7 @@ def setup(cfg):
 
     name = "fm"
     fm_name = cfg.manager.name + ".py"
+    #cron_sched = cfg.manager.cron_sched 
     cmd = ['python3.6']
     args = [fm_name]
     metadata=client.V1ObjectMeta(name=name)
