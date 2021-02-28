@@ -102,19 +102,20 @@ def remove_units(val):
     for i,c in enumerate(val):
         if not c.isdigit():
             break
-    units = s[i:]
-    number = int(s[:i])
+    units = val[i:]
+    number = int(val[:i])
     return [number, units] 
 
 # This has not been tested or used yet
 # This only works for one node  
+# We will also need permissions here to work 
 def cluster_usages(to_print): 
     api = client.CustomObjectsApi()
-    node_resource = api.list_namespaced_custom_object("metrics.k8s.io", 
-            "v1beta1", namespace, "nodes")
-    pod_resource = api.list_cluster_custom_object("metrics.k8s.io", "v1beta1", "pod")
-    total_cpu = node_resource['items'][0]['usage']['cpu']
-    total_mem = node_resource['items'][0]['usage']['cpu']
+    pod_resource = api.list_namespaced_custom_object("metrics.k8s.io", 
+            "v1beta1", namespace, "pods")
+    node_resource = api.list_cluster_custom_object("metrics.k8s.io", "v1beta1", "nodes")
+    total_cpu = remove_units(node_resource['items'][0]['usage']['cpu'])[0]
+    total_mem = remove_units(node_resource['items'][0]['usage']['cpu'])[0]
     # Make everything m 
     cpu_usages, mem_usages = {}, {}
     for pod in pod_resource['items']: 
@@ -130,13 +131,13 @@ def cluster_usages(to_print):
             mem_usages[mem_units] = []
 
     if len(mem_usages) == 1 and len(cpu_usages) == 1: # good to go
-        total_mem_using = sum(mem_usages[mem_usages.keys()[0]]) 
-        total_cpu_using = sum(cpu_usages[cpu_usages.keys()[0]])
+        total_mem_using = sum(mem_usages[list(mem_usages.keys())[0]]) 
+        total_cpu_using = sum(cpu_usages[list)cpu_usages.keys())[0]])
         fraction_cpu = total_cpu_using / total_cpu
         fraction_mem = total_mem_using / total_mem
         if to_print:
-            print(f"CPU percentage: {fraction_cpu * 100}, 
-                    MEM percentage: {fraction_mem * 100}")
+            print(f"CPU percentage: {fraction_cpu * 100}") 
+            print(f"MEM percentage: {fraction_mem * 100}")
         return [fraction_cpu, fraction_mem]
     else:
         # conversions of units required, let's hope they just give us the same units 

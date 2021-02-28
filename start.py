@@ -71,8 +71,9 @@ def run(cfg):
         rbac_api_instance.create_cluster_role(client.V1Role(
             metadata=client.V1ObjectMeta(name=name), 
             rules=[client.V1PolicyRule(
-                api_groups=["", "apps", "batch"],
-                resources=["configmaps", "persistentvolumeclaims", "pods", "services", "deployments", "jobs", "cronjobs"],
+                api_groups=["", "apps", "batch", "metrics.k8s.io"],
+                resources=["configmaps", "persistentvolumes", "storageclass", "events", \
+                        "persistentvolumeclaims", "pods", "services", "deployments", "jobs", "cronjobs", "nodes"],
                 verbs=["list", "get", "create", "update", "delete", "watch"])]))
 
         rbac_api_instance.create_cluster_role_binding(client.V1RoleBinding(
@@ -105,7 +106,7 @@ def run(cfg):
             name=name,
             api_group="rbac.authorization.k8s.io")))
     '''
-
+    #return
     # Create the config map
     core_api_instance.create_namespaced_config_map(namespace, 
             client.V1ConfigMap(

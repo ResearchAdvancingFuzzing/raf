@@ -336,6 +336,7 @@ def run(cfg):
     config.load_incluster_config()
     batch_v1 = client.BatchV1Api()
     core_v1 = client.CoreV1Api() 
+    cluster_usages(True)
 
     # We've just started. Check if another fm is alive. 
     # If it is, wait until it finishes 
