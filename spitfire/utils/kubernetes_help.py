@@ -132,7 +132,7 @@ def cluster_usages(to_print):
 
     if len(mem_usages) == 1 and len(cpu_usages) == 1: # good to go
         total_mem_using = sum(mem_usages[list(mem_usages.keys())[0]]) 
-        total_cpu_using = sum(cpu_usages[list)cpu_usages.keys())[0]])
+        total_cpu_using = sum(cpu_usages[list(cpu_usages.keys())[0]])
         fraction_cpu = total_cpu_using / total_cpu
         fraction_mem = total_mem_using / total_mem
         if to_print:
