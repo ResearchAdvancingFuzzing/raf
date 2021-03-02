@@ -352,6 +352,8 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
         for inp in self.ks.get_queue(): 
             yield inp
     
+    def GetQueueLength(self, emp, context):
+        return kbp.IntMessage(val=self.ks.get_queue_length())
 
     
     

@@ -722,6 +722,9 @@ class KnowledgeStorePickle(KnowledgeStore):
     def get_queue_cycle(self):
         return self.queue_cycle
 
+    def get_queue_length(self):
+        return len(self.queue)
+
     def get_queue(self): 
         return [self.inputs.get_by_id(uuid) for uuid in self.queue] 
         #for inp in self.queue:

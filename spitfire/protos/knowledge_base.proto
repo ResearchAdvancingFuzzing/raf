@@ -127,6 +127,7 @@ service KnowledgeBase {
     rpc NextInQueue(Empty) returns (Input) {} 
     rpc GetQueueCycle(Empty) returns (IntMessage) {} 
     rpc GetQueue(Empty) returns (stream Input) {} 
+    rpc GetQueueLength(Empty) returns (IntMessage) {}
 
 }
 
