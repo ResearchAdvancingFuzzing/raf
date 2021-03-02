@@ -79,6 +79,12 @@ def setup(cfg):
 
         fuzz_inputs = []
         uuid = []
+        
+        # If we have an empty corpus, add the empty file to our corpus
+        empty_seed = "%s/empty_file" % corpus_dir 
+        if len(os.listdir(corpus_dir)) == 0:
+            open(empty_seed, "w").close()
+
         for dirpath,_,filenames in os.walk(corpus_dir): 
             for f in filenames:
                 input_msg = kbp.Input(filepath=os.path.join(dirpath, f), 
