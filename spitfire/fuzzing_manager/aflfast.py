@@ -233,7 +233,10 @@ def calculate_score(cfg, kbs, entry, avg_exec_time, avg_bitmap_size, fuzz_mu):
 
 # Looks at entire queue and returns a list of favored inputs 
 def cull_queue(cfg, kbs, queue): 
+    global top_rated
+    global trace_bits_total 
     global score_changed
+
     print("Culling queue")
     print("Score_changed %d" % score_changed)
     if not score_changed:
@@ -276,6 +279,9 @@ def skip_fuzz(cfg, kbs, pending_favored, favored, entry, queue, queue_cycle):
 
 
 def get_file_data(): 
+    global top_rated
+    global trace_bits_total
+
     # Make sure the counts, inputs directory exists
     if not os.path.exists(inputs_dir): 
         os.mkdir(inputs_dir) 
@@ -308,6 +314,9 @@ def get_file_data():
             f.close() 
 
 def save_data_file():
+    global top_rated
+    global trace_bits_total 
+
     # Save results
     f = open(results_file_name, "w") 
     for path in top_rated:
@@ -336,18 +345,19 @@ def run(cfg):
     config.load_incluster_config()
     batch_v1 = client.BatchV1Api()
     core_v1 = client.CoreV1Api() 
-    cluster_usages(True)
+    #cluster_usages(True)
+    
+    # Check if other fuzzing managers are alive 
+    # If more than 2 are, stop 
+    if active_fm(namespace) > 2:
+        print("Too many fm, returning")
+        return
 
-    # We've just started. Check if another fm is alive. 
-    # If it is, wait until it finishes 
+    # If only 2 are, then wait until the other finishes 
     while active_fm(namespace) > 1: 
         pass
     
-    # Begin 
-    #print ("A previous FM is still running -- exiting")
     cleanup_finished_jobs(namespace) 
-
-    #start_timer = time.time() 
 
     get_file_data()
 
@@ -390,25 +400,32 @@ def run(cfg):
         total_exec_time, total_bitmap_size, total_fuzz = 0, 0, 0
         new_inp_index = 0
         jobs_created = 0
+        queue = []
         while True:
 
             skipped_fuzz = False
 
-            #stop_timer = time.time()
-            # Do what you can in 50 seconds or max 20 jobs
-            #if stop_timer - start_timer > 50 or jobs_created == 20:
-            #break  
-            # If another fm is waiting for us to finish, stop so they
-            # can begin 
+            # If another fm is waiting for us to finish, 
+            # stop so they can begin 
             if active_fm(namespace) > 1: 
+                break
+            
+            if jobs_created > 0:
                 break
 
             # Only do this part if we have not skipped the last fuzz
             if not skipped_fuzz: 
                 # Get the queue and the queue cycle 
-                queue = [kbs.GetInputById(kbp.id(uuid=inp.uuid)) for inp in kbs.GetQueue(kbp.Empty())]
+                # this is a slower operation, let's be smarter about it
+                #queue_len = kbs.GetQueueLength(kbp.Empty()).val 
+                queue_inp = [inp for inp in kbs.GetQueue(kbp.Empty())]
+                queue_len = len(queue_inp)
+                print(f"Getting entries from [{new_inp_index}, {queue_len})")
+                for inp in queue_inp[new_inp_index:queue_len]:
+                    queue.append(kbs.GetInputById(kbp.id(uuid=inp.uuid)))
+                #queue = [kbs.GetInputById(kbp.id(uuid=inp.uuid)) for inp in kbs.GetQueue(kbp.Empty())]
                 queue_cycle = kbs.GetQueueCycle(kbp.Empty()).val 
-                total_entries = len(queue)
+                total_entries = queue_len 
                 print("Queue len: %d, Queue cycle: %d, New_index: %d" % (len(queue), queue_cycle, new_inp_index))
 
                 # Calibrate things in the queue that have not yet been calibrated
@@ -456,22 +473,54 @@ def run(cfg):
             new_inp_index = len(queue)
 
             # Calculate how many iterations to fuzz (AFLFast)
-            stage_max = HAVOC_CYCLES * perf_score / havoc_div / 100
-            print("Stage_max: %d" % stage_max)
+            # TODO: only deterministic fuzzing under certain conditions
 
             # Run fuzzer with this input, stage_max times (-n arg) 
             job = jobs["fuzzer"]
+
+            # Run deterministic fuzzing 
+            # Afl bit flip
+            job.update_count_by(1) 
+            args = [f"fuzzer.input_file={kb_inp.filepath}", f"fuzzer.ooze.name=afl_bit_flip.so", \
+                    f"fuzzer.extra_args='JIG_MAP_SIZE=65536 ANALYSIS_SIZE=65536'"]  
+            print(args)
+            create_job(cfg, batch_v1, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
+            
+            # AFL arith
+            job.update_count_by(1) 
+            args = [f"fuzzer.input_file={kb_inp.filepath}", f"fuzzer.ooze.name=afl_arith.so", \
+                    f"fuzzer.extra_args='JIG_MAP_SIZE=65536 ANALYSIS_SIZE=65536'"]  
+            create_job(cfg, batch_v1, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
+            print(args) 
+
+            # AFL interest
+            job.update_count_by(1) 
+            args = [f"fuzzer.input_file={kb_inp.filepath}", f"fuzzer.ooze.name=afl_interesting.so", \
+                    f"fuzzer.extra_args='JIG_MAP_SIZE=65536 ANALYSIS_SIZE=65536'"]  
+            create_job(cfg, batch_v1, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
+            print(args)
+            # AFL dictionary
+            job.update_count_by(1) 
+            args = [f"fuzzer.input_file={kb_inp.filepath}", f"fuzzer.ooze.name=afl_dictionary.so", \
+                    f"fuzzer.extra_args='JIG_MAP_SIZE=65536 ANALYSIS_SIZE=65536'"]  
+            print(args)
+            create_job(cfg, batch_v1, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
+
+            # Run havoc fuzzing 
+            stage_max = HAVOC_CYCLES * perf_score / havoc_div / 100
+            print("Stage_max: %d" % stage_max)
             job.update_count_by(1) 
             args = [f"fuzzer.input_file={kb_inp.filepath}", f"fuzzer.ooze.name=afl_havoc.so", \
                     f"fuzzer.iteration_count={stage_max}", \
                     f"fuzzer.extra_args='JIG_MAP_SIZE=65536 ANALYSIS_SIZE=65536'"] 
             print(args)
             try:
-                kbs.MarkInputAsPending(kb_inp)
+                #kbs.MarkInputAsPending(kb_inp)
                 create_job(cfg, batch_v1, "%s:%s" % (job.name, namespace), job.name, 
                         job.get_count(), args, namespace) 
                 jobs_created += 1
                 print ("uuid for input is %s" % (str(kb_inp.uuid)))
+                # TODO: increase fuzz level only if we make it here 
             except Exception as e:
                print("Unable to create job exception = %s" % str(e))
                continue
