@@ -61,13 +61,13 @@ def add_attrib_to_inp(kb_inp, attrib_map, depth):
 # Sends the input to the KB
 def add_inp_to_database(kbs, file_name, attrib_map, depth): 
     # Ignore the .results files 
-    if not file_name.endswith(".input"): 
-        return
     new_inp= kbp.Input(filepath = "%s/%s" % (input_dir, file_name)) # create the kb input for this 
     add_attrib_to_inp(new_inp, attrib_map, depth)
     new_kb_input = None 
+    was_new = True
     result = kbs.InputExists(new_inp)
     if result.success: # Exists
+        was_new = False 
         new_kb_input = kbs.GetInput(new_inp)
         if new_kb_input.seed: # input exists
             old_base = os.path.splitext(file_name)[0]
@@ -78,7 +78,7 @@ def add_inp_to_database(kbs, file_name, attrib_map, depth):
     else: 
         # Only if it does not already exist, do we add it 
         new_kb_input = kbs.AddInput(new_inp)
-    return new_kb_input
+    return [was_new, new_kb_input]
 
 
 def send_to_database(kbs, kb_input, kb_analysis, coverage_dir, interesting_dir):
@@ -90,18 +90,20 @@ def send_to_database(kbs, kb_input, kb_analysis, coverage_dir, interesting_dir):
     # Add the new interesting inputs to the KB 
     files = os.listdir(interesting_dir) if os.path.isdir(interesting_dir) else []
     for file_name in files: 
-        num_crash += 1
-        new_kb_input = add_inp_to_database(kbs, file_name, {"crash": 1}, depth)
-        if new_kb_input:
+        [was_new, new_kb_input] = add_inp_to_database(kbs, file_name, {"crash": 1}, depth)
+        if new_kb_input and was_new:
+            num_crash += 1
             event = kbp.CrashEvent()
             kbs.AddFuzzingEvent(kbp.FuzzingEvent(analysis=kb_analysis.uuid,  
                 input=new_kb_input.uuid, crash_event=event))
 
     files = os.listdir(coverage_dir) if os.path.isdir(coverage_dir) else []
     for file_name in files:
-        num_inc_covg += 1
-        new_kb_input = add_inp_to_database(kbs, file_name, {"increased_coverage": 1}, depth) 
-        if new_kb_input:
+        if not file_name.endswith(".input"): 
+            continue 
+        [was_new, new_kb_input] = add_inp_to_database(kbs, file_name, {"increased_coverage": 1}, depth) 
+        if new_kb_input and was_new:
+            num_inc_covg += 1
             event = kbp.IncreasedCoverageEvent()
             kbs.AddFuzzingEvent(kbp.FuzzingEvent(analysis=kb_analysis.uuid,  
                 input=new_kb_input.uuid, increased_coverage_event=event))
