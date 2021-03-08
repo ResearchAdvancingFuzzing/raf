@@ -335,7 +335,7 @@ def save_data_file():
                 f.write("\n")
     f.close()
 
-def determinstic_fuzz(cfg, kb_inp, job):
+def deterministic_fuzz(cfg, kb_inp, job):
     # Run deterministic fuzzing 
     # Afl bit flip
     job.update_count_by(1) 
@@ -364,19 +364,9 @@ def determinstic_fuzz(cfg, kb_inp, job):
     print(args)
     create_job(cfg, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
 
-    # Run havoc fuzzing 
-    stage_max = HAVOC_CYCLES * perf_score / havoc_div / 100
-    print("Stage_max: %d" % stage_max)
-    job.update_count_by(1) 
-    args = [f"fuzzer.input_file={kb_inp.filepath}", f"fuzzer.ooze.name=afl_havoc.so", \
-            f"fuzzer.iteration_count={stage_max}", \
-            f"fuzzer.extra_args='JIG_MAP_SIZE=65536 ANALYSIS_SIZE=65536'"] 
-    print(args)
 
 @hydra.main(config_path=f"{spitfire_dir}/config/config.yaml")
 def run(cfg):
-    while True:
-        pass
 
     global top_rated
     global trace_bits_total
@@ -462,7 +452,7 @@ def run(cfg):
             if not skipped_fuzz: 
                 # Get the queue and the queue cycle 
                 queue = [inp for inp in kbs.GetQueue(kbp.Empty())]
-                queue_len = len(queue_inp)
+                queue_len = len(queue)
                 queue_cycle = kbs.GetQueueCycle(kbp.Empty()).val 
                 total_entries = queue_len 
                 print(f"Queue len: {len(queue)}, Queue cycle: {queue_cycle}, " 
@@ -519,13 +509,23 @@ def run(cfg):
             new_inp_index = len(queue)
 
             # Only deterministic fuzz under certain conditions
-            if (not kb_inp.additional_information["passed_det"] == "True" and \
+            if (not kb_inp.additional_infomation["passed_det"] == "True" and \
                     perf_score >= (kb_inp.depth * 30 \
                     if kb_inp.depth * 30 <= HAVOC_MAX_MULT * 100 else HAVOC_MAX_MULT * 100)):
-                        determinstic_fuzz(cfg, kb_inp, job, namespace) 
-                        kb_inp.additional_information["passed_det"] = "True"
+                        print("here1") 
+                        deterministic_fuzz(cfg, kb_inp, job) 
+                        #kb_inp.additional_infomation["passed_det"].value.add("True")
 
             # Run havoc fuzzer with this input, stage_max times (-n arg) 
+                # Run havoc fuzzing
+            stage_max = HAVOC_CYCLES * perf_score / havoc_div / 100
+            print("Stage_max: %d" % stage_max)
+            job.update_count_by(1)
+            args = [f"fuzzer.input_file={kb_inp.filepath}", f"fuzzer.ooze.name=afl_havoc.so", \
+                    f"fuzzer.iteration_count={stage_max}", \
+                    f"fuzzer.extra_args='JIG_MAP_SIZE=65536 ANALYSIS_SIZE=65536'"]
+            print(args)
+            print("here2")
             create_job(cfg, "%s:%s" % (job.name, namespace), job.name, 
                     job.get_count(), args, namespace) 
             jobs_created += 1

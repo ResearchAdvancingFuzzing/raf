@@ -123,7 +123,7 @@ def send_to_database(kbs, kb_input, kb_analysis, coverage_dir, interesting_dir):
     kb_input = kbs.GetInput(kb_input)
     # Print some stuff out
     print(kb_input)
-    print("N_fuzz: %d Fuzz_level: %d" % (n_fuzz, fuzz_level))
+    #print("N_fuzz: %d Fuzz_level: %d" % (n_fuzz, fuzz_level))
     print("%d inputs that increased coverage" % num_inc_covg) 
     print("%d inputs that crashed" % num_crash) 
     print("Sent %d new inputs out of %d to the database" % 
