@@ -22,7 +22,7 @@ sudo apt-get install python3.6 python3-pip
 ```
 You then need to install the the following python packages in order to make the grpcio python files from the .proto file in the run script.
 ```
-sudo python3.6 -m pip install grpcio  grpcio-tools
+sudo python3.6 -m pip install grpcio  grpcio-tools hydra numpy
 ```
 #### Minikube setup
 Run **one** of the following sets of commands to setup the single-node Kubernetes cluster: 
