@@ -33,12 +33,14 @@ minikue start --vm-driver=docker
 **NOTE**: Running minikube with root user is not allowed here.
 
 2. In a virtual machine on your host computer: (preferred)
+
 Run the following commands in order to set up the cluster in a virtual machine on your personal computer and configure your environment to re-use the docker daemon inside the minikube instance. NOTE: you need to make sure that the virtualbox has enough memory (greater than the default)! 
 ```
 minikube start --vm-driver=virtualbox
 eval $(minikube docker-env)
 ```
 3. On your host computer (which should be a VM environment): 
+
 If you already have a virtual linux environment, you can use the following to set the cluster up on your **host** virtual machine.
 ```
 sudo apt-get update
@@ -68,13 +70,16 @@ After initial setup, you can now either (1) run an already existing experiment i
 #### Using an existing experiment
 TODO. There are no existing experiments currently. 
 #### Creating a new experiemnt
-To run a new experiment, you need to (1) make the relevant changes, (2) commit the changes, and (3) tag the commit. Note: if you do not commit the changes or you do not have a tag associated with the commit, the campaign will not run. 
-To tag, run the following:
+To run a new experiment, you need to (1) make the relevant changes, (2) commit the changes, and (3) tag the commit. 
+
+**NOTE:** If you do not commit the changes or you do not have a tag associated with the commit, the campaign will not run. 
+
+To tag:
 ```
 git tag <tag_name> <commit_hash>
 ./raf-commit <tag_name> 
 ```
-To start the campaign, run
+To start the campaign:
 ```
 ./raf-run
 ```
