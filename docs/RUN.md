@@ -31,7 +31,8 @@ Run **one** of the following sets of commands to setup the single-node Kubernete
 minikue start --vm-driver=docker
 ```
 **NOTE**: Running minikube with root user is not allowed here.
-3. In a virtual machine on your host computer: (preferred)
+
+2. In a virtual machine on your host computer: (preferred)
 Run the following commands in order to set up the cluster in a virtual machine on your personal computer and configure your environment to re-use the docker daemon inside the minikube instance. NOTE: you need to make sure that the virtualbox has enough memory (greater than the default)! 
 ```
 minikube start --vm-driver=virtualbox
