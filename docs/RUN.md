@@ -26,14 +26,19 @@ sudo python3.6 -m pip install grpcio  grpcio-tools
 ```
 #### Minikube setup
 Run **one** of the following sets of commands to setup the single-node Kubernetes cluster: 
-1. In a virtual machine on your host computer: 
+1. In a docker container: (preferred) 
+```
+minikue start --vm-driver=docker
+```
+**NOTE**: Running minikube with root user is not allowed here.
+3. In a virtual machine on your host computer: (preferred)
 Run the following commands in order to set up the cluster in a virtual machine on your personal computer and configure your environment to re-use the docker daemon inside the minikube instance. NOTE: you need to make sure that the virtualbox has enough memory (greater than the default)! 
 ```
 minikube start --vm-driver=virtualbox
 eval $(minikube docker-env)
 ```
-2. On your host computer: 
-If you have a linux environment you can use the following to set the cluster up on your **host**.
+3. On your host computer (which should be a VM environment): 
+If you already have a virtual linux environment, you can use the following to set the cluster up on your **host** virtual machine.
 ```
 sudo apt-get update
 sudo apt-get install conntrack docker.io
@@ -44,8 +49,13 @@ sudo chown -R $USER $HOME/.minikube
 sudo chown -R $USER $HOME/.kube
 ```
 **NOTE**: You need to log out and log back in for the docker permissions to take effect.
+#### Minikube clean up
+To delete the cluster created, run
+```
+minikube delete
+```
 ## Setup RAF directory:
-After cloning this repository, run the `setup.sh` script in order to pull the gtfo repo and make a sample seed corpus. 
+After cloning this repository, run the `setup.sh` script in order to pull the gtfo repo and make the protobuf files. 
 ```
 git clone <this_repo> 
 cd raf
@@ -57,12 +67,17 @@ After initial setup, you can now either (1) run an already existing experiment i
 #### Using an existing experiment
 TODO. There are no existing experiments currently. 
 #### Creating a new experiemnt
-To run a new experiment, you need to make the relevant changes, commit them, and tag the commit. Note: if you do not commit the changes or you do not have a tag associated with the commit, the campaign will not run. To tag, run ```git tag <tag_name> <commit_hash>```. 
-
-After you are on the current commit with your experiment and it has been tagged, run the `build.sh` script. This will create the the name of the campaign id using the commit hash and the tag name. This script will create the proto files, build all the docker images for this campaign, and then start up the campaign.
+To run a new experiment, you need to (1) make the relevant changes, (2) commit the changes, and (3) tag the commit. Note: if you do not commit the changes or you do not have a tag associated with the commit, the campaign will not run. 
+To tag, run the following:
 ```
-./build.sh
+git tag <tag_name> <commit_hash>
+./raf-commit <tag_name> 
 ```
+To start the campaign, run
+```
+./raf-run
+```
+This will create the the name of the campaign id using the commit hash and the tag name. This script will create/update the proto files, build all the docker images for this campaign, and then start up the campaign. 
 ## Monitoring RAF:
 
 #### Monitoring Cluster with Script
