@@ -8,28 +8,15 @@ import hydra
 
 from concurrent import futures
 
-# walk up the path to find 'spitfire' and add that to python path 
-# at most 10 levels up?  
-
 import knowledge_store_pickle as ks
-#import protos.knowledge_base_pb2 as kbp
-#import protos.knowledge_base_pb2_grpc as kbpg
 
 namespace = os.environ.get("NAMESPACE")
-print(namespace)
 spitfire_subdir = os.environ.get("SPITFIRE_DIR")
-print(spitfire_subdir)
-#sys.path.append("/")
 spitfire_dir = "/%s%s" % (namespace, spitfire_subdir)
-#spitfire_dir = "/home/hpreslier/raf/spitfire"
-#print(spitfire_dir)
 sys.path.append(spitfire_dir)
 sys.path.append(spitfire_dir + "/protos") 
-#assert (not (spitfire_dir is None))
 import knowledge_base_pb2 as kbp
 import knowledge_base_pb2_grpc as kbpg
-#import spitfire.protos.knowledge_base_pb2 as kbp
-#import spitfire.protos.knowledge_base_pb2_grpc as kbpg
 
 fuzzing_config_dir = f"{spitfire_dir}/config"
 
@@ -81,8 +68,6 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
     def ExecutionExists(self, execution, context):
         return kbp.KnowledgeBaseResult(success=self.ks.execution_exists(execution), \
                                        message="None")
-
-
 
 
     # Add item to the ks (or not if already there)
@@ -205,7 +190,7 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
     def TaintedInstructionExists(self, ti, context): 
         return kbp.KnowledgeBaseResult(
                 success=self.ks.tainted_instruction_exists(ti), message="None")
-    # Returns KnowledgeBaseResult
+
     def AddTaintMappings(self, tm_iterator, context):
         for t in tm_iterator:
             (was_new, tm) = self.ks.add_taint_mapping(t)
@@ -307,11 +292,6 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
         self.ks.add_fuzzing_event(event)
         return kbp.Empty()
         
-#    def AddFuzzingEvents(self, fuzzing_events_iterator, context):
-#        for fe in fuzzing_events_iterator:
-#            self.ks.add_fuzzing_event(fe)
-#        return kbp.Empty()
-
     def GetFuzzingEvents(self, fuzzing_event_filter, context):
         start_time = None
         end_time = None

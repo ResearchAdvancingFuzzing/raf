@@ -115,9 +115,9 @@ def send_to_database(kbs, kb_input, kb_analysis, coverage_dir, interesting_dir):
     kb_input.fuzzed = True
     kb_input.pending_lock = False
     n_fuzz = kb_input.n_fuzz + num_inc_covg
-    fuzz_level = kb_input.fuzz_level + 1 
+    #fuzz_level = kb_input.fuzz_level + 1 
     kb_input.n_fuzz = n_fuzz
-    kb_input.fuzz_level = fuzz_level
+    #kb_input.fuzz_level = fuzz_level
     print(kb_input) 
     kb_input = kbs.AddInput(kb_input)
     kb_input = kbs.GetInput(kb_input)

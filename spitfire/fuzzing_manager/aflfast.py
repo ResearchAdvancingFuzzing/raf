@@ -335,11 +335,53 @@ def save_data_file():
                 f.write("\n")
     f.close()
 
+def determinstic_fuzz(cfg, kb_inp, job):
+    # Run deterministic fuzzing 
+    # Afl bit flip
+    job.update_count_by(1) 
+    args = [f"fuzzer.input_file={kb_inp.filepath}", f"fuzzer.ooze.name=afl_bit_flip.so", \
+            f"fuzzer.extra_args='JIG_MAP_SIZE=65536 ANALYSIS_SIZE=65536'"]  
+    print(args)
+    create_job(cfg, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
+    
+    # AFL arith
+    job.update_count_by(1) 
+    args = [f"fuzzer.input_file={kb_inp.filepath}", f"fuzzer.ooze.name=afl_arith.so", \
+            f"fuzzer.extra_args='JIG_MAP_SIZE=65536 ANALYSIS_SIZE=65536'"]  
+    create_job(cfg, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
+    print(args) 
+
+    # AFL interest
+    job.update_count_by(1) 
+    args = [f"fuzzer.input_file={kb_inp.filepath}", f"fuzzer.ooze.name=afl_interesting.so", \
+            f"fuzzer.extra_args='JIG_MAP_SIZE=65536 ANALYSIS_SIZE=65536'"]  
+    create_job(cfg, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
+    print(args)
+    # AFL dictionary
+    job.update_count_by(1) 
+    args = [f"fuzzer.input_file={kb_inp.filepath}", f"fuzzer.ooze.name=afl_dictionary.so", \
+            f"fuzzer.extra_args='JIG_MAP_SIZE=65536 ANALYSIS_SIZE=65536'"]  
+    print(args)
+    create_job(cfg, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
+
+    # Run havoc fuzzing 
+    stage_max = HAVOC_CYCLES * perf_score / havoc_div / 100
+    print("Stage_max: %d" % stage_max)
+    job.update_count_by(1) 
+    args = [f"fuzzer.input_file={kb_inp.filepath}", f"fuzzer.ooze.name=afl_havoc.so", \
+            f"fuzzer.iteration_count={stage_max}", \
+            f"fuzzer.extra_args='JIG_MAP_SIZE=65536 ANALYSIS_SIZE=65536'"] 
+    print(args)
+
 @hydra.main(config_path=f"{spitfire_dir}/config/config.yaml")
 def run(cfg):
+    while True:
+        pass
 
     global top_rated
     global trace_bits_total
+    
+    start_time = time.time()
 
     # Setup access to cluster 
     config.load_incluster_config()
@@ -380,15 +422,18 @@ def run(cfg):
         S = {inp.uuid for inp in kbs.GetSeedInputs(kbp.Empty())} 
 
         # Replace top rated uuids with actual entries 
-        top_rated = {key:kbs.GetInputById(kbp.id(uuid=val.rstrip("\n").encode("utf-8"))) for key,val in top_rated.items()} 
+        top_rated = {key:kbs.GetInputById(kbp.id(uuid=val.rstrip("\n").encode("utf-8"))) \
+                for key,val in top_rated.items()} 
 
         # Parameters (taken from AFLFast)
         HAVOC_CYCLES_INIT = cfg.manager.HAVOC_CYCLES_INIT 
         HAVOC_CYCLES = cfg.manager.HAVOC_CYCLES
+        HAVOC_MAX_MULT = cfg.manager.HAVOC_MAX_MULT
 
         # Adjust havoc_div (cycle count divisor for havoc)
         havoc_div = 1
-        seed_avg_exec_time = sum([kbs.GetInputById(kbp.id(uuid=entry)).exec_time for entry in S]) / len(S) 
+        seed_avg_exec_time = sum([kbs.GetInputById(kbp.id(uuid=entry)).exec_time \
+                for entry in S]) / len(S) 
         if seed_avg_exec_time > 50000:
             havoc_div = 10
         elif seed_avg_exec_time > 20000:
@@ -416,20 +461,14 @@ def run(cfg):
             # Only do this part if we have not skipped the last fuzz
             if not skipped_fuzz: 
                 # Get the queue and the queue cycle 
-                # this is a slower operation, let's be smarter about it
-                #queue_len = kbs.GetQueueLength(kbp.Empty()).val 
-                queue_inp = [inp for inp in kbs.GetQueue(kbp.Empty())]
+                queue = [inp for inp in kbs.GetQueue(kbp.Empty())]
                 queue_len = len(queue_inp)
-                print(f"Getting entries from [{new_inp_index}, {queue_len})")
-                for inp in queue_inp[new_inp_index:queue_len]:
-                    queue.append(kbs.GetInputById(kbp.id(uuid=inp.uuid)))
-                #queue = [kbs.GetInputById(kbp.id(uuid=inp.uuid)) for inp in kbs.GetQueue(kbp.Empty())]
                 queue_cycle = kbs.GetQueueCycle(kbp.Empty()).val 
                 total_entries = queue_len 
-                print("Queue len: %d, Queue cycle: %d, New_index: %d" % (len(queue), queue_cycle, new_inp_index))
+                print(f"Queue len: {len(queue)}, Queue cycle: {queue_cycle}, " 
+                        f"New_index: {new_inp_index}")
 
                 # Calibrate things in the queue that have not yet been calibrated
-                # Calculate totals AFTER calibration
                 start = time.time()
                 calibrated_inputs = 0
                 for i in range(new_inp_index, len(queue)):
@@ -446,22 +485,28 @@ def run(cfg):
                 avg_exec_time = total_exec_time / total_entries
                 avg_bitmap_size = total_bitmap_size / total_entries
                 avg_fuzz_mu = total_fuzz / total_entries 
-                print(f"Avg_exec_time: {avg_exec_time}, avg_bitmap_size: {avg_bitmap_size}, avg_fuzz_mu: {avg_fuzz_mu}")
+                print(f"Avg_exec_time: {avg_exec_time}, avg_bitmap_size:" 
+                        f"{avg_bitmap_size}, avg_fuzz_mu: {avg_fuzz_mu}")
 
                 [pending_favored, favored] = cull_queue(cfg, kbs, queue) 
                 print(f"Pending favored: {pending_favored}\nFavored: {favored}")
+            
+            end_time = time.time()
+            print(f"Took {end_time-start_time} seconds to process.")
 
             # Get the next input in the queue
             kb_inp = kbs.NextInQueue(kbp.Empty())
 
             # Skip this input with some probability if it is not favored
-            skipped_fuzz = skip_fuzz(cfg, kbs, pending_favored, favored, kb_inp, queue, queue_cycle) 
+            skipped_fuzz = skip_fuzz(cfg, kbs, pending_favored, favored, 
+                    kb_inp, queue, queue_cycle) 
             if skipped_fuzz: 
                 print(f"skipped_fuzz 1: {kb_inp.uuid}")
                 continue
 
             # Calculate the score of that input for potential havoc fuzzing
-            perf_score = calculate_score(cfg, kbs, kb_inp, avg_exec_time, avg_bitmap_size, avg_fuzz_mu) 
+            perf_score = calculate_score(cfg, kbs, kb_inp, avg_exec_time, 
+                    avg_bitmap_size, avg_fuzz_mu) 
             print(f"Score for input: {perf_score}")
 
             if perf_score == 0: 
@@ -470,60 +515,29 @@ def run(cfg):
                 continue
 
             # We are fuzzing
+            job = jobs["fuzzer"]
             new_inp_index = len(queue)
 
-            # Calculate how many iterations to fuzz (AFLFast)
-            # TODO: only deterministic fuzzing under certain conditions
+            # Only deterministic fuzz under certain conditions
+            if (not kb_inp.additional_information["passed_det"] == "True" and \
+                    perf_score >= (kb_inp.depth * 30 \
+                    if kb_inp.depth * 30 <= HAVOC_MAX_MULT * 100 else HAVOC_MAX_MULT * 100)):
+                        determinstic_fuzz(cfg, kb_inp, job, namespace) 
+                        kb_inp.additional_information["passed_det"] = "True"
 
-            # Run fuzzer with this input, stage_max times (-n arg) 
-            job = jobs["fuzzer"]
+            # Run havoc fuzzer with this input, stage_max times (-n arg) 
+            create_job(cfg, "%s:%s" % (job.name, namespace), job.name, 
+                    job.get_count(), args, namespace) 
+            jobs_created += 1
+            print ("uuid for input is %s" % (str(kb_inp.uuid)))
 
-            # Run deterministic fuzzing 
-            # Afl bit flip
-            job.update_count_by(1) 
-            args = [f"fuzzer.input_file={kb_inp.filepath}", f"fuzzer.ooze.name=afl_bit_flip.so", \
-                    f"fuzzer.extra_args='JIG_MAP_SIZE=65536 ANALYSIS_SIZE=65536'"]  
-            print(args)
-            create_job(cfg, batch_v1, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
+            # TODO: increase fuzz level only if we make it here 
+            if kb_inp.uuid in favored and kb_inp.fuzz_level == 0: 
+                pending_favored -= 1 
             
-            # AFL arith
-            job.update_count_by(1) 
-            args = [f"fuzzer.input_file={kb_inp.filepath}", f"fuzzer.ooze.name=afl_arith.so", \
-                    f"fuzzer.extra_args='JIG_MAP_SIZE=65536 ANALYSIS_SIZE=65536'"]  
-            create_job(cfg, batch_v1, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
-            print(args) 
-
-            # AFL interest
-            job.update_count_by(1) 
-            args = [f"fuzzer.input_file={kb_inp.filepath}", f"fuzzer.ooze.name=afl_interesting.so", \
-                    f"fuzzer.extra_args='JIG_MAP_SIZE=65536 ANALYSIS_SIZE=65536'"]  
-            create_job(cfg, batch_v1, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
-            print(args)
-            # AFL dictionary
-            job.update_count_by(1) 
-            args = [f"fuzzer.input_file={kb_inp.filepath}", f"fuzzer.ooze.name=afl_dictionary.so", \
-                    f"fuzzer.extra_args='JIG_MAP_SIZE=65536 ANALYSIS_SIZE=65536'"]  
-            print(args)
-            create_job(cfg, batch_v1, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
-
-            # Run havoc fuzzing 
-            stage_max = HAVOC_CYCLES * perf_score / havoc_div / 100
-            print("Stage_max: %d" % stage_max)
-            job.update_count_by(1) 
-            args = [f"fuzzer.input_file={kb_inp.filepath}", f"fuzzer.ooze.name=afl_havoc.so", \
-                    f"fuzzer.iteration_count={stage_max}", \
-                    f"fuzzer.extra_args='JIG_MAP_SIZE=65536 ANALYSIS_SIZE=65536'"] 
-            print(args)
-            try:
-                #kbs.MarkInputAsPending(kb_inp)
-                create_job(cfg, batch_v1, "%s:%s" % (job.name, namespace), job.name, 
-                        job.get_count(), args, namespace) 
-                jobs_created += 1
-                print ("uuid for input is %s" % (str(kb_inp.uuid)))
-                # TODO: increase fuzz level only if we make it here 
-            except Exception as e:
-               print("Unable to create job exception = %s" % str(e))
-               continue
+            fuzz_level = kb_inp.fuzz_level + 1
+            kb_inp.fuzz_level = fuzz_level
+            kbs.AddInput(kb_inp)
 
         # Process results
         print("Ran {} jobs this round".format(jobs_created))

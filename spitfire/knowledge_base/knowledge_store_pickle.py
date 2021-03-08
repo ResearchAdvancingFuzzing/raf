@@ -475,11 +475,6 @@ class KnowledgeStorePickle(KnowledgeStore):
         return self.tainted_instructions.exists(tinstr)
 
     def add_tainted_instruction(self, tinstr):
-        #(was_new, ti) = self.tainted_instructions.add(tinstr)
-        #if was_new: 
-        #    print("New: %s" % str(ti.uuid))
-        #else:
-        #    print("Old: %s" % str(ti.uuid))
         return self.tainted_instructions.add(tinstr)
     
     def get_tainted_instruction(self, tinstr):
@@ -491,17 +486,9 @@ class KnowledgeStorePickle(KnowledgeStore):
     def add_taint_mapping(self, taintm):
         (was_new, kb_tm) = self.taint_mappings.add(taintm)
         if was_new: #not self.taint_mapping_exists(taintm):
-           #tm = self.get_taint_mapping(taintm)
-           #was_new = 0
-        #else:
-            # keep track of set of inputs that we've taint analyzed
-            #taint_uuid = # something 
-            #was_new = 1
             input_uuid = taintm.input.uuid # nothing else set right now
             instr_uuid = taintm.tainted_instruction.uuid
             fbs_uuid = taintm.fuzzable_byte_set.uuid 
-            #tm = self.taint_inputs.add(input_uuid)#i.ti.uuid)
-            # keep track, by instruction, of what inputs taint it
             if not (fbs_uuid in self.fbs2taint_mappings): 
                 self.fbs2taint_mappings[fbs_uuid] = set([])
             self.fbs2taint_mappings[fbs_uuid].add(kb_tm.uuid)

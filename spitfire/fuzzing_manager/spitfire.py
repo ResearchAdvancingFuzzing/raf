@@ -183,7 +183,7 @@ def run(cfg):
                 print("Created %d jobs -- exiting" % jobs_created)
                 return
 
-            num_running_pods = take_stock(core_v1)
+            num_running_pods = take_stock()
             print ("\n%d running pods" % num_running_pods)
     
             if num_running_pods >= 25:
@@ -234,7 +234,7 @@ def run(cfg):
                     
                     kbs.MarkInputAsPending(kb_inp)
                     #create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace)  
-                    create_job(cfg, batch_v1, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
+                    create_job(cfg,  "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
                     print ("uuid for input is %s" % (str(s_uuid)))
                 except Exception as e:
                     print("Unable to create job exception = %s" % str(e))
@@ -290,7 +290,7 @@ def run(cfg):
                     kbs.AddFuzzingEvent(kbp.FuzzingEvent(fuzzing_manager_event=fme))
                     kbs.MarkInputAsPending(kb_inp)
                     #create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace) 
-                    create_job(cfg, batch_v1, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
+                    create_job(cfg,  "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
                     print ("uuid for input is %s" % (str(max_inp.uuid)))
                 except Exception as e:
                     print("Unable to create job exception = %s" % str(e))
@@ -367,7 +367,7 @@ def run(cfg):
                     kbs.AddFuzzingEvent(kbp.FuzzingEvent(fuzzing_manager_event=fme))
                     kbs.MarkInputAsPending(kb_inp)
                     #create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace) 
-                    create_job(cfg, batch_v1, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
+                    create_job(cfg,  "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
                     print ("uuid for input is %s" % (str(kb_inp.uuid)))
                 except Exception as e:
                     print("Unable to create job exception = %s" % str(e))
@@ -412,7 +412,7 @@ def run(cfg):
                     kbs.AddFuzzingEvent(kbp.FuzzingEvent(fuzzing_manager_event=fme))
                     kbs.MarkInputAsPending(kb_inp)
                     #create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace)  
-                    create_job(cfg, batch_v1, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
+                    create_job(cfg,  "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
                     print ("uuid for input is %s" % (str(kb_inp.uuid)))
                 except Exception as e:
                     print("Unable to create job exception = %s" % str(e))
@@ -455,7 +455,7 @@ def run(cfg):
                     kbs.AddFuzzingEvent(kbp.FuzzingEvent(fuzzing_manager_event=fme))
                     kbs.MarkInputAsPending(kb_inp)
                     #create_job_from_yaml(batch_v1, job.get_count(), args, job.file_name, namespace) 
-                    create_job(cfg, batch_v1, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
+                    create_job(cfg,  "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
                     print ("uuid for input is %s" % (str(kb_inp.uuid)))
                 except Exception as e:
                     print("Unable to create job exception = %s" % str(e))

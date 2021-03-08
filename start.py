@@ -57,9 +57,16 @@ def run(cfg):
     
 
     # Create the namespace for the campaign
+    #'''
+    for namespace in core_api_instance.list_namespace().items:
+        if namespacee.metadata.name == namespace: 
+            print("Namespace already in usee") 
+            return
+
     res = core_api_instance.create_namespace(client.V1Namespace(
         metadata=client.V1ObjectMeta(name=namespace)))
-     
+    #'''
+
     # Create the permissions, we can probably make this more fine-grained 
     role_exists = False
     name="raf-roles"
@@ -86,7 +93,7 @@ def run(cfg):
                 kind="ClusterRole",
                 name=name,
                 api_group="rbac.authorization.k8s.io")))
-    '''
+    #'''
     name="role-%s" % namespace
     rbac_api_instance.create_namespaced_role(namespace, client.V1Role(
         metadata=client.V1ObjectMeta(name=name), 
@@ -105,7 +112,7 @@ def run(cfg):
             kind="Role",
             name=name,
             api_group="rbac.authorization.k8s.io")))
-    '''
+    #'''
     #return
     # Create the config map
     core_api_instance.create_namespaced_config_map(namespace, 

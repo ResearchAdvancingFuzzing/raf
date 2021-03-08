@@ -9,7 +9,12 @@ namespace = os.environ.get("NAMESPACE")
 counts_dir = "/%s/counts" % namespace
 qcow_dir = "/qcows"
 
-# Determines number of active fuzzing managers
+# Before almost all of these functions can be used, you need to have 
+# loaded cluster configuration information
+# Either out of cluster with config.load_kube_config
+# Or in cluster with config.load_incluster_config
+
+# Determines number of active fuzzing managers in the namespace 
 def active_fm(namespace): 
     core_v1 = client.CoreV1Api()
     resp = core_v1.list_namespaced_pod(namespace=namespace)
@@ -32,6 +37,7 @@ def cleanup_finished_jobs(namespace):
             batch_v1.delete_namespaced_job(name=cj.metadata.name, 
                     namespace=namespace, propagation_policy="Background") 
 
+# Helper function for creating a job
 def container(namespace, name, image, command, args, port, volume_mounts): 
     return client.V1Container(
             name=name, command=command, args=args, image=image, 
@@ -41,7 +47,9 @@ def container(namespace, name, image, command, args, port, volume_mounts):
             ports=None if not port else [client.V1ContainerPort(container_port=port)])
 
 
-def create_job(cfg, api_instance, image, job_name, num, arg, namespace): 
+def create_job(cfg, image, job_name, num, arg, namespace): 
+    batch_v1 = client.BatchV1Api()
+
     name ="%s-%s" % (job_name, str(num)) # unique name 
     command = ["python3.6"] 
     args = ["run.py"]
@@ -72,9 +80,7 @@ def create_job(cfg, api_instance, image, job_name, num, arg, namespace):
     pod_temp=client.V1PodTemplateSpec(metadata=metadata_pod, spec=pod_spec)
     job_spec=client.V1JobSpec(template=pod_temp)
     job_body=client.V1Job(metadata=metadata_job, spec=job_spec)
-    #print(job_body)
-    result = api_instance.create_namespaced_job(namespace=namespace, body=job_body)
-    #print(result)
+    result = batch_v1.create_namespaced_job(namespace=namespace, body=job_body)
 
 class Job: 
     def __init__(self, name):
@@ -114,8 +120,8 @@ def cluster_usages(to_print):
     pod_resource = api.list_namespaced_custom_object("metrics.k8s.io", 
             "v1beta1", namespace, "pods")
     node_resource = api.list_cluster_custom_object("metrics.k8s.io", "v1beta1", "nodes")
-    total_cpu = remove_units(node_resource['items'][0]['usage']['cpu'])[0]
-    total_mem = remove_units(node_resource['items'][0]['usage']['cpu'])[0]
+    [total_cpu, total_cpu_u] = remove_units(node_resource['items'][0]['usage']['cpu'])[0]
+    [total_mem, total_mem_u] = remove_units(node_resource['items'][0]['usage']['cpu'])[0]
     # Make everything m 
     cpu_usages, mem_usages = {}, {}
     for pod in pod_resource['items']: 
@@ -130,7 +136,9 @@ def cluster_usages(to_print):
         else:
             mem_usages[mem_units] = []
 
-    if len(mem_usages) == 1 and len(cpu_usages) == 1: # good to go
+    if (len(mem_usages) == 1 and len(cpu_usages) == 1 and 
+            total_cpu_u == mem_usages.keys()[0] and
+            total_mem_u == mem_usages.keys()[0]): # good to go
         total_mem_using = sum(mem_usages[list(mem_usages.keys())[0]]) 
         total_cpu_using = sum(cpu_usages[list(cpu_usages.keys())[0]])
         fraction_cpu = total_cpu_using / total_cpu
@@ -146,7 +154,8 @@ def cluster_usages(to_print):
 
 # count how many pods are in the various phases
 # returns number that are running + pending
-def take_stock(core_v1):
+def take_stock():
+    core_v1 = client.CoreV1Api()
     resp = core_v1.list_pod_for_all_namespaces()
     resp = core_v1.list_namespaced_pod(namespace=namespace)
     count = {}
