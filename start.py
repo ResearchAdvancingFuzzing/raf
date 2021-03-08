@@ -56,16 +56,6 @@ def run(cfg):
     rbac_api_instance = client.RbacAuthorizationV1Api() 
     
 
-    # Create the namespace for the campaign
-    #'''
-    for namespace in core_api_instance.list_namespace().items:
-        if namespacee.metadata.name == namespace: 
-            print("Namespace already in usee") 
-            return
-
-    res = core_api_instance.create_namespace(client.V1Namespace(
-        metadata=client.V1ObjectMeta(name=namespace)))
-    #'''
 
     # Create the permissions, we can probably make this more fine-grained 
     role_exists = False
@@ -80,7 +70,7 @@ def run(cfg):
             rules=[client.V1PolicyRule(
                 api_groups=["", "apps", "batch", "metrics.k8s.io"],
                 resources=["configmaps", "persistentvolumes", "storageclass", "events", \
-                        "persistentvolumeclaims", "pods", "services", "deployments", "jobs", "cronjobs", "nodes"],
+                        "persistentvolumeclaims", "pods", "services", "deployments", "jobs", "cronjobs", "nodes", "namespace"],
                 verbs=["list", "get", "create", "update", "delete", "watch"])]))
 
         rbac_api_instance.create_cluster_role_binding(client.V1RoleBinding(
@@ -93,27 +83,15 @@ def run(cfg):
                 kind="ClusterRole",
                 name=name,
                 api_group="rbac.authorization.k8s.io")))
-    #'''
-    name="role-%s" % namespace
-    rbac_api_instance.create_namespaced_role(namespace, client.V1Role(
-        metadata=client.V1ObjectMeta(name=name), 
-        rules=[client.V1PolicyRule(
-            api_groups=["", "apps", "batch"],
-            resources=["configmaps", "persistentvolumeclaims", "pods", "services", "deployments", "jobs", "cronjobs"],
-            verbs=["list", "get", "create", "update", "delete", "watch"])]))
 
-    rbac_api_instance.create_namespaced_role_binding(namespace, client.V1RoleBinding(
-        metadata=client.V1ObjectMeta(name="%s-binding" % name), 
-        subjects=[client.V1Subject(
-            kind="Group",
-            name="system:serviceaccounts", 
-            api_group="rbac.authorization.k8s.io")],
-        role_ref=client.V1RoleRef(
-            kind="Role",
-            name=name,
-            api_group="rbac.authorization.k8s.io")))
-    #'''
-    #return
+    # Create the namespace for the campaign
+    for n in core_api_instance.list_namespace().items:
+        if n.metadata.name == namespace: 
+            print("Namespace already in use") 
+            return
+
+    res = core_api_instance.create_namespace(client.V1Namespace(metadata=client.V1ObjectMeta(name=namespace)))
+
     # Create the config map
     core_api_instance.create_namespaced_config_map(namespace, 
             client.V1ConfigMap(
