@@ -509,11 +509,10 @@ def run(cfg):
             new_inp_index = len(queue)
 
             # Only deterministic fuzz under certain conditions
-            if (not kb_inp.additional_infomation["passed_det"] == "True" and \
-                    perf_score >= (kb_inp.depth * 30 \
-                    if kb_inp.depth * 30 <= HAVOC_MAX_MULT * 100 else HAVOC_MAX_MULT * 100)):
-                        print("here1") 
-                        deterministic_fuzz(cfg, kb_inp, job) 
+            #if (not kb_inp.additional_infomation["passed_det"] == "True" and \
+            #        perf_score >= (kb_inp.depth * 30 \
+            #        if kb_inp.depth * 30 <= HAVOC_MAX_MULT * 100 else HAVOC_MAX_MULT * 100)):
+            #            deterministic_fuzz(cfg, kb_inp, job) 
                         #kb_inp.additional_infomation["passed_det"].value.add("True")
 
             # Run havoc fuzzer with this input, stage_max times (-n arg) 
@@ -525,7 +524,6 @@ def run(cfg):
                     f"fuzzer.iteration_count={stage_max}", \
                     f"fuzzer.extra_args='JIG_MAP_SIZE=65536 ANALYSIS_SIZE=65536'"]
             print(args)
-            print("here2")
             create_job(cfg, "%s:%s" % (job.name, namespace), job.name, 
                     job.get_count(), args, namespace) 
             jobs_created += 1
