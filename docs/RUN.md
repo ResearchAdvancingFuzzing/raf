@@ -29,6 +29,7 @@ Run **one** of the following sets of commands to setup the single-node Kubernete
 1. In a docker container: (preferred) 
 ```
 minikue start --vm-driver=docker
+eval $(minikube docker-env)
 ```
 **NOTE**: Running minikube with root user is not allowed here.
 
