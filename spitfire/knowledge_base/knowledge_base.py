@@ -335,6 +335,19 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
     def GetQueueLength(self, emp, context):
         return kbp.IntMessage(val=self.ks.get_queue_length())
 
+    def GetFile(self, file_name): 
+        try:
+            f = open(f"/{namespace}/counts/{file_name}", "r") 
+            print(f)
+            for line in f:
+                yield kbp.StringMessage(str=line)
+        except IOError:
+            yield kbp.StringMessage(str="")
+        finally:
+            if f:
+                f.close()
+        return
+
     
     
 @hydra.main(config_path=fuzzing_config_dir + "/config.yaml")

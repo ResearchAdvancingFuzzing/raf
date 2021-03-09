@@ -445,8 +445,8 @@ def run(cfg):
             if active_fm(namespace) > 1: 
                 break
             
-            if jobs_created > 0:
-                break
+            #if jobs_created > 0:
+            #    break
 
             # Only do this part if we have not skipped the last fuzz
             if not skipped_fuzz: 
@@ -482,7 +482,7 @@ def run(cfg):
                 print(f"Pending favored: {pending_favored}\nFavored: {favored}")
             
             end_time = time.time()
-            print(f"Took {end_time-start_time} seconds to process.")
+            print(f"Took {end_time-start_time} seconds to process round {jobs_created}.")
 
             # Get the next input in the queue
             kb_inp = kbs.NextInQueue(kbp.Empty())

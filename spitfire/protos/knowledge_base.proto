@@ -128,6 +128,8 @@ service KnowledgeBase {
     rpc GetQueueCycle(Empty) returns (IntMessage) {} 
     rpc GetQueue(Empty) returns (stream Input) {} 
     rpc GetQueueLength(Empty) returns (IntMessage) {}
+    
+    rpc GetFile(StringMessage) returns (stream StringMessage) {} 
 
 }
 
@@ -145,6 +147,10 @@ message Empty {
 
 message IntMessage {
 	uint64 val = 1;
+}
+
+message StringMessage{
+        string str = 1;
 }
 
 message FuzzingManagerMode {
