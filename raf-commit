@@ -10,16 +10,17 @@ if len(sys.argv) != 2:
    sys.exit(1)
 
 # I am assuming we run from the git repo dir
-o = sp.check_output("git status -s".split())
+o = sp.check_output("git status -s -uno".split()).decode().split("\n")
 num_unc = 0
-for line in (o.decode()).split("\n"):
+for line in o: 
    if line == '': continue
-   if not (line.startswith("?? ")):
-      num_unc += 1
+   num_unc += 1
 
 if num_unc > 0:
    print("Error. You have uncommitted code in your repo.")
-   print(o)
+   for line in o:
+       if line == '': continue
+       print(line)
    sys.exit(1)
 
 git_tag = sys.argv[1]
