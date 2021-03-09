@@ -28,7 +28,7 @@ sudo python3.6 -m pip install grpcio  grpcio-tools hydra-core numpy kubernetes
 Instructions to setup a single-node Kubernetes cluster with minikube can be found at https://minikube.sigs.k8s.io/docs/. Reproduced below for convience are a few ways to start this cluster:
 1. In a docker container: (preferred) 
 ```
-minikue start --vm-driver=docker
+minikue start --driver=docker
 eval $(minikube docker-env)
 ```
 **NOTE**: Running minikube with root user is not allowed here.
@@ -37,7 +37,7 @@ eval $(minikube docker-env)
 
 Run the following commands in order to set up the cluster in a virtual machine on your personal computer and configure your environment to re-use the docker daemon inside the minikube instance. NOTE: you need to make sure that the virtualbox has enough memory (greater than the default)! 
 ```
-minikube start --vm-driver=virtualbox
+minikube start --driver=virtualbox
 eval $(minikube docker-env)
 ```
 3. On your host computer (which should be a VM environment): 
@@ -48,7 +48,7 @@ sudo apt-get update
 sudo apt-get install conntrack docker.io
 sudo groupadd docker # Note this group may already be added; that is ok
 sudo usermod -aG docker $USER 
-sudo minikube start --vm-driver=none
+sudo minikube start --driver=none
 sudo chown -R $USER $HOME/.minikube
 sudo chown -R $USER $HOME/.kube
 ```
