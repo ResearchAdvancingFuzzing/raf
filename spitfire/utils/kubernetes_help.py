@@ -120,8 +120,8 @@ def cluster_usages(to_print):
     pod_resource = api.list_namespaced_custom_object("metrics.k8s.io", 
             "v1beta1", namespace, "pods")
     node_resource = api.list_cluster_custom_object("metrics.k8s.io", "v1beta1", "nodes")
-    [total_cpu, total_cpu_u] = remove_units(node_resource['items'][0]['usage']['cpu'])[0]
-    [total_mem, total_mem_u] = remove_units(node_resource['items'][0]['usage']['cpu'])[0]
+    [total_cpu, total_cpu_u] = remove_units(node_resource['items'][0]['usage']['cpu'])
+    [total_mem, total_mem_u] = remove_units(node_resource['items'][0]['usage']['memory'])
     # Make everything m 
     cpu_usages, mem_usages = {}, {}
     for pod in pod_resource['items']: 
@@ -137,19 +137,19 @@ def cluster_usages(to_print):
             mem_usages[mem_units] = []
 
     if (len(mem_usages) == 1 and len(cpu_usages) == 1 and 
-            total_cpu_u == mem_usages.keys()[0] and
-            total_mem_u == mem_usages.keys()[0]): # good to go
+            total_cpu_u == list(cpu_usages.keys())[0] and
+            total_mem_u == list(mem_usages.keys())[0]): # good to go
         total_mem_using = sum(mem_usages[list(mem_usages.keys())[0]]) 
         total_cpu_using = sum(cpu_usages[list(cpu_usages.keys())[0]])
         fraction_cpu = total_cpu_using / total_cpu
         fraction_mem = total_mem_using / total_mem
         if to_print:
-            print(f"CPU percentage: {fraction_cpu * 100}") 
-            print(f"MEM percentage: {fraction_mem * 100}")
+            print(f"CPU percentage: {fraction_cpu} {total_cpu_u}") 
+            print(f"MEM percentage: {fraction_mem} {total_mem_u}")
         return [fraction_cpu, fraction_mem]
     else:
         # conversions of units required, let's hope they just give us the same units 
-        print("NOT IMPLEMENTED")
+        print("Results are diff units. NOT IMPLEMENTED")
         return []
 
 # count how many pods are in the various phases
