@@ -15,17 +15,17 @@ sudo apt-get update
 sudo apt-get install -y kubectl
 ```
 ## Setup Env: 
-#### gRPC setup
+#### Python setup
 On your host computer, you need to have python3.6 and pip already installed. 
 ```
 sudo apt-get install python3.6 python3-pip
 ```
-You then need to install the the following python packages in order to make the grpcio python files from the .proto file in the run script.
+You then need to install the the following python packages in order to make the grpcio python files from the .proto file in the run script and to start and run a campaign.
 ```
-sudo python3.6 -m pip install grpcio  grpcio-tools
+sudo python3.6 -m pip install grpcio  grpcio-tools hydra-core numpy kubernetes
 ```
 #### Minikube setup
-Run **one** of the following sets of commands to setup the single-node Kubernetes cluster: 
+Instructions to setup a single-node Kubernetes cluster with minikube can be found at https://minikube.sigs.k8s.io/docs/. Reproduced below for convience are a few ways to start this cluster:
 1. In a docker container: (preferred) 
 ```
 minikue start --vm-driver=docker
