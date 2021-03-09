@@ -55,27 +55,8 @@ def run(cfg):
     # Setup access to cluster 
     config.load_kube_config()
     api_instance = client.CoreV1Api() # client.BatchV1Api()
+    
 
-    # peek at pods to see what's running / completed / etc
-#    resp = api_instance.list_pod_for_all_namespaces()
-#    count = {}
-#    for i in resp.items:
-#        pt = i.spec.containers[0].image
-#        if not (("k8s" in pt) or ("gcr.io" in pt) or ("knowledge" in pt) or ("init" in pt)):
-#            s = i.status.phase
-#            if not (s in count):
-#                count[s] = {}
-#            if not (pt in count[s]):
-#                count[s][pt] = 0
-#            count[s][pt] += 1
-#    print("\nPods\n")
-#    for s in count.keys():
-#        print ("Status=%s:" % s)
-#        for pt in count[s].keys():
-#            print("  %d %s" % (count[s][pt], pt))
-#        print("\n")
-    
-    
     # Get the IP of your computer
     process = subprocess.Popen(['curl', 'ifconfig.me'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = process.communicate()

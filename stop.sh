@@ -22,6 +22,7 @@ do
 done
 
 kubectl patch pvc $namespace -p '{"metadata":{"finalizers": []}}' --type=merge
+kubectl patch pv $namespace -p '{"metadata":{"finalizers": []}}' --type=merge
 kubectl delete pvc $namespace
 kubectl delete pv "$namespace-pv"
 kubectl delete namespace $namespace

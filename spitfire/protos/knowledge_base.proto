@@ -161,7 +161,7 @@ message Target {
     bytes uuid = 1;                   // compute this as md5sum of rest of this message
     string name = 2;                  // program name, like "awk" or "node" or "mount"
     string source_hash = 3;              // source hash string for version
-    map<string, string> additional_infomation = 16;
+    map<string, string> additional_information = 16;
 }
 
 
@@ -186,7 +186,7 @@ message Input {
     sint64 handicap = 17; 
     bool calibrated = 18;
     double time_found = 19; 
-    map<string, string> additional_infomation = 20;
+    map<string, string> additional_information = 20;
 }
 
 // a set of inputs
@@ -258,7 +258,7 @@ message Analysis {
 message FuzzableByteSet {
     bytes uuid = 1;                   // compute this as md5sum of label set 
     repeated uint32 label = 2;        // set of taint labels, i.e. input bytes
-    map<string, string> additional_infomation = 16;
+    map<string, string> additional_information = 16;
 }
 
 
@@ -269,7 +269,7 @@ message TaintedInstruction {
     Address address = 2;
     string type = 3;                  // type of instruction 
     bytes instruction_bytes = 4;      // the bytes for this instruction
-    map<string, string> additional_infomation = 16;
+    map<string, string> additional_information = 16;
 }
 
 
@@ -285,7 +285,7 @@ message TaintMapping {
     uint64 instruction_count = 7;            // instruction count in target
     uint32 min_compute_distance = 8;  // min compute distance for tainted byte in value 
     uint32 max_compute_distance = 9;  // max compute distance for tainted byte in value
-    map<string, string> additional_infomation = 16;
+    map<string, string> additional_information = 16;
 } 
 
 message Execution {
@@ -300,7 +300,7 @@ message TaintMappingKey {
     Input input = 1;					// The input for the taint analysis
     FuzzableByteSet fuzzable_byte_set = 2;          	// The set of bytes within that input
     TaintedInstruction tainted_instruction = 3;        	// The instruction tainted by those bytes
-    map<string, string> additional_infomation = 16;
+    map<string, string> additional_information = 16;
 }
 
 // An module in the target program's memory (these can overlap)
@@ -309,7 +309,7 @@ message Module {
     string name = 2;
     fixed64 base = 3;
     fixed64 end = 4;
-    map<string, string> additional_infomation = 16;
+    map<string, string> additional_information = 16;
     string filepath = 17;
 }
 
@@ -318,7 +318,7 @@ message Address {
     bytes uuid = 1;
     Module module = 2;
     uint64 offset = 3;
-    map<string, string> additional_infomation = 16;
+    map<string, string> additional_information = 16;
 }
 
 message Edge {
@@ -333,7 +333,7 @@ message EdgeCoverage {
     Edge edge = 3;
     Input input = 4;					// (shallow)
     //Execution exeuction = 4;
-    map<string, string> additional_infomation = 16;
+    map<string, string> additional_information = 16;
 }
 
 

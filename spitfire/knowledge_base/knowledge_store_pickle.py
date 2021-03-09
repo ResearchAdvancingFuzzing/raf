@@ -423,8 +423,12 @@ class KnowledgeStorePickle(KnowledgeStore):
         for attr in l:
             if attr == "uuid" or attr == "seed":
                 continue 
-            if getattr(new, attr) != getattr(old, attr): 
-                setattr(old, attr, getattr(new, attr)) 
+            if getattr(new, attr) != getattr(old, attr):
+                if attr == "additional_information": # additional_information is a map
+                    for key in new.additional_information: 
+                        old.additional_information[key] = new.additional_information[key] 
+                else:
+                    setattr(old, attr, getattr(new, attr)) 
                 updated = True
         return updated 
 
