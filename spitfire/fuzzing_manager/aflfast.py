@@ -436,6 +436,9 @@ def run(cfg):
         new_inp_index = 0
         jobs_created = 0
         queue = []
+        
+        end_time = time.time()
+        print(f"Took {end_time-start_time} seconds to init process.")
         while True:
 
             skipped_fuzz = False
@@ -450,6 +453,7 @@ def run(cfg):
             while take_stock() >= max_pods:
                 pass
             
+            start_time = time.time()
             # Only do this part if we have not skipped the last fuzz
             if not skipped_fuzz: 
                 # Get the queue and the queue cycle 
@@ -461,17 +465,12 @@ def run(cfg):
                         f"New_index: {new_inp_index}")
 
                 # Calibrate things in the queue that have not yet been calibrated
-                start = time.time()
-                calibrated_inputs = 0
                 for i in range(new_inp_index, len(queue)):
                     if not queue[i].calibrated: 
-                        calibrated_inputs += 1
                         calibrate_case(kbs, queue[i], queue_cycle, target)
                     total_exec_time += queue[i].exec_time 
                     total_bitmap_size += queue[i].bitmap_size
                     total_fuzz += queue[i].n_fuzz
-                stop = time.time()
-                print(f"Calibrated {calibrated_inputs} entries in {stop-start} seconds")
 
                 # Calculate averages from totals
                 avg_exec_time = total_exec_time / total_entries
