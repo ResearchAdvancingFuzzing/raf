@@ -1,6 +1,0 @@
-#
-# This is the yaml file for the program being fuzzed
-#
-target: 
-    name: "tiff2rgba"
-    source_hash: "3e7e75bed2cf2853b0d42d635d36676b3330d475"
