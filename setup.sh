@@ -15,10 +15,5 @@ else
     git clone https://github.com/ResearchAdvancingFuzzing/gtfo.git $gtfo_dir
 fi
 
-# clone a seed corpus
-git clone https://github.com/ResearchAdvancingFuzzing/panda-replays.git spitfire/init/panda-replays
-mv spitfire/init/panda-replays/targets/xmllint-3e7e75bed2cf2853b0d42d635d36676b3330d475-64bit/inputs spitfire/init/corpus
 
-# setup protos
-cd spitfire/protos && make && cd ../..
 
