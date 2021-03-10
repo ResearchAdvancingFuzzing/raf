@@ -84,14 +84,7 @@ This will create the the name of the campaign id using the commit hash and the t
 #### Monitoring Cluster with Script
 Under `spitfire/utils` we have included a sample monitoring script, `monitor.py`, that will display statistics and graphs regarding the fuzzing events that have occurred throughout the fuzzing campaign in the cluster. To run, you first need to make sure the following python packages are installed: 
 ```
-pip3 install grpcio grpcio-tools hydra-core
-pip3 install pyyaml 
-pip3 install google-api-python-client protobuf 
-pip3 install google-auth
-
-git clone --recursive https://github.com/kubernetes-client/python.git
-cd python
-sudo python3.6 setup.py install 
+pip3 install grpcio grpcio-tools hydra-core pyyaml oogle-api-python-client protobuf google-auth kubernetes
 ```
 You also need to make sure you have a way of displaying these graphs if you are running the cluster inside a non-GUI host (X11 forwarding with ssh is a good option). You then can run the `monitor.py`. 
 ```
