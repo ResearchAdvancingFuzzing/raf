@@ -59,28 +59,22 @@ To delete the cluster created, run
 minikube delete
 ```
 ## Setup RAF directory:
-After cloning this repository, run the `setup.sh` script in order to pull the gtfo repo and make the protobuf files. 
+After cloning this repository, run the `setup.sh` script in order to pull the gtfo repo. 
 ```
 git clone <this_repo> 
 cd raf
 ./setup.sh 
 ```
 Note: Run this only once, when you have a clean clone of the RAF repo. 
-## Build a campaign 
-After initial setup, you can now either (1) run an already existing experiment in RAF or (2) create your own experiment. 
-#### Using an existing experiment
-TODO. There are no existing experiments currently. 
-#### Creating a new experiemnt
-To run a new experiment, you need to (1) make the relevant changes, (2) commit the changes, and (3) tag the commit. 
-
-**NOTE:** If you do not commit the changes or you do not have a tag associated with the commit, the campaign will not run. 
-
-To tag:
+## Building and running a campaign 
+After initial setup, you can now either (1) run an already existing experiment in RAF or (2) create your own experiment. When creating or running an experiment, you need to (1) make the relevant changes, (2) commit the changes, and (3) tag the commit. Existing experiments are located within their own branches. For instance, to run an ```aflfast``` experiment, run the following:
 ```
-git tag <tag_name> <commit_hash>
-./raf-commit <tag_name> 
+git branch aflfast origin/aflfast   # fetch the aflfast branch
+git tag <tag_name> <commit_hash>    # tag which commit you want to run the expt on
+./raf-commit <tag_name>             # must be run in order to generate a raf-tag
 ```
-To start the campaign:
+**NOTE:** If you have uncommitted changes or do not have a tag associated with the commit you want to run the experiment on, the campaign will not run. 
+To start the campaign
 ```
 ./raf-run
 ```
