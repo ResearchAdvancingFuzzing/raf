@@ -394,7 +394,7 @@ def run(cfg):
     get_file_data()
 
     # Compute budget 
-    budget = cfg.manager.budget
+    max_pods = cfg.manager.max_pods
     target = "%s/%s" % (target_dir, cfg.target.name)
 
     # Setup job information
@@ -445,9 +445,11 @@ def run(cfg):
             if active_fm(namespace) > 1: 
                 break
             
-            #if jobs_created > 0:
-            #    break
-
+            # If we have already created the max amount of pods
+            # wait until some finish to create more
+            while take_stock() >= max_pods:
+                pass
+            
             # Only do this part if we have not skipped the last fuzz
             if not skipped_fuzz: 
                 # Get the queue and the queue cycle 

@@ -1,6 +1,6 @@
 manager:
   name: aflfast 
-  budget: 10
+  max_pods: 10 
   cron_sched: "*/1 * * * *"
   schedule: "EXPLORE"
   MAP_SIZE: 65536
