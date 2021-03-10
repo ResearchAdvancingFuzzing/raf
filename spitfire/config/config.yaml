@@ -1,11 +1,10 @@
 defaults:
     - taint: panda
-    - target: aflfast 
+    - target: xmllint 
     - knowledge_base: pickle
     - coverage: panda 
     - fuzzer: gtfo
-    - manager: aflfast 
+    - manager: spitfire 
 campaign:
   id: tim1
-  source_code_image: spitfire:v1 
   storage: 4Gi

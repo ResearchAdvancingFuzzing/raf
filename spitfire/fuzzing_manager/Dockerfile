@@ -9,4 +9,4 @@ WORKDIR /
 ENV SOURCE_DIR spitfire/fuzzing_manager
 COPY $SOURCE_DIR/* ./
 COPY infinite ./
-CMD python3.6 aflfast.py 
+CMD python3.6 spitfire.py 
