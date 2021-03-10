@@ -156,22 +156,20 @@ def cluster_usages(to_print):
 # returns number that are running + pending
 def take_stock():
     core_v1 = client.CoreV1Api()
-    resp = core_v1.list_pod_for_all_namespaces()
     resp = core_v1.list_namespaced_pod(namespace=namespace)
     count = {}
-    for i in resp.items:
-        pt = i.spec.containers[0].image
-        if not (("k8s" in pt) or ("gcr.io" in pt) or ("knowledge" in pt) or ("init" in pt)):
-            s = i.status.phase
-            if not (s in count):
-                count[s] = {}
-            if not (pt in count[s]):
-                count[s][pt] = 0
-            count[s][pt] += 1
+    for pod in resp.items:
+        pod_name = pod.metadata.name
+        pod_status = pod.status.phase
+        if not pod_status in count:
+            count[pod_status] = {}
+        if not pod_name in count[pod_status]:
+            count[pod_status][pod_name] = 0
+        count[pod_status][pod_name] += 1
     rp = 0
-    for s in count.keys():
-        if s=="Running" or s=="Pending":
-            rp += 1
+    for status in count.keys():
+        if status == "Running" or status == "Pending":
+            rp += len(count[status])  
     return rp
 
 
