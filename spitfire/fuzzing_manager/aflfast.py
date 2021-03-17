@@ -42,6 +42,8 @@ top_rated = {}
 # Mapping of uuids to lists representing the bytes they have seen so far
 trace_bits_total = {}
 score_changed = 0 
+pending_favored = 0
+favored = {} 
 
 # Find first power of two greater or equal to value
 def next_p2(value): 
@@ -236,11 +238,14 @@ def cull_queue(cfg, kbs, queue):
     global top_rated
     global trace_bits_total 
     global score_changed
+    global pending_favored
+    global favored
 
-    print("Culling queue")
     print("Score_changed %d" % score_changed)
     if not score_changed:
-        return [0, []] 
+        return
+    print("Culling queue")
+
     score_changed = 0
     pending_favored = 0
     favored = {}
@@ -255,7 +260,7 @@ def cull_queue(cfg, kbs, queue):
         entry = kbs.GetInputById(kbp.id(uuid=uuid)) 
         if entry.fuzz_level == 0: 
             pending_favored += 1 
-    return [pending_favored, favored]
+    return
         
 
 # Generate a random number between 0 and 100 
@@ -263,7 +268,10 @@ def UR(limit):
     return random.randint(0, 99)
 
 # Determine if we will fuzz entry
-def skip_fuzz(cfg, kbs, pending_favored, favored, entry, queue, queue_cycle): 
+def skip_fuzz(cfg, kbs, entry, queue, queue_cycle): 
+    global pending_favored
+    global favored
+
     if pending_favored:
         if entry.fuzz_level > 0 or not entry.uuid in favored:
             if UR(100) < cfg.manager.SKIP_TO_NEW_PROB: 
@@ -335,43 +343,51 @@ def save_data_file():
                 f.write("\n")
     f.close()
 
-def deterministic_fuzz(cfg, kb_inp, job):
+def deterministic_fuzz(cfg, kb_inp, job, bitmap_file):
     # Run deterministic fuzzing 
     # Afl bit flip
     job.update_count_by(1) 
     args = [f"fuzzer.input_file={kb_inp.filepath}", f"fuzzer.ooze.name=afl_bit_flip.so", \
+            f"fuzzer.analysis_load_file={bitmap_file}", \
+            f"fuzzer.job_number={job.get_count()}", \
             f"fuzzer.extra_args='JIG_MAP_SIZE=65536 ANALYSIS_SIZE=65536'"]  
-    print(args)
     create_job(cfg, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
     
     # AFL arith
     job.update_count_by(1) 
     args = [f"fuzzer.input_file={kb_inp.filepath}", f"fuzzer.ooze.name=afl_arith.so", \
+            f"fuzzer.analysis_load_file={bitmap_file}", \
+            f"fuzzer.job_number={job.get_count()}", \
             f"fuzzer.extra_args='JIG_MAP_SIZE=65536 ANALYSIS_SIZE=65536'"]  
     create_job(cfg, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
-    print(args) 
 
     # AFL interest
     job.update_count_by(1) 
     args = [f"fuzzer.input_file={kb_inp.filepath}", f"fuzzer.ooze.name=afl_interesting.so", \
+            f"fuzzer.analysis_load_file={bitmap_file}", \
+            f"fuzzer.job_number={job.get_count()}", \
             f"fuzzer.extra_args='JIG_MAP_SIZE=65536 ANALYSIS_SIZE=65536'"]  
     create_job(cfg, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
-    print(args)
+
     # AFL dictionary
     job.update_count_by(1) 
     args = [f"fuzzer.input_file={kb_inp.filepath}", f"fuzzer.ooze.name=afl_dictionary.so", \
+            f"fuzzer.analysis_load_file={bitmap_file}", \
+            f"fuzzer.job_number={job.get_count()}", \
             f"fuzzer.extra_args='JIG_MAP_SIZE=65536 ANALYSIS_SIZE=65536'"]  
-    print(args)
     create_job(cfg, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
 
 
 @hydra.main(config_path=f"{spitfire_dir}/config/config.yaml")
 def run(cfg):
 
+
     global top_rated
     global trace_bits_total
+    global pending_favored
+    global favored
     
-    start_time = time.time()
+    start_time_1 = time.time()
 
     # Setup access to cluster 
     config.load_incluster_config()
@@ -389,6 +405,7 @@ def run(cfg):
     while active_fm(namespace) > 1: 
         pass
     
+    start_time_2 = time.time()
     cleanup_finished_jobs(namespace) 
 
     get_file_data()
@@ -438,7 +455,8 @@ def run(cfg):
         queue = []
         
         end_time = time.time()
-        print(f"Took {end_time-start_time} seconds to init process.")
+        print(f"Took {start_time_2-start_time_1} seconds to wait and"
+        f"{end_time-start_time_2} to init process.")
         while True:
 
             skipped_fuzz = False
@@ -452,11 +470,18 @@ def run(cfg):
             # wait until some finish to create more
             while take_stock() >= max_pods:
                 pass
+
+            if active_fm(namespace) > 1:
+                break
+
+            if jobs_created > 1:
+                break
             
             start_time = time.time()
             # Only do this part if we have not skipped the last fuzz
             if not skipped_fuzz: 
                 # Get the queue and the queue cycle 
+                start_time_a = time.time()
                 queue = [inp for inp in kbs.GetQueue(kbp.Empty())]
                 queue_len = len(queue)
                 queue_cycle = kbs.GetQueueCycle(kbp.Empty()).val 
@@ -464,33 +489,46 @@ def run(cfg):
                 print(f"Queue len: {len(queue)}, Queue cycle: {queue_cycle}, " 
                         f"New_index: {new_inp_index}")
 
+                start_time_b = time.time()
+                calibrated = 0
                 # Calibrate things in the queue that have not yet been calibrated
                 for i in range(new_inp_index, len(queue)):
                     if not queue[i].calibrated: 
+                        calibrated += 1
                         calibrate_case(kbs, queue[i], queue_cycle, target)
                     total_exec_time += queue[i].exec_time 
                     total_bitmap_size += queue[i].bitmap_size
                     total_fuzz += queue[i].n_fuzz
 
+                start_time_c = time.time()
                 # Calculate averages from totals
                 avg_exec_time = total_exec_time / total_entries
                 avg_bitmap_size = total_bitmap_size / total_entries
                 avg_fuzz_mu = total_fuzz / total_entries 
                 print(f"Avg_exec_time: {avg_exec_time}, avg_bitmap_size:" 
                         f"{avg_bitmap_size}, avg_fuzz_mu: {avg_fuzz_mu}")
-
-                [pending_favored, favored] = cull_queue(cfg, kbs, queue) 
-                print(f"Pending favored: {pending_favored}\nFavored: {favored}")
+            
+                start_time_d = time.time()
+                cull_queue(cfg, kbs, queue) 
+                print(f"Pending favored: {pending_favored}\nFavored: {len(favored)}")
             
             end_time = time.time()
+            print(f"Took {start_time_b - start_time_a} for getting queue, "
+                    f"{start_time_c - start_time_b} for calibration of {calibrated} inputs, "
+                    f"{start_time_d - start_time_c} for culling.")
             print(f"Took {end_time-start_time} seconds to process round {jobs_created}.")
+
+            if active_fm(namespace) > 1:
+                break
+
+            if jobs_created > 0 and queue_len == 1:
+                continue
 
             # Get the next input in the queue
             kb_inp = kbs.NextInQueue(kbp.Empty())
 
             # Skip this input with some probability if it is not favored
-            skipped_fuzz = skip_fuzz(cfg, kbs, pending_favored, favored, 
-                    kb_inp, queue, queue_cycle) 
+            skipped_fuzz = skip_fuzz(cfg, kbs, kb_inp, queue, queue_cycle) 
             if skipped_fuzz: 
                 print(f"skipped_fuzz 1: {kb_inp.uuid}")
                 continue
@@ -509,11 +547,33 @@ def run(cfg):
             job = jobs["fuzzer"]
             new_inp_index = len(queue)
 
+            # Grab all the bitmaps so far
+            final_bitmap = bytearray([0 for i in range(0, cfg.manager.MAP_SIZE)])
+            changed = False
+            for file_name in os.listdir(counts_dir): 
+                if not file_name.startswith("bitmap_"): 
+                    continue
+                with open(f"{counts_dir}/{file_name}", 'rb') as bitmap_file:
+                    file_content = bytearray(bitmap_file.read())
+                    final_bitmap = bytearray([final_bitmap[i] | file_content[i] for i in range(0, len(file_content))])
+                    changed = True
+
+            final_bitmap_file = f"{counts_dir}/final_bitmap"
+            if changed:
+                bitmap_file = open(final_bitmap_file, 'wb') 
+                for byte in final_bitmap:
+                    bitmap_file.write(bytearray([byte]))
+                bitmap_file.close()
+
+            for file_name in os.listdir(counts_dir): 
+                if file_name.startswith("bitmap_"): 
+                    os.remove(f"{counts_dir}/{file_name}") 
+
             # Only deterministic fuzz under certain conditions
             if (not kb_inp.additional_information["passed_det"] == "True" and \
                     perf_score >= (kb_inp.depth * 30 \
                     if kb_inp.depth * 30 <= HAVOC_MAX_MULT * 100 else HAVOC_MAX_MULT * 100)):
-                        deterministic_fuzz(cfg, kb_inp, job) 
+                        deterministic_fuzz(cfg, kb_inp, job, final_bitmap_file) 
                         kb_inp.additional_information["passed_det"] = "True"
 
             # Run havoc fuzzer with this input, stage_max times (-n arg) 
@@ -522,16 +582,18 @@ def run(cfg):
             print("Stage_max: %d" % stage_max)
             job.update_count_by(1)
             args = [f"fuzzer.input_file={kb_inp.filepath}", f"fuzzer.ooze.name=afl_havoc.so", \
+                    f"fuzzer.analysis_load_file={final_bitmap_file}", \
+                    f"fuzzer.job_number={job.get_count()}", \
                     f"fuzzer.iteration_count={stage_max}", \
                     f"fuzzer.extra_args='JIG_MAP_SIZE=65536 ANALYSIS_SIZE=65536'"]
-            print(args)
+            #print(args)
             create_job(cfg, "%s:%s" % (job.name, namespace), job.name, 
                     job.get_count(), args, namespace)  
             jobs_created += 1
             print ("uuid for input is %s" % (str(kb_inp.uuid)))
 
-            # TODO: increase fuzz level only if we make it here 
             if kb_inp.uuid in favored and kb_inp.fuzz_level == 0: 
+                print("decreasing pending_favored")
                 pending_favored -= 1 
             
             fuzz_level = kb_inp.fuzz_level + 1
@@ -540,7 +602,10 @@ def run(cfg):
 
         # Process results
         print("Ran {} jobs this round".format(jobs_created))
+        start_time = time.time()
         save_data_file()
+        end_time = time.time()
+        print(f"Took {end_time-start_time} to save data to files.")
 
 if __name__=="__main__":
     run()
