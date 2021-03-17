@@ -373,7 +373,7 @@ class KnowledgeStorePickle(KnowledgeStore):
 
         self.queue = [] # this can only be of their uuids!
         self.queue_index = None
-        self.queue_cycle = 0
+        self.queue_cycle = 1 
 
     def pause(self):
         self.mode = Mode.PAUSED
