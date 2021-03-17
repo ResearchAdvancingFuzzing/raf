@@ -17,8 +17,8 @@ sys.path.append(spitfire_dir)
 sys.path.append(os.path.realpath(os.path.join(spitfire_dir, "...")))
 sys.path.append(spitfire_dir + "/protos") 
 
-import spitfire.protos.knowledge_base_pb2 as kbp
-import spitfire.protos.knowledge_base_pb2_grpc as kbpg
+import knowledge_base_pb2 as kbp
+import knowledge_base_pb2_grpc as kbpg
 
 
 def main(argv):
@@ -58,7 +58,7 @@ def main(argv):
                 for key, val in top_rated.items()} 
         trace_bits = [(kbs.GetInputById(kbp.id(uuid=key)), val) \
                 for key, val in trace_bits_total.items()]
-        trace_bits = sorted(trace_bits_total, key=lambda tup: tup[0].time_found)
+        trace_bits = sorted(trace_bits, key=lambda tup: tup[0].time_found)
 
         edge_map = {}
         paths_total = 0
