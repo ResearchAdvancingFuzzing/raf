@@ -18,7 +18,6 @@ sys.path.append(spitfire_dir + "/protos")
 import knowledge_base_pb2 as kbp
 import knowledge_base_pb2_grpc as kbpg
 
-fuzzing_config_dir = f"{spitfire_dir}/config"
 
 class KnowledgeBase(kbpg.KnowledgeBaseServicer):
     
@@ -350,7 +349,7 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
 
     
     
-@hydra.main(config_path=fuzzing_config_dir + "/config.yaml")
+@hydra.main(config_path=f"{spitfire_dir}/config", config_name="config")
 def serve(cfg):
     print(cfg.pretty(), flush=True)
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=1000), maximum_concurrent_rpcs=16)

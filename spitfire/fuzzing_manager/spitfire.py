@@ -60,7 +60,7 @@ def choose(dist):
             return label
 
 
-@hydra.main(config_path=f"{spitfire_dir}/config/config.yaml")
+@hydra.main(config_path=f"{spitfire_dir}/config", config_name="config.yaml")
 def run(cfg):
  
 
@@ -98,7 +98,7 @@ def run(cfg):
     batch_v1 = client.BatchV1Api()
     core_v1 = client.CoreV1Api() 
 
-    if num_active_fm(namespace) > 1:
+    if active_fm(namespace) > 1:
         print("A previous FM is still running -- exiting") 
         return
     cleanup_finished_jobs(namespace)

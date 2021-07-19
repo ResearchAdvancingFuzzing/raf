@@ -181,7 +181,7 @@ def check_analysis_complete(cfg, kbs, input_file):
     return [False, fuzzer_input, fuzzer_analysis] 
 
 
-@hydra.main(config_path=f"{spitfire_dir}/config", config_name="config")
+@hydra.main(config_path=f"{spitfire_dir}/config", config_name="config.yaml")
 def run(cfg):    
     
     target = "%s/%s" % (target_dir, cfg.target.name)

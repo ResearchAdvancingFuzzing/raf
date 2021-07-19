@@ -38,7 +38,7 @@ def container(namespace, name, image, command, args, port):
                 client.V1ConfigMapEnvSource(name="dir-config"))],
             ports=None if not port else [client.V1ContainerPort(container_port=port)])
 
-@hydra.main(config_path=f"{spitfire_dir}/config/config.yaml") 
+@hydra.main(config_path=f"{spitfire_dir}/config", config_name="config.yaml")
 def run(cfg): 
     namespace = cfg.campaign.id # this will always be overwritten
     storage = cfg.campaign.storage
