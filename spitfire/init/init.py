@@ -25,7 +25,7 @@ from kubernetes_help import *
 # This requires the config_server.yaml file named accordingly and the yaml deployment 
 # specified first and the yaml service second 
 
-@hydra.main(config_path=f"{spitfire_dir}/config/config.yaml")
+@hydra.main(config_path=f"{spitfire_dir}/config", config_name="config.yaml")
 def setup(cfg):
 
     # Setup access to cluster 

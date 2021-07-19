@@ -589,7 +589,7 @@ def check_analysis_complete(cfg, kbs, inputfile):
     return [False, taint_input, taint_analysis] 
 
 
-@hydra.main(config_path=fuzzing_config_dir + "/config.yaml")
+@hydra.main(config_path=f"{spitfire_dir}/config", config_name="config.yaml")
 def run(cfg):
     tick()
 
