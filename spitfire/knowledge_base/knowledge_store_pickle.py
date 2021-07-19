@@ -582,7 +582,7 @@ class KnowledgeStorePickle(KnowledgeStore):
         return self.experiments.exists(experiment)
         #raise NotImplemented
 
-    def get_experiment(self, experiment):
+    def get_experiment(self): #, experiment):
         return self.experiments.get(experiment)
         #raise NotImplemented
 

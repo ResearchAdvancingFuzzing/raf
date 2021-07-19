@@ -88,14 +88,23 @@ def send_to_database(kbs, kb_input, kb_analysis, coverage_dir, interesting_dir):
     depth = kb_input.depth + 1
 
     # Add the new interesting inputs to the KB 
-    files = os.listdir(interesting_dir) if os.path.isdir(interesting_dir) else []
-    for file_name in files: 
-        [was_new, new_kb_input] = add_inp_to_database(kbs, file_name, {"crash": 1}, depth)
-        if new_kb_input and was_new:
-            num_crash += 1
-            event = kbp.CrashEvent()
+    files_in_both = [] 
+    interesting_files = os.listdir(interesting_dir) if os.path.isdir(interesting_dir) else []
+    interesting_files = {f:1 for f in interesting_files}
+    covg_files = os.listdir(coverage_dir) if os.path.isdir(coverage_dir) else []
+    covg_files = {f:1 for f in covg_files} 
+
+    # Files in both
+    for file_name in interesting_files.keys():
+        if file_name in covg_files:
+            new_kb_input = add_inp_to_database(kbs, file_name, {"crash":1, "increased_coverage":1}, depth) 
+            crash_event, ic_event = kbp.CrashEvent(), kbp.IncreasedCoverageEvent()
             kbs.AddFuzzingEvent(kbp.FuzzingEvent(analysis=kb_analysis.uuid,  
-                input=new_kb_input.uuid, crash_event=event))
+                input=new_kb_input.uuid, crash_event=crash_event))
+            kbs.AddFuzzingEvent(kbp.FuzzingEvent(analysis=kb_analysis.uuid,  
+                input=new_kb_input.uuid, increased_coverage_event=ic_event))
+
+            kbs.AddToQueue(new_kb_input)
 
     files = os.listdir(coverage_dir) if os.path.isdir(coverage_dir) else []
     for file_name in files:

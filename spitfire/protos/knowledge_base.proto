@@ -53,7 +53,7 @@ service KnowledgeBase {
     rpc GetTarget(Target) returns (Target) {}
     rpc GetInput(Input) returns (Input) {}
     //rpc GetCorpus(Corpus) returns (Corpus) {}
-    rpc GetExperiment(Experiment) returns (Experiment) {}
+    rpc GetExperiment(Empty) returns (Experiment) {}
     rpc GetAnalysisTool(AnalysisTool) returns (AnalysisTool) {}
     rpc GetAnalysis(Analysis) returns (Analysis) {}
     rpc GetExecution (Execution) returns (Execution) {}
@@ -200,6 +200,7 @@ message Corpus {
     bytes uuid = 1;                   // compute this as md5sum of all Input uuids
     string name = 2;                  // name for this corpus
     repeated Input input = 3;         // Inputs (shallow) in this corpus
+    map<string, string> additional_information = 16;
 }
 
 
@@ -213,6 +214,7 @@ message Experiment {
     Corpus seed_corpus = 6;                // seed corpus used (shallow)
     bytes prng_seed = 7;                 // seed of all randomness in this experiment
     bytes manager_hash = 17;	       // hash of the fuzzing manager
+    map<string, string> additional_information = 16;
 }
 
 
@@ -220,6 +222,7 @@ message Experiment {
 message KnowledgeBaseResult {
     bool success = 1;                 // true iff no error
     string message = 2;               // message, if necessary
+    map<string, string> additional_information = 16;
 }
 
 
@@ -238,6 +241,7 @@ message AnalysisTool {
         COVERAGE = 3;
     }
     AnalysisType type = 4;
+    map<string, string> additional_information = 16;
 }
 
 
@@ -253,6 +257,7 @@ message Analysis {
     bool complete = 5;           // this will be false until analysis is truly 
     // complete and all results successfully handed 
     // off to the kb
+    map<string, string> additional_information = 16;
 }
 
 
