@@ -38,6 +38,7 @@ import coverage
 from kubernetes_help import * 
 
 # Mapping of ints (bytes/paths) to inputs
+total_execs = 0
 top_rated = {} 
 # Mapping of uuids to lists representing the bytes they have seen so far
 trace_bits_total = {}
@@ -344,6 +345,7 @@ def save_data_file():
     f.close()
 
 def deterministic_fuzz(cfg, kb_inp, job, bitmap_file):
+
     # Run deterministic fuzzing 
     # Afl bit flip
     job.update_count_by(1) 
@@ -386,6 +388,7 @@ def run(cfg):
     global trace_bits_total
     global pending_favored
     global favored
+    global total_execs
     
     start_time_1 = time.time()
 
@@ -465,16 +468,13 @@ def run(cfg):
             # stop so they can begin 
             if active_fm(namespace) > 1: 
                 break
-            
+
             # If we have already created the max amount of pods
             # wait until some finish to create more
             while take_stock() >= max_pods:
                 pass
 
             if active_fm(namespace) > 1:
-                break
-
-            if jobs_created > 1:
                 break
             
             start_time = time.time()
@@ -521,7 +521,7 @@ def run(cfg):
             if active_fm(namespace) > 1:
                 break
 
-            if jobs_created > 0 and queue_len == 1:
+            if jobs_created > 0 and queue_len < 10:
                 continue
 
             # Get the next input in the queue
@@ -589,6 +589,7 @@ def run(cfg):
             #print(args)
             create_job(cfg, "%s:%s" % (job.name, namespace), job.name, 
                     job.get_count(), args, namespace)  
+            total_execs += stage_max
             jobs_created += 1
             print ("uuid for input is %s" % (str(kb_inp.uuid)))
 
@@ -606,6 +607,7 @@ def run(cfg):
         save_data_file()
         end_time = time.time()
         print(f"Took {end_time-start_time} to save data to files.")
+        print(f"HEATHER {int(total_execs)}")
 
 if __name__=="__main__":
     run()
