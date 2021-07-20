@@ -128,7 +128,7 @@ def run(cfg):
                     template=client.V1PodTemplateSpec(
                         metadata=client.V1ObjectMeta(name=name), 
                         spec=client.V1PodSpec(
-                            containers=[container(namespace, name, "init:%s" % namespace, ["python3.6"], ["init.py"], None)],
+                            containers=[container(namespace, name, "init:%s" % namespace, ["python3"], ["init.py"], None)],
                             init_containers=[
                                 container(namespace, "target", "target:%s" % namespace,  None, None, None), 
                                 container(namespace, "seed-corpus", "seed-corpus:%s" % namespace, None, None, None),

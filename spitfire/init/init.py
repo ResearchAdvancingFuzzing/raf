@@ -117,7 +117,7 @@ def setup(cfg):
     cron_sched = "*/1 * * * *"
     if hasattr(cfg.manager, "cron_sched"): 
         cron_sched = cfg.manager.cron_sched 
-    cmd = ['python3.6']
+    cmd = ['python3']
     args = [fm_name]
     metadata=client.V1ObjectMeta(name=name)
     containers = [container(namespace, name, "fm:%s" % namespace, cmd, args, None, volume_mounts)]

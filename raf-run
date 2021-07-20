@@ -73,7 +73,7 @@ docker build -t knowledge-base:$id -f spitfire/knowledge_base/Dockerfile .
 #docker build -t taint:$id -f spitfire/components/taint/panda/Dockerfile_taint .
 #docker build -t coverage:$id -f spitfire/components/coverage/Dockerfile .
 
-python3.6 start.py campaign.id=$id
+python3 start.py campaign.id=$id
 
 echo 
 echo "RAF campaign started.  Namespace $id"

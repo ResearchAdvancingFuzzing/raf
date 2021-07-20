@@ -51,7 +51,7 @@ def create_job(cfg, image, job_name, num, arg, namespace):
     batch_v1 = client.BatchV1Api()
 
     name ="%s-%s" % (job_name, str(num)) # unique name 
-    command = ["python3.6"] 
+    command = ["python3"] 
     args = ["run.py"]
     args.extend(arg)
 
