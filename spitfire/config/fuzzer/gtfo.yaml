@@ -1,19 +1,16 @@
-fuzzer:
-  name: gtfo
-  source_string: "git clone -b spitfire_0 https://github.com/ResearchAdvancingFuzzing/gtfo.git"
-  analysis:
-    name: afl_bitmap_analysis.so
-  jig:
-    name: afl_jig.so
-    target_arg: "-C fuzzfile" #"--nowarning fuzzfile" 
-  ooze:
-    name: afl_havoc.so 
-  extra_args: "JIG_MAP_SIZE=65536 ANALYSIS_SIZE=65536" 
-  input_file: "/default/seeds/slashdot.xml" 
-  iteration_count: 5000
-  ooze_seed: "`head -c 10 /dev/urandom | xxd -p`"
-  max_input_size: 10024 
-  analysis_save_file: "bitmap"
-  analysis_load_file: ""
-  job_number: 0  
-
+# @package fuzzer 
+name: gtfo
+source_string: "git clone -b spitfire_0 https://github.com/ResearchAdvancingFuzzing/gtfo.git"
+analysis:
+  name: afl_bitmap_analysis.so
+jig:
+  name: afl_jig.so
+  target_arg: "-C fuzzfile" #"--nowarning fuzzfile" #"-c jpeg fuzzfile /dev/null"
+ooze:
+  name: afl_havoc.so #restrict_bytes.so #afl_havoc.so #rand_byte_replace.so #afl_havoc.so
+extra_args: "JIG_MAP_SIZE=65536 ANALYSIS_SIZE=65536" 
+input_file: "/default/seeds/slashdot.xml" #"/seed-corpus/not_kitty.tiff" #"/seed-corpus/slashdot.xml"
+iteration_count: 5000
+ooze_seed: "`head -c 10 /dev/urandom | xxd -p`"
+max_input_size: 10024 
+analysis_load_file: "bitmap"
