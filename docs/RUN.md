@@ -16,9 +16,9 @@ sudo apt-get install -y kubectl
 ```
 ## Setup Env: 
 #### Python setup
-On your host computer, you need to have python3.6 and pip already installed. 
+On your host computer, you need to have python3.6, pip, and docker already installed. 
 ```
-sudo apt-get install python3.6 python3-pip
+sudo apt-get install python3.6 python3-pip conntrack docker.io
 ```
 You then need to install the the following python packages in order to make the grpcio python files from the .proto file in the run script and to start and run a campaign.
 ```
@@ -45,12 +45,11 @@ eval $(minikube docker-env)
 If you already have a virtual linux environment, you can use the following to set the cluster up on your **host** virtual machine.
 ```
 sudo apt-get update
-sudo apt-get install conntrack docker.io
 sudo groupadd docker # Note this group may already be added; that is ok
 sudo usermod -aG docker $USER 
-sudo minikube start --driver=none
-sudo chown -R $USER $HOME/.minikube
-sudo chown -R $USER $HOME/.kube
+minikube start --driver=none
+sudo mv /home/hpreslier/.kube /home/hpreslier/.minikube $HOME 
+sudo chown -R $USER $HOME/.kube $HOME/.minikube
 ```
 **NOTE**: You need to log out and log back in for the docker permissions to take effect.
 #### Minikube clean up
