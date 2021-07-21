@@ -5,6 +5,7 @@ import sys
 import logging
 import grpc
 import hydra
+from omegaconf import DictConfig, OmegaConf 
 
 from concurrent import futures
 
@@ -351,7 +352,8 @@ class KnowledgeBase(kbpg.KnowledgeBaseServicer):
     
 @hydra.main(config_path=f"{spitfire_dir}/config", config_name="config")
 def serve(cfg):
-    print(cfg.pretty(), flush=True)
+    #print(cfg.pretty(), flush=True)
+    print(OmegaConf.to_yaml(cfg), flush=True)
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=1000), maximum_concurrent_rpcs=16)
     kbpg.add_KnowledgeBaseServicer_to_server(KnowledgeBase(cfg), server)
     server.add_insecure_port("[::]:%d" % cfg.knowledge_base.port)

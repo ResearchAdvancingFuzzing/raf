@@ -7,6 +7,7 @@ import os
 import sys
 import grpc
 import hydra
+from omegaconf import DictConfig, OmegaConf
 import logging
 import time
 from kubernetes import client, utils, config
@@ -39,7 +40,7 @@ def container(namespace, name, image, command, args, port):
             ports=None if not port else [client.V1ContainerPort(container_port=port)])
 
 @hydra.main(config_path=f"{spitfire_dir}/config", config_name="config.yaml")
-def run(cfg): 
+def run(cfg : DictConfig) -> None: 
     namespace = cfg.campaign.id # this will always be overwritten
     storage = cfg.campaign.storage
    
@@ -103,12 +104,15 @@ def run(cfg):
 
 
     # Create the persistent volume 
+    storage_class="standard"
     core_api_instance.create_persistent_volume(client.V1PersistentVolume(
         metadata=client.V1ObjectMeta(name="%s-pv" % namespace),
         spec=client.V1PersistentVolumeSpec(
             capacity={"storage": storage}, 
             access_modes=["ReadWriteMany"],
-            host_path=client.V1HostPathVolumeSource(path="/tmp/%s" % namespace))))
+            persistent_volume_reclaim_policy="delete",
+            host_path=client.V1HostPathVolumeSource(path="/mnt/disks/%s" % namespace),
+            storage_class_name=storage_class)))
     
     # Create the persistent volume claim for the campaign
     core_api_instance.create_namespaced_persistent_volume_claim(
@@ -116,7 +120,9 @@ def run(cfg):
                 metadata=client.V1ObjectMeta(name=namespace), 
                 spec=client.V1PersistentVolumeClaimSpec(
                     access_modes=["ReadWriteMany"],
-                    resources=client.V1ResourceRequirements(requests={"storage": storage}))))
+                    resources=client.V1ResourceRequirements(requests={"storage": storage}),
+                    storage_class_name=storage_class)))
+
     
     # Create the init job-- sets up target, seeds, and code base in the PVC; 
     # sets up KB server and sends initial data to KB, starts FM 
