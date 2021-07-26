@@ -110,7 +110,7 @@ def run(cfg : DictConfig) -> None:
         spec=client.V1PersistentVolumeSpec(
             capacity={"storage": storage}, 
             access_modes=["ReadWriteMany"],
-            persistent_volume_reclaim_policy="delete",
+            persistent_volume_reclaim_policy="Delete",
             host_path=client.V1HostPathVolumeSource(path="/mnt/disks/%s" % namespace),
             storage_class_name=storage_class)))
     

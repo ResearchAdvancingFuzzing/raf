@@ -47,6 +47,6 @@ FROM alpine:latest
 RUN mkdir /target /target-instr
 COPY --from=0 /target /target
 COPY --from=0 /target-instr /target-instr
-CMD mv target $NAMESPACE && mv target-instr $NAMESPACE
+CMD rm -rf $NAMESPACE/* && mv target $NAMESPACE && mv target-instr $NAMESPACE
 
 
