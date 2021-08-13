@@ -20,9 +20,11 @@ On your host computer, you need to have python3.6, pip, and docker already insta
 ```
 sudo apt-get install python3.6 python3-pip conntrack docker.io
 ```
-You then need to install the the following python packages in order to make the grpcio python files from the .proto file in the run script and to start and run a campaign.
+You then need to install the the following python packages in order to make the grpcio python files from the .proto file in the run script and to start and run a campaign. This assumes you want to use a python virtualenv.
 ```
-sudo python3.6 -m pip install grpcio  grpcio-tools hydra-core numpy kubernetes
+$ python3 -m venv venv
+$ . venb/bin/activate
+(venv) $ python3 -m pip install grpcio  grpcio-tools hydra-core numpy kubernetes
 ```
 #### Minikube setup
 Instructions to setup a single-node Kubernetes cluster with minikube can be found at https://minikube.sigs.k8s.io/docs/. Reproduced below for convience are a few ways to start this cluster:
