@@ -23,7 +23,7 @@ sudo apt-get install python3.6 python3-pip conntrack docker.io
 You then need to install the the following python packages in order to make the grpcio python files from the .proto file in the run script and to start and run a campaign. This assumes you want to use a python virtualenv.
 ```
 $ python3 -m venv venv
-$ . venb/bin/activate
+$ . venv/bin/activate
 (venv) $ python3 -m pip install grpcio  grpcio-tools hydra-core numpy kubernetes
 ```
 #### Minikube setup
@@ -85,11 +85,11 @@ This will create the the name of the campaign id using the commit hash and the t
 #### Monitoring Cluster with Script
 Under `spitfire/utils` we have included a sample monitoring script, `monitor.py`, that will display statistics and graphs regarding the fuzzing events that have occurred throughout the fuzzing campaign in the cluster. To run, you first need to make sure the following python packages are installed: 
 ```
-pip3 install grpcio grpcio-tools hydra-core pyyaml oogle-api-python-client protobuf google-auth kubernetes
+(venv) python3 -m pip install grpcio grpcio-tools hydra-core pyyaml oogle-api-python-client protobuf google-auth kubernetes
 ```
 You also need to make sure you have a way of displaying these graphs if you are running the cluster inside a non-GUI host (X11 forwarding with ssh is a good option). You then can run the `monitor.py`. 
 ```
-python3.6 monitor.py
+(venv) python3.6 monitor.py
 ```
 #### Monitoring Cluster Manually
 To debug or get status updates about the pods that are running, run any of the following:
