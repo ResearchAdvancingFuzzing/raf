@@ -77,7 +77,7 @@ git tag <tag_name> <commit_hash>    # tag which commit you want to run the expt 
 **NOTE:** If you have uncommitted changes or do not have a tag associated with the commit you want to run the experiment on, the campaign will not run. 
 To start the campaign
 ```
-./raf-run
+(venv) ./raf-run
 ```
 This will create the the name of the campaign id using the commit hash and the tag name. This script will create/update the proto files, build all the docker images for this campaign, and then start up the campaign. 
 ## Monitoring RAF:
