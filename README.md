@@ -1,7 +1,7 @@
 # RAF Setup
 
 ## Installation: 
-Follow the instructions at https://kubernetes.io/docs/tasks/tools/install-minikube/ to install minikube, kubectl, and optionally (see below) a hypervisor (e.g. virtualbox). The instructions to install minikube and kubectl for linux are reproduced below for convenience: 
+Follow the instructions at https://kubernetes.io/docs/tasks/tools/install-minikube/ to install minikube and kubectl. The instructions to install minikube and kubectl for linux are reproduced below for convenience: 
 ```
 curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64 \
   && chmod +x minikube
@@ -15,11 +15,15 @@ sudo apt-get update
 sudo apt-get install -y kubectl
 ```
 ## Setup Env: 
-#### Python setup
+#### Python/Docker setup
 On your host computer, you need to have python (version 3.6 or above), pip, and docker already installed. 
 ```
 sudo apt-get install python3.6 python3-pip conntrack docker.io
+sudo groupadd docker # Note this group may already be added; that is ok
+sudo usermod -aG docker $USER 
 ```
+**NOTE**: You need to log out and log back in for the docker permissions to take effect.
+
 You then need to install the the following python packages in order to make the grpcio python files from the .proto file in the run script and to start and run a campaign. This assumes you want to use a python virtualenv.
 ```
 $ python3 -m venv venv
@@ -27,33 +31,12 @@ $ . venv/bin/activate
 (venv) $ python3 -m pip install grpcio  grpcio-tools hydra-core numpy kubernetes
 ```
 #### Minikube setup
-Instructions to setup a single-node Kubernetes cluster with minikube can be found at https://minikube.sigs.k8s.io/docs/. Reproduced below for convience are a few ways to start this cluster:
-1. In a docker container: (preferred) 
+Instructions to setup a single-node Kubernetes cluster with minikube can be found at https://minikube.sigs.k8s.io/docs/. There are a few ways to do this (through docker, virtual machine, host, etc.) The instructions for starting the cluster from **docker** are reproduced below for convience:
 ```
 minikue start --driver=docker
 eval $(minikube docker-env)
 ```
 **NOTE**: Running minikube with root user is not allowed here.
-
-2. In a virtual machine on your host computer: (preferred)
-
-Run the following commands in order to set up the cluster in a virtual machine on your personal computer and configure your environment to re-use the docker daemon inside the minikube instance. NOTE: you need to make sure that the virtualbox has enough memory (greater than the default)! 
-```
-minikube start --driver=virtualbox
-eval $(minikube docker-env)
-```
-3. On your host computer (which should be a VM environment): 
-
-If you already have a virtual linux environment, you can use the following to set the cluster up on your **host** virtual machine.
-```
-sudo apt-get update
-sudo groupadd docker # Note this group may already be added; that is ok
-sudo usermod -aG docker $USER 
-minikube start --driver=none
-sudo mv /home/hpreslier/.kube /home/hpreslier/.minikube $HOME 
-sudo chown -R $USER $HOME/.kube $HOME/.minikube
-```
-**NOTE**: You need to log out and log back in for the docker permissions to take effect.
 #### Minikube clean up
 To delete the cluster created, run
 ```
@@ -66,7 +49,7 @@ git clone <this_repo>
 cd raf
 ./setup.sh 
 ```
-Note: Run this only once, when you have a clean clone of the RAF repo. 
+Note: Run this only once, when you have a **clean** clone of the RAF repo. 
 ## Building and running a campaign 
 After initial setup, you can now either (1) run an already existing experiment in RAF or (2) create your own experiment. When creating or running an experiment, you need to (1) make the relevant changes, (2) commit the changes, and (3) tag the commit. Existing experiments are located within their own branches. For instance, to run an ```aflfast``` experiment, run the following:
 ```
