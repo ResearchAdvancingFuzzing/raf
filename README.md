@@ -33,7 +33,7 @@ $ . venv/bin/activate
 #### Minikube setup
 Instructions to setup a single-node Kubernetes cluster with minikube can be found at https://minikube.sigs.k8s.io/docs/. There are a few ways to do this (through docker, virtual machine, host, etc.) The instructions for starting the cluster from **docker** are reproduced below for convience:
 ```
-minikue start --driver=docker
+minikube start --driver=docker
 eval $(minikube docker-env)
 ```
 **NOTE**: Running minikube with root user is not allowed here.
