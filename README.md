@@ -49,7 +49,7 @@ git clone <this_repo>
 cd raf
 ./setup.sh 
 ```
-Note: Run this only once, when you have a **clean** clone of the RAF repo. 
+Note: Run this only once, when you have a **clean** clone of the RAF repo. In this script, there is a clone of a repo to copy in a sample seed corpus into the `spitfire/init/corpus` directory. You may also provide your own seeds in that directory. 
 ## Building and running a campaign 
 After initial setup, you can now either (1) run an already existing experiment in RAF or (2) create your own experiment. When creating or running an experiment, you need to (1) make the relevant changes, (2) commit the changes, and (3) tag the commit. Existing experiments are located within their own branches. For instance, to run an ```aflfast``` experiment, run the following:
 ```
