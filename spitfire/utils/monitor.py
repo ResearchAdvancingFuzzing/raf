@@ -68,7 +68,7 @@ def run(cfg):
     port = service.items[0].spec.ports[0].port
     node_port = service.items[0].spec.ports[0].node_port
 
-    print("Connecting to the KB on %s:%s" % (ip, str(node_port))
+    print("Connecting to the KB on %s:%s" % (ip, str(node_port)))
 
     with grpc.insecure_channel('%s:%d' % (ip, node_port)) as channel:
         kbs = kbpg.KnowledgeBaseStub(channel)
