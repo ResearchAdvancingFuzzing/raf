@@ -81,9 +81,12 @@ def update_bitmap_score(kbs, entry, trace_bits):
 #  Finds and updates an input's exec time, bitmap size, and handicap (queue cycles behind) value 
 def calibrate_case(kbs, entry, queue_cycle, target):
     global trace_bits_total 
+    global total_execs
 
     if entry.calibrated: 
         return
+
+    total_execs += 1
 
     # Size 
     entry.size = os.path.getsize(entry.filepath)
@@ -607,7 +610,7 @@ def run(cfg):
         save_data_file()
         end_time = time.time()
         print(f"Took {end_time-start_time} to save data to files.")
-        print(f"HEATHER {int(total_execs)}")
+        print(f"Total Exces (underestimated):  {int(total_execs)}")
 
 if __name__=="__main__":
     run()

@@ -1,7 +1,7 @@
 # @package manager 
 name: aflfast 
 max_pods: 10 
-cron_sched: "*/1 * * * *"
+cron_sched: "*/10 * * * *"
 schedule: "EXPLORE"
 MAP_SIZE: 65536
 HAVOC_CYCLES_INIT: 1024
