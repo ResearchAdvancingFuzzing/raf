@@ -62,7 +62,6 @@ def choose(dist):
 
 @hydra.main(config_path=f"{spitfire_dir}/config", config_name="config.yaml")
 def run(cfg):
- 
 
     # Make sure the counts, inputs, replays directory exists
     if not os.path.exists(counts_dir): 

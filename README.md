@@ -28,7 +28,7 @@ You then need to install the the following python packages in order to make the 
 ```
 $ python3 -m venv venv
 $ . venv/bin/activate
-(venv) $ python3 -m pip install grpcio  grpcio-tools hydra-core numpy kubernetes
+(venv) $ python3 -m pip install wheel grpcio grpcio-tools hydra-core numpy kubernetes
 ```
 #### Minikube setup
 Instructions to setup a single-node Kubernetes cluster with minikube can be found at https://minikube.sigs.k8s.io/docs/. There are a few ways to do this (through docker, virtual machine, host, etc.) The instructions for starting the cluster from **docker** are reproduced below for convience:

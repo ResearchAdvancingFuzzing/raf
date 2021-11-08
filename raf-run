@@ -68,7 +68,7 @@ docker build -t fm:$id -f spitfire/fuzzing_manager/Dockerfile .
 docker build -t seed-corpus:$id -f spitfire/init/Dockerfile_corpus .
 docker build -t target:$id -f spitfire/init/Dockerfile_target .
 docker build -t spitfire:$id .
-docker build -t fuzzer:$id -f spitfire/components/mutfuzz/Dockerfile .
+docker build -t fuzzer:$id -f spitfire/components/fuzzer/Dockerfile .
 docker build -t knowledge-base:$id -f spitfire/knowledge_base/Dockerfile .
 docker build -t taint:$id -f spitfire/components/taint/panda/Dockerfile_taint .
 docker build -t coverage:$id -f spitfire/components/coverage/Dockerfile .
