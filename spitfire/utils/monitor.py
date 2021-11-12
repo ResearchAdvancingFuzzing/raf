@@ -58,9 +58,10 @@ def run(cfg):
     
 
     # Get the IP of your computer
-    process = subprocess.Popen(['curl', 'ifconfig.me'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    stdout, stderr = process.communicate()
-    ip = stdout.decode("utf-8") 
+    #process = subprocess.Popen(['curl', 'ifconfig.me'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    #stdout, stderr = process.communicate()
+    #ip = stdout.decode("utf-8") 
+    ip  = api_instance.list_node().items[0].status.addresses[0].address
     
     # Connect to the knowledge base
     namespace = cfg.campaign.id
