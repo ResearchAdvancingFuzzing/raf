@@ -72,7 +72,7 @@ Under `spitfire/utils` we have included a sample monitoring script, `monitor.py`
 ```
 You also need to make sure you have a way of displaying these graphs if you are running the cluster inside a non-GUI host (X11 forwarding with ssh is a good option). You then can run the `monitor.py`. 
 ```
-(venv) python3.6 monitor.py
+(venv) python3.6 monitor.py campaign.id=<campaign-id> 
 ```
 #### Monitoring Cluster Manually
 To debug or get status updates about the pods that are running, run any of the following:
