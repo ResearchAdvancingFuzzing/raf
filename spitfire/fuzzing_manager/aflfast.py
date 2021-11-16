@@ -66,7 +66,7 @@ def update_bitmap_score(kbs, entry, trace_bits):
         if path in top_rated: 
             top_rated_entry = top_rated[path]
             top_rated_fuzz_p2 = next_p2(top_rated_entry.n_fuzz)
-            top_rated_fav_factor = top_rated_entry.exec_time * entry.size
+            top_rated_fav_factor = top_rated_entry.exec_time * top_rated_entry.size
             if fuzz_p2 > top_rated_fuzz_p2: 
                 continue
             elif fuzz_p2 == top_rated_fuzz_p2 and fav_factor > top_rated_fav_factor:
