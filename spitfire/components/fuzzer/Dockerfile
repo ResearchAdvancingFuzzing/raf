@@ -7,5 +7,5 @@ COPY --from=0 /gtfo /gtfo
 # Dependencies to run GTFO 
 RUN apt-get upgrade -y && apt-get update -y && apt-get install -y curl xxd libyaml-0-2 libyaml-dev python3.6 python3-pip 
 
-COPY spitfire/components/mutfuzz/run.py ./
+COPY spitfire/components/fuzzer/run.py ./
 COPY infinite ./
