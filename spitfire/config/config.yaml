@@ -1,8 +1,8 @@
 defaults:
-    - target: afl 
+    - target: nm 
     - knowledge_base: pickle
     - fuzzer: gtfo
-    - manager: aflfast 
+    - manager: afl 
 campaign:
   id: tim1
   storage: 4Gi
