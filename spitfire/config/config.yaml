@@ -1,5 +1,5 @@
 defaults:
-    - target: aflfast 
+    - target: afl 
     - knowledge_base: pickle
     - fuzzer: gtfo
     - manager: aflfast 

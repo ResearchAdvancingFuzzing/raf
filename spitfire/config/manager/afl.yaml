@@ -1,5 +1,5 @@
 # @package manager 
-name: aflfast 
+name: afl 
 max_pods: 10 
 cron_sched: "*/10 * * * *"
 schedule: "EXPLORE"
