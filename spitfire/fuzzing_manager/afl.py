@@ -344,7 +344,7 @@ def deterministic_fuzz(cfg, kb_inp, job, bitmap_file):
     create_job(cfg, "%s:%s" % (job.name, namespace), job.name, job.get_count(), args, namespace) 
 
 
-@hydra.main(config_path=f"{spitfire_dir}/config/config.yaml")
+@hydra.main(config_path=f"{spitfire_dir}/config", config_name="config.yaml")
 def run(cfg):
 
 
